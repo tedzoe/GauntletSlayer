@@ -101,14 +101,14 @@ const RELIC_COST_TABLE = [4000, 12000, 32000];   // David: 4000 / 12000 / 32000 
 const RELICS = [
   { id: 'feather', name: 'Gale Plume', cost: RELIC_COST_TABLE, cd: 50, desc: ['6m front gust: knocks back lesser foes, 3s slow', '4.5s slow, faster cooldown', 'Whole-screen gust: stuns everything, 6s slow'] },
   { id: 'haste', name: 'Quickstep Anklets', cost: RELIC_COST_TABLE, cd: 40, desc: ['+30% speed for 4s', '+40% for 5.5s', '+50% for 7s + 3m stun burst'] },
-  { id: 'squall', name: 'Squall Charm', cost: RELIC_COST_TABLE, cd: 26, desc: ['Whirlwind that knocks foes down', 'Bigger whirlwind', 'Longer, shorter cooldown'] },
-  { id: 'quill', name: 'Gilded Quill', cost: RELIC_COST_TABLE, cd: 35, desc: ['Turn nearby food & potions into gold', '- 20% cooldown', '- 20% cooldown'] },
-  { id: 'ember', name: 'Emberstride Boots', cost: RELIC_COST_TABLE, cd: 18, desc: ['Speed burst with a trail of fire', 'Longer burst', '- 25% cooldown'] },
+  { id: 'squall', name: 'Squall Charm', cost: RELIC_COST_TABLE, cd: 40, desc: ['Slow whirlwind (3.5s, 14 per hit) throws foes; destroys ghosts, skeletons, spiderlings', 'Bigger whirlwind, 22 per hit', '20s whirlwind, 35s cooldown'] },
+  { id: 'quill', name: 'Gilded Quill', cost: RELIC_COST_TABLE, cd: 20, desc: ['Turn nearby food & potions into gold (20s cooldown)', 'No change (as in Slayer)', '10s cooldown'] },
+  { id: 'ember', name: 'Emberstride Boots', cost: RELIC_COST_TABLE, cd: 60, desc: ['2s speed burst, fire trail burns 5s', '3s burst, 50s cooldown', '40s cooldown'] },
   { id: 'hoar', name: 'Hoarfrost Ring', cost: RELIC_COST_TABLE, cd: 45, desc: ['Freeze a 3m line for 4s', '5.5m line, 6s', '8m circle around you, 8s'] },
-  { id: 'idol', name: 'Gargoyle Idol', cost: RELIC_COST_TABLE, cd: 40, desc: ['Summon a fire-spitting gargoyle for 20s', 'Faster spit', '- 25% cooldown'] },
-  { id: 'rift', name: 'Riftmark', cost: RELIC_COST_TABLE, cd: 16, desc: ['Mark a foe, then blink onto it with a blast', 'Invulnerable until you land', '- 25% cooldown'] },
-  { id: 'shade', name: 'Shade Orb', cost: RELIC_COST_TABLE, cd: 38, desc: ['You and allies nearby turn invisible', 'Longer invisibility', '- 25% cooldown'] },
-  { id: 'lyre', name: 'Lure Lyre', cost: RELIC_COST_TABLE, cd: 42, desc: ['Charm nearby foes to fight for you', 'Longer charm', '- 25% cooldown'] },
+  { id: 'idol', name: 'Gargoyle Idol', cost: RELIC_COST_TABLE, cd: 80, desc: ['Gargoyle for 30s: 17 lethal 50-damage fireballs', 'Faster spit: 25 fireballs', '60s cooldown'] },
+  { id: 'rift', name: 'Riftmark', cost: RELIC_COST_TABLE, cd: 30, desc: ['Mark a foe in sight; 2s later blink onto it: 154 damage, 14 around', 'Invulnerable until you land', '24s cooldown'] },
+  { id: 'shade', name: 'Shade Orb', cost: RELIC_COST_TABLE, cd: 40, desc: ['You and allies nearby turn invisible for 6s', '12s invisibility', '30s cooldown'] },
+  { id: 'lyre', name: 'Lure Lyre', cost: RELIC_COST_TABLE, cd: 20, desc: ['Charm nearby foes for 10s (they take double damage)', '15s charm', '10s cooldown, 10s charm'] },
   { id: 'mirror', name: 'Twin Mirror', cost: RELIC_COST_TABLE, cd: 60, desc: ['2 clones for 6s', '3 clones for 8s', '4 clones for 10s that draw enemy fire'] },
 ];
 const RELIC = Object.fromEntries(RELICS.map(r => [r.id, r]));

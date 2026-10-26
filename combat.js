@@ -678,7 +678,7 @@ function shotCollide(s) {
       s.onHit && s.onHit(s, f);
       if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; }
     }
-    for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); hitSpawner(sp, s.dmg, s.owner, { tier: s.tier, spawnerHits: s.spawnerHits }); if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; } }
+    for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); hitSpawner(sp, s.spawnerDmg ?? s.dmg, s.owner, { tier: s.tier, spawnerHits: s.spawnerHits }); if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; } }
     for (const p of G.props) if (p.hp > 0 && p.kind !== 'legend' && hyp(p.x - s.x, p.y - s.y) < p.r + s.r) { hitProp(p, s.dmg, { src: s.owner }); s.dead = true; s.onEnd && s.onEnd(s); return; }
     if (!s.noFood) for (const it of G.pickups) if (!it.dead && (it.kind === 'ration' || it.kind === 'feast' || it.kind === 'potion') && hyp(it.x - s.x, it.y - s.y) < 10 + s.r) { smashFood(it, s.owner); if (!s.big) { s.dead = true; return; } }
     for (const hz of G.hazards) if (hz.kind === 'bomb' && !hz.done && s.owner && s.owner.id === 'kestrel' && hyp(hz.x - s.x, hz.y - s.y) < 16) { hz.boost = true; hz.t = hz.delay; s.dead = true; return; }
@@ -726,7 +726,7 @@ function updateBoomer(s, dt) { // returning missiles (shield throw, hatchets)
 // ---------------------------------------------------------------- hazards / zones
 function updateHazards(dt) {
   for (const hz of G.hazards) {
-    hz.t += dt;
+    hz.t += dt; if (hz.vx || hz.vy) { hz.x += hz.vx * dt; hz.y += hz.vy * dt; }   // drifting hazards (the Squall whirlwind) pass through walls
     switch (hz.kind) {
       case 'mine': {
         if (hz.done) break;
@@ -763,7 +763,14 @@ function updateHazards(dt) {
           if (hz.kind === 'ward' && SKELETAL(f) && hz.owner) { killFoe(f, hz.owner, { tag: 'storm' }); continue; }   // Storm Barrier shatters skeletons on contact
           if (hz.kind === 'ward' || hz.kind === 'bubble') { if (f.boss || f.type === 'reaper') continue; const a = Math.atan2(f.y - hz.y, f.x - hz.x); const push = hz.r + f.r + 2 - d; if (push > 0) { moveEnt(f, Math.cos(a) * push, Math.sin(a) * push, f.fly); if (hz.kind === 'ward' && tick) hitFoe(f, 5, { x: hz.x, y: hz.y, knock: 260, stagger: 0.5, src: hz.owner }); } }
           if (hz.kind === 'gloom' && hz.pull && !f.boss && d > 12) { const a = Math.atan2(hz.y - f.y, hz.x - f.x); moveEnt(f, Math.cos(a) * 60 * hz.pull * dt, Math.sin(a) * 60 * hz.pull * dt, f.fly); }
-          if (hz.kind === 'whirl' && !f.boss) { f.stag = Math.max(f.stag, 0.4); const a = Math.atan2(f.y - hz.y, f.x - hz.x) + 1.4; f.kx += Math.cos(a) * 30; f.ky += Math.sin(a) * 30; }
+          if (hz.kind === 'whirl' && !f.boss) {   // Tempest Locket: hits each foe again every rehit s; ghosts, skeletons and spiderlings die; small foes are thrown, large ones interrupted
+            const big = f.heavy || f.elite, last = hz.hitT ? hz.hitT.get(f) ?? -9 : 0;
+            if (hz.hitT && G.time - last >= RELIC_SPEC.squall.rehit) { hz.hitT.set(f, G.time);
+              if (!big && (SKELETAL(f) || f.d.beh === 'wraith' || f.type === 'spiderling') && hz.owner) { killFoe(f, hz.owner, { tag: 'whirl' }); continue; }
+              hitFoe(f, hz.owner ? heroDmg(hz.owner, hz.dmg) : hz.dmg, { src: hz.owner, x: hz.x, y: hz.y, tier: 1, quiet: true }); if (!ALIVE(f)) continue;
+              if (big) { f.stag = Math.max(f.stag, 0.5); if (f.state === 'windup') f.state = 'move'; if (f.conjuring > 0) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; } }
+              else { const a = R(0, 6.28); f.kx += Math.cos(a) * 380; f.ky += Math.sin(a) * 380; f.stag = Math.max(f.stag, 0.8); } }
+            else if (!big) { f.stag = Math.max(f.stag, 0.4); const a = Math.atan2(f.y - hz.y, f.x - hz.x) + 1.4; f.kx += Math.cos(a) * 30; f.ky += Math.sin(a) * 30; } }
           if (hz.kind === 'darkHunger') { if (f.d.beh === 'wraith' && !f.elite && hz.owner) { killFoe(f, hz.owner, { tag: 'hunger' }); continue; }   /* ghosts die on contact */
             f.slowT = Math.max(f.slowT, 0.3); f.slowM = Math.min(f.slowM, 0.5);
             if (tick) { hitFoe(f, hz.dps * 0.25, { quiet: true, src: hz.owner, tier: 1 }); if (hz.owner && !hz.owner.dead) healHero(hz.owner, SPEC.vesper.hungerHeal * 0.25); G.beams.push({ x1: f.x, y1: f.y, x2: hz.x, y2: hz.y, col: '#d04070', life: 0.1, w: 2 }); } continue; }
@@ -792,7 +799,7 @@ const ALLY = {
   warrior: { hp: 70, spd: 125, r: 11, dmg: 8, reach: 22, rate: 0.8, col: '#e8e0c8' },
   archer: { hp: 45, spd: 115, r: 11, dmg: 14, ranged: true, rate: 0.9, col: '#d8d0b8' },
   shade: { hp: 1, spd: 260, r: 9, dmg: 24, explode: true, life: 6, col: '#7ff5d0' },
-  gargoyle: { hp: 140, spd: 130, r: 14, dmg: 12, ranged: true, rate: 1.0, fly: true, life: 20, col: '#8a8a9a' },
+  gargoyle: { hp: 100, spd: 130, r: 14, dmg: 50, ranged: true, rate: 30 / 17, fly: true, life: 30, col: '#8a8a9a' },   // Demonic Effigy (FAQ); the relic sets the rank's numbers
   illusion: { hp: 60, spd: 150, r: 12, dmg: 12, ranged: true, rate: 0.5, life: 12, col: '#bfe8ff' },
   sprite: { hp: 1, spd: 0, r: 8, dmg: 14, orbit: true, life: 12, col: '#d8ff8a' },
   // Vesper Linda's minions
@@ -835,7 +842,7 @@ function updateAllies(dt) {
       if (a.d.explode) { dir = [Math.cos(ang), Math.sin(ang)]; if (bd < tgt.r + a.r + 4) { a.hp = 0; if (a.single) { burst(a.x, a.y, '#7ff5d0', 10, 120, 2, 0.4); Snd.play('shade'); if (tgt.spawner) hitSpawner(tgt, a.dmg, a); else hitFoe(tgt, a.dmg, { x: a.x, y: a.y, knock: 120, stagger: 0.5, src: a.owner || a, team: 'hero' }); continue; } explode(a.x, a.y, 50, a.dmg * (a.owner ? a.owner.mods.dmg : 1), { team: 'hero', col: '#7ff5d0', src: a, sound: 'shade' }); continue; } }
       else if (a.d.ranged) {
         if (bd > 260) dir = [Math.cos(ang), Math.sin(ang)]; else if (bd < 120) dir = [-Math.cos(ang), -Math.sin(ang)];
-        if (a.atkT <= 0 && bd < 320) { a.atkT = a.rate ?? a.d.rate; shoot({ team: 'hero', x: a.x, y: a.y, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: a.dmg * (a.owner ? a.owner.mods.dmg : 1), r: 5, life: 0.8, kind: a.d.shot || (a.kind === 'gargoyle' || a.fireArrows ? 'fire' : a.kind === 'illusion' ? 'bolt' : 'arrow'), col: a.d.col, owner: a }); Snd.play('allyshot'); }
+        if (a.atkT <= 0 && bd < 320) { a.atkT = a.rate ?? a.d.rate; shoot({ team: 'hero', x: a.x, y: a.y, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: a.dmg * (a.owner ? a.owner.mods.dmg : 1), lethal: !!a.lethal, spawnerDmg: a.spawnerDmg, r: 5, life: 0.8, kind: a.d.shot || (a.kind === 'gargoyle' || a.fireArrows ? 'fire' : a.kind === 'illusion' ? 'bolt' : 'arrow'), col: a.d.col, owner: a }); Snd.play('allyshot'); }
       } else {
         if (bd > a.r + tgt.r + a.d.reach * 0.7) dir = [Math.cos(ang), Math.sin(ang)];
         else if (a.atkT <= 0) { a.atkT = a.rate ?? a.d.rate; const dm = a.dmg * (a.owner ? a.owner.mods.dmg : 1);

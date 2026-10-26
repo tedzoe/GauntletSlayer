@@ -248,6 +248,16 @@ const RELIC_SPEC = {
   hoar: { freeze: lerpRank(4, 8), cd: lerpRank(45, 30), range: lerpRank(3 * MTR, 8 * MTR), shape: ['line', 'line', 'circle'] },
 };
 RELIC_SPEC.feather.stun[1] = 0.6;
+// Relics David's spec doesn't cover: numbers from the Neoseeker FAQ Relics section (ranks I / II / III). Estimates are marked.
+Object.assign(RELIC_SPEC, {
+  squall: { cd: [40, 40, 35], time: [3.5, 3.5, 20], dmg: [14, 22, 22], r: [80, 110, 110], speed: 55, rehit: 0.7 },   // Tempest Locket: slow straight whirlwind through walls; speed is ours
+  quill: { cd: [20, 20, 10], r: 220 },   // Golden Feather: Rank II's "cooldown reduction" really is none (FAQ)
+  ember: { cd: [60, 50, 40], time: [2, 3, 3], trail: 5 },   // Firetrail Boots: Rank III cooldown and Rank II burst length are estimates (FAQ gives no number)
+  idol: { cd: [80, 80, 60], time: 30, hp: 100, dmg: 50, rate: [30 / 17, 30 / 25, 30 / 25], spawnerDmg: 26 },   // Demonic Effigy: 17 (Rank II+ 25) lethal 50-damage fireballs in 30s
+  rift: { cd: [30, 30, 24], delay: 2, dmg: 154, splash: 14, splashR: 80 },   // Chaos Amulet: clear line of sight; Rank II+ invulnerable until the jump
+  shade: { cd: [40, 40, 30], time: [6, 12, 12], r: 160 },   // Ghost Orb
+  lyre: { cd: [20, 20, 10], time: [10, 15, 10], r: 190 },   // Siren's Lute: Rank III shortens the charm again (FAQ)
+});
 
 // ---------------------------------------------------------------- gameplay rule toggles (Options > Gameplay rules)
 // Rules sourced from unverified summaries default ON so they can be switched off if they don't match Slayer.

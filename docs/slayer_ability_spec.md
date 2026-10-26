@@ -66,6 +66,14 @@ No Slayer counterpart. Use a hybrid built from these rules, and David must appro
   - Rank III: freezes for 8s, 30s cooldown, 8m circle centered on the caster.
 - Rank II for each: interpolate halfway between Rank I and Rank III.
 - Distance scale: 1m = 32px (adjust to tile size if different and state it).
+- **The other relics follow the Neoseeker FAQ Relics section (Oct 26 2026)** (`RELIC_SPEC` in tuning.js; ranks I / II / III). The four above stay on David's numbers.
+  - Squall Charm (Tempest Locket): cooldown 40 / 40 / 35s; a whirlwind drifts slowly forward through walls for 3.5 / 3.5 / 20s, 14 / 22 / 22 per hit (it can hit a foe again every 0.7s). It destroys ghosts, skeletons and spiderlings, throws small foes and interrupts large ones.
+  - Gilded Quill (Golden Feather): cooldown 20 / 20 / 10s (Rank II really gives no reduction).
+  - Emberstride Boots (Firetrail Boots): cooldown 60 / 50 / 40s, burst 2 / 3 / 3s, the fire trail burns 5s. Rank III cooldown and Rank II burst length are estimates (the FAQ gives no number).
+  - Gargoyle Idol (Demonic Effigy): cooldown 80 / 80 / 60s; a 100 HP gargoyle for 30s firing 17 (Rank II+ 25) lethal 50-damage fireballs, 26 damage to spawners.
+  - Riftmark (Chaos Amulet): cooldown 30 / 30 / 24s; marks a random foe in clear line of sight, 2s later you land on it for 154 damage and 14 around; Rank II+ invulnerable until the jump.
+  - Shade Orb (Ghost Orb): cooldown 40 / 40 / 30s, invisibility 6 / 12 / 12s. Lure Lyre (Siren's Lute): cooldown 20 / 20 / 10s, charm 10 / 15 / 10s; charmed foes take double damage.
+  - `tests/relictest.js` checks all of the above.
 
 # Endless Mode extra rules (from David, AI search summary, treat as authoritative unless it clearly conflicts)
 - No food from floor 37 on: health food stops spawning entirely, and drops and chests give gold instead of meat. Health only returns through abilities and talismans (for example the Warrior's 'The Prize'-style talisman).

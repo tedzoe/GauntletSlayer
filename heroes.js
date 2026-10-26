@@ -808,16 +808,17 @@ function useRelic(h, viaPotion) {
       if (P.shape[i] === 'circle') { ring(h.x, h.y, r, '#dff8ff', 0.5, 8); for (const f of G.foes) if (ALIVE(f) && !f.boss && hurtD(f, h.x, h.y) < r) f.frz = P.freeze[i]; }
       else { G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(h.fa) * r, y2: h.y + Math.sin(h.fa) * r, col: '#dff8ff', life: 0.3, w: 10 });
         for (const f of G.foes) { if (!ALIVE(f) || f.boss) continue; const px = f.x - h.x, py = f.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (hurtRay(f, h.x, h.y, h.fa, r, 24)) f.frz = P.freeze[i]; } } break; }
-    case 'squall': { const p = aimPoint(h, 220, 60); G.hazards.push({ kind: 'whirl', x: p.x, y: p.y, r: rk >= 2 ? 110 : 80, life: rk >= 3 ? 6 : 4, t: 0, owner: h }); Snd.play('wind'); break; }
-    case 'quill': { let n = 0; for (const it of G.pickups) if (!it.dead && ['ration', 'feast', 'potion'].includes(it.kind) && hyp(it.x - h.x, it.y - h.y) < 220) { it.val = it.kind === 'feast' ? 150 : 90; it.kind = 'gold'; n++; burst(it.x, it.y, '#ffd84a', 10, 80, 2, 0.4); } Snd.play('coin'); break; }
-    case 'ember': h.buff.ember = rk >= 2 ? 4.5 : 3; h.emberTrail = 0; break;
-    case 'idol': { const g = mkAlly('gargoyle', h.x + 20, h.y, h); if (rk >= 2) g.d = Object.assign({}, g.d, { rate: 0.6 }); break; }
-    case 'rift': { const vis = G.foes.filter(f => ALIVE(f) && f.charm <= 0 && f.type !== 'reaper' && !f.boss && onScreen(f.x, f.y, -40)); const tgt = vis.length ? pick(vis) : null;
+    case 'squall': { const c = Math.cos(h.fa), sn = Math.sin(h.fa); G.hazards.push({ kind: 'whirl', x: h.x + c * 40, y: h.y + sn * 40, vx: c * P.speed, vy: sn * P.speed, r: P.r[i], life: P.time[i], t: 0, owner: h, dmg: P.dmg[i], hitT: new Map() }); Snd.play('wind'); break; }   // travels forward slowly, through walls
+    case 'quill': { let n = 0; for (const it of G.pickups) if (!it.dead && ['ration', 'feast', 'potion'].includes(it.kind) && hyp(it.x - h.x, it.y - h.y) < P.r) { it.val = it.kind === 'feast' ? 150 : 90; it.kind = 'gold'; n++; burst(it.x, it.y, '#ffd84a', 10, 80, 2, 0.4); } Snd.play('coin'); break; }
+    case 'ember': h.buff.ember = P.time[i]; h.emberTrail = 0; break;
+    case 'idol': { const g = mkAlly('gargoyle', h.x + 20, h.y, h, { life: P.time, hp: P.hp, maxhp: P.hp, dmg: P.dmg, rate: P.rate[i], lethal: true, spawnerDmg: P.spawnerDmg }); break; }
+    case 'rift': { const vis = G.foes.filter(f => ALIVE(f) && f.charm <= 0 && f.type !== 'reaper' && !f.boss && onScreen(f.x, f.y, -40) && los(h.x, h.y, f.x, f.y)); const tgt = vis.length ? pick(vis) : null;   // no obstruction allowed
       if (!tgt) { text(h.x, h.y - 30, 'No target', '#ccc'); h.cd.relic = 1; break; }
-      tgt.marked = 0.8; if (rk >= 2) h.inv = 0.9;
-      G.hazards.push({ kind: 'tele', x: tgt.x, y: tgt.y, r: 80, delay: 0.8, t: 0, col: '#c08aff', follow: tgt, onFire: hz => { if (h.dead) return; h.x = hz.x; h.y = hz.y; if (collide(h.x, h.y, h.r)) { h.x = hz.x; } explode(h.x, h.y, 80, heroDmg(h, DMG.heavy), { src: h, col: '#c08aff' }); } }); break; }
-    case 'shade': for (const o of G.heroes) if (!o.dead && hyp(o.x - h.x, o.y - h.y) < 160) { o.invisT = rk >= 2 ? 8 : 5; burst(o.x, o.y, '#9aa', 20, 120, 4, 0.7); } Snd.play('smoke'); break;
-    case 'lyre': { Snd.play('lyre'); ring(h.x, h.y, 190, '#ff9ae0', 0.5, 5); for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hyp(f.x - h.x, f.y - h.y) < 190) { f.charm = rk >= 2 ? 12 : 8; f.state = 'move'; } break; }
+      tgt.marked = P.delay; if (rk >= 2) h.inv = Math.max(h.inv, P.delay + 0.1);
+      G.hazards.push({ kind: 'tele', x: tgt.x, y: tgt.y, r: P.splashR, delay: P.delay, t: 0, col: '#c08aff', follow: tgt, onFire: hz => { if (h.dead) return; h.x = hz.x; h.y = hz.y; if (collide(h.x, h.y, h.r)) { h.x = hz.x; }
+        explode(h.x, h.y, P.splashR, heroDmg(h, P.splash), { src: h, col: '#c08aff' }); if (ALIVE(tgt)) hitFoe(tgt, heroDmg(h, P.dmg - P.splash), { src: h, x: h.x, y: h.y, tier: 3 }); } }); break; }   // 154 to the target, 14 around it
+    case 'shade': for (const o of G.heroes) if (!o.dead && hyp(o.x - h.x, o.y - h.y) < P.r) { o.invisT = P.time[i]; burst(o.x, o.y, '#9aa', 20, 120, 4, 0.7); } Snd.play('smoke'); break;
+    case 'lyre': { Snd.play('lyre'); ring(h.x, h.y, P.r, '#ff9ae0', 0.5, 5); for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < P.r) { f.charm = P.time[i]; f.state = 'move'; } break; }
   }
 }
 function updateHeroBuffs(h, dt) {
@@ -828,7 +829,7 @@ function updateHeroBuffs(h, dt) {
   else if (h.wingsLand) { h.wingsLand = false; h.z = 0; if (!h.dead) { const r = SPEC.paladin.wingsBurstR; Snd.play('holyslam'); addTrauma(0.5); G.flash = 0.25; G.flashCol = '#fff2c0'; ring(h.x, h.y, r, '#ffe08a', 0.5, 10);
     h.lastWingsBurst = areaHit(h.x, h.y, r, heroDmg(h, DEV.dmg.paladin.wingsBurst), { src: h, knock: 520, stagger: 1, heavy: true, tier: 4, light: true }); } }
   if (h.absorbT > 0) { h.absorbT -= dt; if (h.absorbT <= 0) h.absorb = 0; }
-  if (h.buff.ember > 0) { h.emberTrail = (h.emberTrail || 0) - dt; if (h.emberTrail <= 0) { h.emberTrail = 0.12; G.hazards.push({ kind: 'fire', x: h.x, y: h.y, r: 26, life: 2.5, t: 0, dps: heroDmg(h, 12), owner: h }); } }
+  if (h.buff.ember > 0) { h.emberTrail = (h.emberTrail || 0) - dt; if (h.emberTrail <= 0) { h.emberTrail = 0.12; G.hazards.push({ kind: 'fire', x: h.x, y: h.y, r: 26, life: RELIC_SPEC.ember.trail, t: 0, dps: heroDmg(h, 12), owner: h }); } }   // the trail burns 5s
 }
 
 function reachableKey(h) { // BFS with gates closed: is any key pickup reachable? (soft-lock guard)
