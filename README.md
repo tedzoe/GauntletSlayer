@@ -190,6 +190,9 @@ Five extra areas that go beyond the faithful game. Turn them on in **Options →
 | succubus | Lady Morwen, the Veiled | Succubus (fortress mini-boss) | 900 | 90 | 15 | caster (nova, summon, fly) |
 | deathknight | Sir Malgrave, the Death Knight | Area boss | 2800 | 60 | 32 | charge → slam → volley → summon; summons thrall |
 
+## Floors and rooms
+Campaign, Endless and Extended Realm floors are Slayer-style stages: a chain of big battle rooms (2-3 spawners, enemy groups, pillars and cover), medium and small rooms, and side treasure rooms, all joined by corridors (`genStage` in maps.js, sizes in `DEV.rooms` in tuning.js). A room stays dormant until a hero walks in, one of its monsters spots a hero (walls block sight), or something in it is hit; then the whole room wakes.
+
 ## Controls
 | Action | Keyboard + Mouse (P1) | Gamepad (standard mapping) | Keyboard 2 (P2) |
 |---|---|---|---|

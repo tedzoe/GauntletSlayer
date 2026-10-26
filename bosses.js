@@ -10,7 +10,7 @@ function spawnBoss(kind, x, y) {
   const B = BOSSES[kind], coop = 1 + 0.6 * (G.heroes.length - 1);
   const f = { boss: true, kind, type: 'boss', d: { beh: 'boss', style: kind, gold: 0 }, x, y, r: B.r, hp: B.hp * coop * (G.scale.hp || 1), name: B.name,
     phase: 1, act: null, st: 0, actT: 2.5, fa: Math.PI / 2, flash: 0, kx: 0, ky: 0, stag: 0, frz: 0, slowT: 0, slowM: 1, root: 0, burn: 0, burnT: 0, charm: 0,
-    heavy: true, dmg: B.dmg * (G.scale.dmg || 1), spd: B.spd, walk: 0, seed: 0, invuln: false, dying: 0 };
+    heavy: true, dmg: B.dmg * (G.scale.dmg || 1), spd: B.spd, walk: 0, seed: 0, invuln: false, dying: 0, room: roomAt(x, y) };
   f.maxhp = f.hp; G.foes.push(f); G.boss = f;
   G.banner = { s: B.name, sub: 'BOSS', t: 3 }; Snd.play('bossroar'); addTrauma(0.5);
   if (kind === 'sovereign') raisePylons(f, 1);

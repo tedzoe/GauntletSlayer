@@ -136,6 +136,12 @@ const DEV = {
   //    Exempt: grave wisps and wraith-type phantoms (beh 'wraith': wraith, shiver sprite) keep their speed.
   ground: { capMul: 0.9, exemptTypes: ['wisp'], exemptBeh: ['wraith'], chargeTime: 1.1, bossChargeTime: 1.2 },
   // 6. DAMAGE ORDER (main < secondary < special, per hit and per use). Main attacks are unchanged; only these changed.
+  // 7. ROOMS (Slayer-style stages): room sizes in tiles [wMin, wMax, hMin, hMax]; old generator rooms were 6-12 x 5-9 (large = 108 tiles)
+  //    large battle rooms are ~2.7x that (19-24 x 12-15, avg ~290 tiles); medium ~145, small ~63, treasure ~45.
+  rooms: { sizes: { L: [19, 24, 12, 15], M: [13, 16, 9, 11], S: [8, 10, 6, 8], T: [6, 8, 5, 7] }, corridorW: 2, maxW: 120, maxH: 84,
+    // room activation: a room's foes and spawners stay dormant until a hero steps inside, or one of its foes sees a hero
+    // (walls and pillars block sight; sight range in px), or something in it is hit. Then the whole room wakes.
+    sightR: 330, sightEvery: 0.2, wakeDelay: [0.25, 0.7] },
   dmg: {
     theo: { leap: 32, spinTick: 38, spinTicksPerSec: 3 },          // before: leap 32, spin 10.7/tick x5/s
     gela: { thrust: 32, execHit: 40 },                              // before: thrust 32, Extreme Prejudice 0 (wall crush T4 unchanged)

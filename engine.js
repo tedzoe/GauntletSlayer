@@ -47,8 +47,13 @@ function parseMap(rows, theme, opts = {}) {
     }
     m.t[i] = t;
   }
+  // rooms (Slayer-style stages): per-tile room id, -1 = corridor / no room. Arena rooms start awake (the arena runs its own waves).
+  m.rooms = rows.rooms || []; m.roomOf = new Int16Array(w * h).fill(-1); m.awake = new Uint8Array(m.rooms.length);
+  m.rooms.forEach((r, k) => { for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) m.roomOf[y * w + x] = k; if (r.arena) m.awake[k] = 1; });
   return m;
 }
+const roomAt = (x, y) => { const m = G.map; if (!m || !m.roomOf) return -1; const tx = Math.floor(x / T), ty = Math.floor(y / T); return tx < 0 || ty < 0 || tx >= m.w || ty >= m.h ? -1 : m.roomOf[ty * m.w + tx]; };
+const roomAsleep = r => r >= 0 && G.map && G.map.awake && !G.map.awake[r];
 const tileAt = (tx, ty) => (tx < 0 || ty < 0 || tx >= G.map.w || ty >= G.map.h) ? TL.VOID : G.map.t[ty * G.map.w + tx];
 const blocksWalk = (t, fly) => t === TL.WALL || t === TL.GATE || t === TL.CRACK || t === TL.VOID || t === TL.AGATE || (!fly && t === TL.PIT);
 const blocksShot = t => t === TL.WALL || t === TL.GATE || t === TL.CRACK || t === TL.VOID || t === TL.AGATE;

@@ -343,46 +343,11 @@ function genMaze(world) {
   put('$', 28); put('f', 5); put('F', 2); put('p', 2); put('v', 14); put('e', 7); put('c', 2);
   return g.map(r => r.join(''));
 }
-function genDungeon(n, world) {
-  const MW = Math.min(46 + n * 2, 80), MH = Math.min(34 + n, 54);
-  const g = []; for (let y = 0; y < MH; y++) g.push(Array(MW).fill('#'));
-  const rooms = [];
-  for (let k = 0; k < 600 && rooms.length < Math.min(7 + Math.floor(n / 2), RULE('tileCap') ? ENDLESS_MAX_ROOMS : 15); k++) {   // at most 12 room tiles; past floor 50 they pack tighter
-    const tight = n > 50 && RULE('tileCap'), w = RI(6, tight ? 9 : 12), h = RI(5, tight ? 7 : 9), gap = tight ? 1 : 3, x = RI(2, MW - w - 2), y = RI(2, MH - h - 2);
-    if (rooms.some(r => x < r.x + r.w + gap && x + w + gap > r.x && y < r.y + r.h + gap && y + h + gap > r.y)) continue;
-    rooms.push({ x, y, w, h, cx: x + (w >> 1), cy: y + (h >> 1) });
-  }
-  for (const r of rooms) for (let y = r.y; y < r.y + r.h; y++) for (let x = r.x; x < r.x + r.w; x++) g[y][x] = '.';
-  const corr = [];
-  const carve = (a, b) => { const s = []; const hx = (x0, x1, y) => { for (let x = Math.min(x0, x1); x <= Math.max(x0, x1) + 1; x++) { g[y][x] = g[y][x] === '#' ? '.' : g[y][x]; g[y + 1][x] = g[y + 1][x] === '#' ? '.' : g[y + 1][x]; s.push([x, y, 'h']); } }; const vy = (y0, y1, x) => { for (let y = Math.min(y0, y1); y <= Math.max(y0, y1) + 1; y++) { g[y][x] = g[y][x] === '#' ? '.' : g[y][x]; g[y][x + 1] = g[y][x + 1] === '#' ? '.' : g[y][x + 1]; s.push([x, y, 'v']); } }; if (Math.random() < 0.5) { hx(a.cx, b.cx, a.cy); vy(a.cy, b.cy, b.cx); } else { vy(a.cy, b.cy, a.cx); hx(a.cx, b.cx, b.cy); } corr.push(s); };
-  const conn = [0], rest = rooms.map((_, i) => i).slice(1);
-  while (rest.length) { let best = null; for (const i of rest) for (const j of conn) { const d = Math.abs(rooms[i].cx - rooms[j].cx) + Math.abs(rooms[i].cy - rooms[j].cy); if (!best || d < best.d) best = { i, j, d }; } carve(rooms[best.j], rooms[best.i]); conn.push(best.i); rest.splice(rest.indexOf(best.i), 1); }
-  for (let k = 0; k < 2; k++) { const a = pick(rooms), b = pick(rooms); if (a !== b) carve(a, b); }
-  const inRoom = (x, y) => rooms.some(r => x >= r.x - 1 && x < r.x + r.w + 1 && y >= r.y - 1 && y < r.y + r.h + 1);
-  // gates on a few corridor chokepoints, with matching keys placed before them
-  let gates = 0;
-  for (const s of corr.sort(() => Math.random() - 0.5)) { if (gates >= 1 + Math.floor(n / 4) || gates >= 4) break; const [x, y, d] = s[s.length >> 1];
-    if (d === 'h' && !inRoom(x, y) && !inRoom(x, y + 1) && g[y - 1][x] === '#' && g[y + 2][x] === '#' && g[y][x] === '.' && g[y + 1][x] === '.') { g[y][x] = '='; g[y + 1][x] = '='; gates++; }
-    else if (d === 'v' && !inRoom(x, y) && !inRoom(x + 1, y) && g[y][x - 1] === '#' && g[y][x + 2] === '#' && g[y][x] === '.' && g[y][x + 1] === '.') { g[y][x] = '='; g[y][x + 1] = '='; gates++; } }
-  // decorate rooms
-  const start = rooms[0]; g[start.cy][start.cx] = 'S'; g[start.cy][start.cx + 1] = 'S';
-  let far = rooms[rooms.length - 1], fd = -1; for (const r of rooms) { const d = Math.abs(r.cx - start.cx) + Math.abs(r.cy - start.cy); if (d > fd) { fd = d; far = r; } }
-  g[far.cy][far.cx] = 'X';
-  const free = r => { for (let t = 0; t < 40; t++) { const x = RI(r.x + 1, r.x + r.w - 2), y = RI(r.y + 1, r.y + r.h - 2); if (g[y][x] === '.') return [x, y]; } return null; };
-  const put = (r, c) => { const p = free(r); if (p) g[p[1]][p[0]] = c; };
-  for (let k = 0; k < gates + 1; k++) put(rooms[Math.min(rooms.length - 1, 1 + k % Math.max(1, rooms.length - 1))], 'k');
-  const tierMax = Math.min(3, 1 + Math.floor(n / 4));
-  for (const r of rooms.slice(1)) {
-    if (Math.random() < 0.75) put(r, String(RI(1, tierMax)));
-    if (n > 3 && Math.random() < 0.35) put(r, String(RI(1, tierMax)));
-    for (let k = 0; k < RI(0, 2); k++) put(r, 'e');
-    if (Math.random() < 0.15 + n * 0.01) put(r, 'E');
-    for (let k = 0; k < RI(1, 3); k++) put(r, 'v');
-    if (Math.random() < 0.4) put(r, '$'); if (Math.random() < 0.25) put(r, 'b'); if (Math.random() < 0.2) put(r, 'c');
-    if (Math.random() < 0.35) put(r, Math.random() < 0.3 ? 'F' : 'f');
-    if (Math.random() < 0.12) put(r, 'p');
-    if (r.w >= 9 && r.h >= 7 && Math.random() < 0.5) for (let k = 0; k < 3; k++) { const p = free(r); if (p && p[0] > r.x + 1 && p[1] > r.y + 1 && p[0] < r.x + r.w - 2 && p[1] < r.y + r.h - 2) g[p[1]][p[0]] = Math.random() < 0.5 ? '#' : '^'; }
-  }
-  if (n % 5 === 0) put(pick(rooms.slice(1)), 'L');
-  return g.map(r => r.join(''));
+function genDungeon(n, world) {   // Endless and Extended Realms: Slayer-style stage (see genStage in maps.js)
+  const tight = n > 50 && RULE('tileCap'), cap = RULE('tileCap') ? ENDLESS_MAX_ROOMS : 15;   // at most 12 rooms; past floor 50 they pack tighter
+  const chainN = Math.min(4 + Math.floor(n / 3), 8), side = Math.min(1 + Math.floor(n / 10), 3, cap - chainN);
+  const seq = tight ? 'MSMLSM' : 'LMLSLM'; let plan = 'M'; for (let k = 1; k < chainN; k++) plan += seq[(k - 1 + n) % seq.length];
+  const water = !['w1', 'final'].includes(world.id) && world.theme !== WORLDS[0].theme;
+  return genStage({ seed: Math.floor(Math.random() * 1e9), plan, side, gates: Math.min(1 + Math.floor(n / 4), 4), hazard: water ? '~' : '^', tierMax: Math.min(3, 1 + Math.floor(n / 4)),
+    legend: n % 5 === 0, decor: world.theme === WORLDS[1].theme ? 'w' : world.theme === WORLDS[0].theme ? 'g' : null, eliteP: Math.min(0.3, n * 0.01) });
 }

@@ -6,13 +6,14 @@ function mkFoe(type, x, y, o = {}) {
   const f = { type, d, x, y, r: d.r * (1 + (tier - 1) * 0.06), hp: d.hp * sc.hp * tierM * coop, spd: d.spd * sc.spd * R(0.92, 1.08) * (G.mods.frenzy ? 1.3 : 1),
     dmg: d.dmg * sc.dmg * (1 + (tier - 1) * 0.2), state: 'move', st: 0, atkT: R(0.6, 1.6), kx: 0, ky: 0, stag: 0, frz: 0, slowT: 0, slowM: 1, root: 0,
     burn: 0, burnT: 0, charm: 0, flash: 0, fa: R(0, 6.28), seed: R(0, 100), tier, heavy: !!d.heavy, elite: !!d.elite, summonT: R(3, 6), blinkT: 0,
-    awake: type !== 'reaper' || !!o.awake, drained: 0, gone: 0, repel: 0, walk: 0, fly: !!d.fly || d.beh === 'wraith', spawned: !!o.spawned };
+    awake: type !== 'reaper' || !!o.awake, drained: 0, gone: 0, repel: 0, walk: 0, fly: !!d.fly || d.beh === 'wraith', spawned: !!o.spawned, room: type === 'reaper' ? -1 : roomAt(x, y) };
   f.maxhp = f.hp; G.foes.push(f); return f;
 }
 const ALIVE = e => !e.dead && e.hp > 0;
 function heroDmg(h, base) { return base * h.mods.dmg * (h.buff.titan > 0 ? 1.6 : 1) * (h.buff.valk > 0 ? 1.3 : 1) * (G.mods.glass ? 1.5 : 1); }
 function hitFoe(f, dmg, o = {}) {
   if (!ALIVE(f)) return false;
+  if (roomAsleep(f.room)) wakeRoom(f.room, 'hit');
   if (f.sub) return false;   // Mire Lurker under water
   const tier = o.tier || dmgTier(dmg, o.src);
   // Lich barrier: immune to status, T1 projectiles bounce back; the power shot and fire bombs go through
@@ -236,10 +237,27 @@ function foeShoot(f, ang, o = {}) {
   const spd = o.spd || f.d.pspd || 300;
   shoot(Object.assign({ team: f.charm > 0 ? 'hero' : 'foe', x: f.x + Math.cos(ang) * f.r, y: f.y + Math.sin(ang) * f.r, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd, dmg: f.dmg, r: 6, life: 2.2, kind: o.kind || 'orb', col: o.col || '#ff7af0', owner: f, reflectable: true }, o));
 }
+// ---------------------------------------------------------------- room activation (David, Oct 2026; numbers in DEV.rooms)
+// A room's foes and spawners stay dormant (no moving, spawning or shooting) until a hero steps into the room, one of its foes
+// gets line of sight to a hero (walls and pillars block it), or anything in it is hit. Then the whole room's encounter wakes.
+function wakeRoom(r, by) {
+  const m = G.map; if (!roomAsleep(r)) return; m.awake[r] = 1; G.lastWake = { room: r, by, t: G.time }; G.wakes = (G.wakes || 0) + 1;
+  const [a, b] = DEV.rooms.wakeDelay;
+  for (const f of G.foes) if (f.room === r && ALIVE(f)) { f.atkT = Math.max(f.atkT, R(a, b)); f.alertT = 0.9; }
+  for (const s of G.spawners) if (s.room === r) s.spawnT = Math.min(s.spawnT, R(0.4, 1.2));
+  const rr = m.rooms[r]; if (rr && onScreen((rr.x + rr.w / 2) * T, (rr.y + rr.h / 2) * T, 200)) Snd.play('windup');
+}
+function dormantLook(f, dt) {   // a sleeping foe glances around a few times a second; a hero in sight range with clear LOS wakes its room
+  f.lookT = (f.lookT ?? R(0, DEV.rooms.sightEvery)) - dt; if (f.lookT > 0) return; f.lookT = DEV.rooms.sightEvery;
+  for (const h of G.heroes) { if (h.dead || h.invis) continue; const d = hyp(h.x - f.x, h.y - f.y); if (d < DEV.rooms.sightR && los(f.x, f.y, h.x, h.y)) { f.sawHero = h; wakeRoom(f.room, 'sight'); return; } }
+}
 function updateFoes(dt) {
   const capMove = G.foes.length;
+  if (G.map.rooms && G.map.rooms.length) for (const h of G.heroes) if (!h.dead) { const r = roomAt(h.x, h.y); if (roomAsleep(r)) wakeRoom(r, 'enter'); }
   for (const f of G.foes) {
     if (!ALIVE(f)) continue;
+    if (f.alertT > 0) f.alertT -= dt;
+    if (roomAsleep(f.room)) { dormantLook(f, dt); continue; }
     if (f.boss) { updateBoss(f, dt); continue; }
     const hm = f.hasteT > 0 ? 1 + SPEC.elites.totemHaste : 1; if (f.hasteT > 0) f.hasteT -= dt;
     f.flash -= dt; f.atkT -= dt * hm; f.summonT -= dt; f.blinkT -= dt; if (f.t3Lock > 0) f.t3Lock -= dt;
@@ -427,11 +445,12 @@ function reaperReturn(f) {
 // ---------------------------------------------------------------- spawners
 function mkSpawner(x, y, tier, types, style) {
   const hp = Math.round(SPAWNER_HITS[tier - 1] * (G.mode === 'endless' ? ENDLESS.spawnerHpMul(G.endless) : 1));
-  const s = { x, y, r: 16, tier, hp, maxHp: hp, hitBy: new Map(), type: pick(types), spawnT: R(0.5, 2.5), flash: 0, style, spawner: true };
+  const s = { x, y, r: 16, tier, hp, maxHp: hp, hitBy: new Map(), type: pick(types), spawnT: R(0.5, 2.5), flash: 0, style, spawner: true, room: roomAt(x, y) };
   G.spawners.push(s); return s;
 }
 function hitSpawner(s, dmg, src, o = {}) {
   if (s.hp <= 0) return;
+  if (roomAsleep(s.room)) wakeRoom(s.room, 'hit');
   if (RULE('bombSiege') && !s.pylon && !(o.heavy || o.tag === 'bomb') && dmgTier(dmg, src && (src.isHero ? src : src.owner)) < 3) { text(s.x, s.y - 20, 'no effect', '#aaa'); return; }   // Bomb Siege: explosives and heavy hits only
   // spawners count HITS, not damage: tier 1/2/3 take 3/6/12 standard hits; T3/T4 attacks count as 3
   const hero = src && (src.isHero ? src : src.owner);
@@ -452,6 +471,7 @@ function updateSpawners(dt) {
   const cap = 70 + 25 * G.heroes.length;
   for (const s of G.spawners) {
     if (s.hp <= 0) continue; s.flash -= dt;
+    if (roomAsleep(s.room)) continue;   // dormant room: no spawning
     let near = 1e9; for (const h of G.heroes) if (!h.dead) near = Math.min(near, hyp(h.x - s.x, h.y - s.y));
     if (near > 560 || G.foes.length >= cap) continue;
     if (RULE('spawnerCleanup') && G.mode === 'endless' && G.endless >= 70 && !s.pylon && !onScreen(s.x, s.y, 0) && !G.heroes.some(h => !h.dead && los(h.x, h.y, s.x, s.y))) {   // stale blocked spawners erode

@@ -137,6 +137,8 @@ function drawFoe(f) {
   if (f.stag > 0 && !f.frz) for (let k = 0; k < 3; k++) { const a = G.time * 6 + k * 2.1; circ(Math.cos(a) * 8, -r - 6 + Math.sin(a) * 2, 1.6, '#ffe95a'); }
   if (f.marked > 0) { ctx.strokeStyle = '#c08aff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, r + 8, 0, 6.28); ctx.stroke(); }
   ctx.restore();
+  if (f.alertT > 0) { const k = Math.min(1, f.alertT / 0.3); ctx.globalAlpha = k; txt('!', x, y - r - 14 - (0.9 - f.alertT) * 10, 20, '#ffd84a', 'center'); ctx.globalAlpha = 1; }   // room woke up
+  else if (roomAsleep(f.room)) { const ph = (G.time * 0.6 + f.seed) % 1; ctx.globalAlpha = 0.55 * Math.sin(ph * Math.PI); txt('z', x + 6 + ph * 6, y - r - 8 - ph * 12, 11, '#cfd8ff', 'center'); ctx.globalAlpha = 1; }   // dormant
   if (f.elite && f.hp < f.maxhp && !f.boss && !f.d.miniboss) { ctx.fillStyle = '#000'; ctx.fillRect(x - 18, y - r - 12, 36, 4); ctx.fillStyle = '#e04a3a'; ctx.fillRect(x - 18, y - r - 12, 36 * f.hp / f.maxhp, 4); }
 }
 function drawFoeSprite(f, sk, fl) {   // hero-style pixel sprite; single front view, mirrored when facing left

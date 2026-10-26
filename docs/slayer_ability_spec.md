@@ -347,3 +347,19 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
    | Vesper | Soul Reap 18 | Bone Spikes 30 → 30 | Raise Skeletons: no hit → 40 grave burst where each minion rises (once per foe per cast) |
 
    Alternate weapon signatures are unchanged.
+7. **Rooms (Slayer-style stages).** Like Slayer Edition, a floor is a chain of battle rooms joined by corridors, with side treasure rooms off the path.
+   - `genStage()` in maps.js builds every campaign floor (fixed seeds, so each floor keeps one layout) and every Endless / Extended Realm floor.
+   - The camp, boss arenas, daily arena and the Collector's Labyrinth maze are unchanged.
+   - Room sizes are in `DEV.rooms.sizes`:
+     - Large battle rooms: 19-24 × 12-15 tiles (about 290 tiles; the old large room was 108, so about 2.7×).
+     - Medium: 13-16 × 9-11. Small: 8-10 × 6-8. Treasure: 6-8 × 5-7.
+   - Large rooms play like mini-stages: 2-3 spawners, 2-3 enemy groups plus a possible elite, crates for cover, and one of four layouts (four pillars, colonnade, central block with cover walls, or pools/spikes with pillars).
+   - A 2-tile ring along the walls is always kept clear, so every doorway stays connected.
+   - Gates sit on chain corridors, and each one's key is in an earlier room. Side rooms sit behind a cracked wall (with a barrel nearby) or a keyed gate. The legendary chest goes in a side room.
+   - Arena floors end in the arena room (arena gates where the corridor enters, exit inside).
+   - Endless keeps the 12-room cap and packs tighter (smaller rooms) past floor 50.
+   - **Room activation.**
+     - A room's foes and spawners are dormant (no moving, spawning or shooting) until one of three things happens: a hero steps into the room; one of its foes gets line of sight to a hero within 330 px (walls and pillars block it; LOS is checked 5 times a second); or anything in the room is hit.
+     - Then the whole room's encounter wakes: each foe shows a "!" and acts after a 0.25-0.7s reaction delay.
+     - Death, bosses on boss floors, arena waves and corridor foes are not affected.
+   - Guess: Slayer Edition's own trigger is per battle room, where the doors lock and waves come in. Its camera also zooms out in battle rooms; here every large room fits the fixed 1152×648 view instead.
