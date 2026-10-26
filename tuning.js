@@ -9,6 +9,9 @@
 const MTR = 32;
 // Internal HP is 2x the spec's 100/75/50 (David's latest), so every enemy and hazard hit on a hero is scaled by the same 2x to keep the balance.
 const HP_SCALE = 2;
+// food heal values (before HP_SCALE and the hero's food bonus): a small food (ration) and a big one (feast). The HUD HP bar draws a
+// tick every small-food heal (David, Oct 2026).
+const FOOD = { small: 20, big: 45 };
 const LOW_HP = { below: 0.25, speed: 0.15, time: 0.5 };
 const TRAP_DMG = n => n >= 37 ? 80 : n >= 20 ? 40 : 20;   // per tick, by floor band (already in internal HP units)
 const RELIC_COST = [4000, 12000, 32000];

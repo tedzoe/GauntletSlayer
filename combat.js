@@ -614,7 +614,8 @@ function smashFood(it, src) {
   const hero = src && (src.isHero ? src : src.owner);
   if (hero && hero.isHero) { mastery(hero, 'foodSmashed', 1); if (hero.mods.smashHeal && it.kind !== 'potion') { const v = foodValue(it) * hero.mods.smashHeal; healHero(hero, v); } }
 }
-const foodValue = it => it.kind === 'feast' ? 45 : 20;
+const foodValue = it => it.kind === 'feast' ? FOOD.big : FOOD.small;
+const smallFoodHeal = h => FOOD.small * (1 + ((h.mods && h.mods.food) || 0)) * HP_SCALE;   // HP one small food gives this hero (as healHero applies it)
 function healHero(h, v) { if (h.dead) return 0; v *= HP_SCALE; const before = h.hp; h.hp = Math.min(h.maxHp, h.hp + v); const got = h.hp - before; if (got >= 1) text(h.x, h.y - 26, '+' + Math.round(got), '#7f7'); return got; }
 function trapBand() { return G.mode === 'endless' ? G.endless : G.mode === 'campaign' ? [1, 20, 37, 37][G.worldIdx] || 1 : 20; }
 // co-op underdog: more than 40% behind the leader's gold -> +15% on mob gold until within 20%

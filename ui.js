@@ -123,6 +123,13 @@ function drawPlayerPanel(h, x, y, pw, n) {
   if (h.id === 'mirelle') for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k], rx = bx + bw - 40 - k * 12; circ(rx, y + 11, 4, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); }
 
   bar(bx, y + 19, bw, 8, h.hp / h.maxHp, h.hp < h.maxHp * 0.25 ? '#ff3a2a' : '#d43a2a', '#3a0806');
+  { // a tick every small-food heal: Theo's 200 HP bar has more, smaller steps than Zoey's 100; recomputed every frame, so gear and relics that
+    // change max HP or the food bonus move them
+    const step = smallFoodHeal(h) / Math.max(1, h.maxHp), xs = [];
+    if (step > 0.02) for (let k = 1; k * step < 0.999; k++) xs.push(Math.round(bx + bw * k * step) + 0.5);
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); for (const tx of xs) { ctx.moveTo(tx, y + 19); ctx.lineTo(tx, y + 27); } ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,230,200,0.28)'; ctx.beginPath(); for (const tx of xs) { ctx.moveTo(tx + 1, y + 20); ctx.lineTo(tx + 1, y + 26); } ctx.stroke();
+    h._hpTicks = { step, n: xs.length, xs, bx, bw }; }
   const ms = panelMoves(h), sq = S.sq;
   ms.forEach((m, i) => sqPip(h, m, bx + i * (sq + S.sqGap), y + 33, sq));
   { // potions: one flask per potion after the move squares, like the keys (a dim empty flask at 0; xN only if they ever outgrow the room)
