@@ -54,7 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     TT.setup(['sela']); TT.testRoom(); const g = G.heroes[0]; g.weapon = 'base'; KITS.sela(g, I('ability'), 1 / 60); out.gelaExecCd = +g.cd.ability.toFixed(2);
     return out; });
   chk('Theo rush/smash/spin cooldowns 0.6/0/10, spin 2.5s (Slayer: dashes and Smash have no cooldown, Destructo Spin ~10s)', [cds.theoCharge, cds.theoLeap, cds.theoSpin, cds.theoSpinCd], [0.6, 0, 2.5, 10]);
-  chk('Isaac roll cd 1.5, i-frames 0.4', [cds.isaacRollCd, cds.isaacRollInv], [1.5, 0.4]);
+  chk('Isaac Tumble: no real cooldown (0.45 spam guard = 0.3 roll + 0.15 end pause), i-frames 0.3', [cds.isaacRollCd, cds.isaacRollInv], [0.45, 0.3]);
   chk('Vesper Ghostwalk: no cooldown, invincible only for the dash (Slayer Necromancer)', [cds.vesperGhostCd, cds.vesperGhostInv], [0, 0.27]);
   chk('Zoey teleport 48 i-frames then 6 open frames', [cds.zoeyTpInv, cds.zoeyTpDur], [0.8, 0.9]);
   chk('Zoey spell cooldowns', cds.zoeyCds, { 'ember+ember': 0, 'ember+rime': 6, 'ember+storm': 2, 'rime+rime': 0, 'rime+ember': 3, 'rime+storm': 20, 'storm+storm': 20, 'storm+rime': 1, 'storm+ember': 1 });

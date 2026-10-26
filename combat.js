@@ -205,6 +205,7 @@ function killHero(h) {
   msg(`${h.def.name} has fallen! ${G.heroes.length > 1 ? 'Press CONFIRM to spend a rez coin' + (isFinite(G.rez) ? ` (${G.rez} left)` : '') + '.' : ''}`, '#ff6a5a', 4);
 }
 function resetHeroTimers(h) {
+  h.rollPause = 0; h.rolling = false;
   h.cd = {}; h.spellCd = {}; h._cdm = {}; h._rdy = {};
   for (const k of ['atkT', 'slamT', 'throwT', 'comboT', 'heavyT', 'hbT', 'gT', 'runeT', 'rayT', 'finT', 'drainT', 'absorbT', 'spikeT', 'lock', 'blockBroken', 'stamT', 'dashMsg', 'gateMsg']) if (h[k]) h[k] = 0;
   h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.rushPrep = 0; h.ghostEnd = 0; h.vRoot = 0; h.hungerCast = 0; h.smash = null; h.cleaveT = 0; h.titanRoot = 0; h.spinVx = h.spinVy = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
@@ -717,7 +718,7 @@ function updateHazards(dt) {
           if (hz.kind === 'hunger' && tick) { const got = hz.dps * 0.25; f.slowT = Math.max(f.slowT, 0.4); f.slowM = 0.5; if (hitFoe(f, got, { quiet: true, src: hz.owner })) { for (const h of G.heroes) if (!h.dead) healHero(h, got * 0.35 / G.heroes.length); G.beams.push({ x1: f.x, y1: f.y, x2: hz.x, y2: hz.y, col: '#7ff5d0', life: 0.2, w: 2 }); } }
           if (hz.dps && tick && hz.kind !== 'hunger') hitFoe(f, hz.dps * 0.25, { quiet: true, src: hz.owner, burn: hz.kind === 'fire' ? 4 : 0 });
         }
-        if (hz.kind === 'smoke') for (const h of G.heroes) if (!h.dead && hyp(h.x - hz.x, h.y - hz.y) < hz.r) h.invisT = Math.max(h.invisT, 0.3);
+        if (hz.kind === 'smoke') for (const h of G.heroes) if (!h.dead && !h.smokeOff && hyp(h.x - hz.x, h.y - hz.y) < hz.r) h.invisT = Math.max(h.invisT, 0.3);   // an attack or roll ends the smoke's cover for that hero
         if (hz.kind === 'bubble') for (const s of G.shots) if (s.team === 'foe' && hyp(s.x - hz.x, s.y - hz.y) < hz.r) s.dead = true;
         break;
       }

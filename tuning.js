@@ -38,7 +38,7 @@ const SPEC = {
     brannoc: { hp: 200, uiHp: 100, speed: 1.0, iframes: 3.5, iframeNote: 'during Whirlwind spin' },
     sela: { hp: 150, uiHp: 75, speed: 1.25, iframes: Infinity, iframeNote: 'front shield, continuous while held' },
     mirelle: { hp: 100, uiHp: 50, speed: 0.95, iframes: 0.8, iframeNote: 'teleport dash' },
-    kestrel: { hp: 100, uiHp: 50, speed: 1.5, iframes: 0.4, iframeNote: 'combat roll' },
+    kestrel: { hp: 100, uiHp: 50, speed: 1.5, iframes: 0.3, iframeNote: 'combat roll' },
     vesper: { hp: 100, uiHp: 50, speed: 1.35, iframes: 2.0, iframeNote: 'ghostwalk' },
     // Highlord David (paladin, our own design): HP 200, speed 0.95, Valkyrie shield rules, armored Righteous Advance
     paladin: { hp: 200, uiHp: 100, speed: 0.95, iframes: 0.15, iframeNote: 'Righteous Advance start-up (armored for the whole dash)' },
@@ -65,7 +65,7 @@ const SPEC = {
     'rime+rime': { cd: 0, dmg: 'light' }, 'rime+ember': { cd: 3, dmg: null }, 'rime+storm': { cd: 20, dmg: null },
     'storm+storm': { cd: 20, dmg: 'medium' }, 'storm+rime': { cd: 1, dmg: 'medium' }, 'storm+ember': { cd: 1, dmg: 'medium' } } },
   // Elf -> Ranger Isaac
-  isaac: { rapidDmg: 14, rapidRate: 0.25, sniperDmg: 'heavy', sniperDraw: 0.75,   /* Neoseeker FAQ: aimed shots ~1.3/s */ bombR: 95 * 1.4, bombShotR: 95, rollCd: 1.5, rollIframes: 0.4, mortarCd: 6, mortarDmg: 'heavy', mortarR: 3.0 * MTR, rootTime: 2.5 },
+  isaac: { rapidDmg: 14, rapidRate: 0.25, sniperDmg: 'heavy', sniperDraw: 0.75,   /* Neoseeker FAQ: aimed shots ~1.3/s */ bombR: 95 * 1.4, bombShotR: 95, rollCd: 0.45, rollIframes: 0.3, rollPause: 0.15, mortarCd: 6, mortarDmg: 'heavy', mortarR: 3.0 * MTR, rootTime: 2.5 },
   // Necromancer -> Vesper Linda
   vesper: { reapDmg: 'medium', reapArc: 140 * Math.PI / 180, reapR: 64, ghostCd: 0, ghostIframes: 0.3, shadesDmg: 'heavy', essenceMax: 100, essenceGrunt: 3, essenceElite: 10, raiseCost: 10, essencePerHit: 0,
     // Soul Power (Slayer Necromancer): 0-100. Bars 1-5 = souls 10-50 (strength), 50-100 = tier 2, 100 = FULL (bonus). The ability empties it.
@@ -93,7 +93,7 @@ const SPEC = {
   weapons: {
     brannoc: { base: 10, axe: 5, turbo: 7, demonic: 6 },
     sela: { base: 9, splitter: 6, vanguard: 0, ricochet: 8 },
-    kestrel: { base: 6, thorn: 5, sparks: 8, dusk: 7 },
+    kestrel: { base: 6, thorn: 5, sparks: 8, dusk: 5 },
     vesper: { base: 0, lantern: 0, marrow: 0, scepter: 0 },
     paladin: { base: 9, hammer: 6, lance: 7, sanctuary: 10 },
   },
@@ -142,7 +142,7 @@ const DEV = {
   dash: {
     brannoc: { move: 'Rush', cdKey: 'defend', cd: 0.6 },        // SPEC.theo.chargeCd
     sela: { move: 'Shield Charge', cdKey: 'scharge', cd: 2 },            // SPEC.gela.chargeCd (no longer needs the shield raised)
-    kestrel: { move: 'Combat Roll', cdKey: 'defend', cd: 1.5 },          // SPEC.isaac.rollCd
+    kestrel: { move: 'Combat Roll', cdKey: 'defend', cd: 0.45 },         // SPEC.isaac.rollCd: Tumble has no cooldown (FAQ); 0.3s roll + 0.15s end pause
     mirelle: { move: 'Blink', cdKey: 'dash', cd: 3, dist: 150, dur: 0.16, iframes: 0.22 },   // new short blink for Zoey
     vesper: { move: 'Ghostwalk', cdKey: 'defend', cd: 0 },               // SPEC.vesper.ghostCd 
     paladin: { move: 'Righteous Advance', cdKey: 'advance', cd: 5 },     // SPEC.paladin.advanceCd (no longer needs the shield raised)

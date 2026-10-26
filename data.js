@@ -58,10 +58,10 @@ const WEAPONS = {   // shop lineup (David). Each weapon swaps the hero's signatu
     { id: 'ricochet', name: 'Stormrim Buckler', ability: 'Shield Ricochet', desc: 'The shield hops between up to 4 foes (4m hops), T2 + interrupt each, then returns. 8s cooldown.' },
   ],
   kestrel: [
-    { id: 'base', name: 'Gilded Recurve', ability: 'Mortar Shot', desc: 'Lob a shell onto a 3m circle: T3, triple hits on spawners. 6s. Mid-roll: drop a bomb; while drawing: load an explosive arrow.' },
+    { id: 'base', name: 'Gilded Recurve', ability: 'Mortar Shot', desc: 'Lob a shell onto a 3m circle: T3, triple hits on spawners. Mid-roll: drop a bomb (2s fuse); while drawing: load an explosive arrow. All three share one 6s cooldown.' },
     { id: 'thorn', name: 'Thornwood Bow', ability: 'Rooting Shot', desc: 'A long thin piercing shot, T2, roots everything it passes for 2.5s. 5s cooldown.' },
     { id: 'sparks', name: 'Sparkwire Bow', ability: 'Sparks Trap', desc: 'Plant a hidden mine: 1m trigger, T2, snares the group for 3s. 8s cooldown.' },
-    { id: 'dusk', name: 'Duskstrike', ability: 'Smoke Bomb', desc: 'A 2m smoke cloud: foes lose track of you and you are invisible for 2s. No damage. 7s cooldown.' },
+    { id: 'dusk', name: 'Duskstrike', ability: 'Smoke Bomb', desc: 'A 2m smoke cloud that staggers foes nearby (T1): they lose track of you and you are invisible for 4s, until you shoot or roll. A shot from hiding hits twice as hard. 5s cooldown.' },
   ],
   mirelle: [
     { id: 'base', name: 'Spellweaver', ability: 'Ember / Rime / Storm', desc: 'The standard nine-spell matrix, T1-T3, cooldowns 0-10s. The next combo can be queued during recovery.', schools: ['ember', 'rime', 'storm'] },

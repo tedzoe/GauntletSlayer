@@ -324,11 +324,11 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
 
    | Hero | Dash move | Cooldown |
    |---|---|---|
-   | Theo | Furious Charge | 5s |
+   | Theo | Rush | 0.6s spam guard (Slayer dashes have no cooldown) |
    | Gela | Shield Charge (no longer needs the shield up) | 2s |
-   | Isaac | Combat Roll | 1.5s |
+   | Isaac | Tumble / Combat Roll | none: a 0.45s spam guard = 0.3s roll + 0.15s end pause (FAQ) |
    | Zoey | Blink (new): 150 px, 0.22s i-frames | 3s |
-   | Vesper | Ghostwalk | 4s |
+   | Vesper | Ghostwalk | 0s |
    | David | Righteous Advance (no longer needs the shield up) | 5s |
 
    The dash goes in the steered direction, or the facing direction when standing still.
@@ -418,7 +418,7 @@ Numbers live in `DEV.dmg` (tuning.js). Hero damage uses the reference values 1:1
 | Theo | 14 ×5, 42 on hits 4 and 7 (2.5/s, 58) | Smash / Leap 50, Lethal | Rush 8, knocks small foes down. Rush + attack = Super Slash 42/14/14/42 | Destructo Spin 8 × 20 = 160, 2.5s invulnerable |
 | Gela | 8 ×5, 42 on hits 4 and 7 (3.3/s, 55) | Spear Thrust 42, Lethal | Shield Charge 8 | Extreme Prejudice 70 |
 | David (our own) | 18 / 18 / 48 (2.0/s, 56) | Judgment 25-50, full charge Lethal | Righteous Advance 8 | Holy Slam 70 |
-| Isaac | Quick Shot 14 (3.7/s, 51) | Sniper 36 at full draw (0.75s), Lethal | Tumble 0, passes through foes | Mortar 56; Magic Bomb 56 on a 2s fuse; Explosive Shot 56 + 2 |
+| Isaac | Quick Shot 14 (3.7/s, 51) | Sniper 36 at full draw (0.75s), Lethal | Tumble 0, passes through foes, no real cooldown, 0.15s end pause | Mortar 56; Magic Bomb 56 on a 2s fuse; Explosive Shot 56 + 2 |
 | Zoey | Firebolt 22 (1.8/s, 40) | Serpents 16 + 96 burn over 12s, Shock Blast 14, Chain Lightning 22, Ice Beam to 56 DPS | Blink | Fireball 56; Arcane Blast 106 |
 | Vesper | Skeleton Slash 8 (2.2/s, 17) | Bone Spikes 46 + 2 splash, draws aggro | Ghostwalk 4 + slow 5s | Raise burst 48 |
 
@@ -506,3 +506,28 @@ Sources: `docs/slayer_necromancer_reference_from_david.md` (Steam guide) and the
   - The meter shows in the HUD only, not under her sprite.
   - Not built: Eternal Night's Cold Bolt replacing the smash, and the Dark Remnant talisman.
   - Death still kills a Ghostwalk only through the normal reaper rules.
+
+
+# Neoseeker FAQ cross-check: Isaac (Elf) and Zoey (Wizard), Oct 25 2026
+Source: `docs/slayer_neoseeker_faq_from_david.md` (local only, gitignored). Checks: `tests/faqtest.js`.
+
+**Isaac to Questor the Elf**
+- Already right: 50 HP (2 bars). Quick Shot 14 at 4/s (~56 DPS), 8 against spawners. Sniper Shot 36, Lethal, ~1.3/s, unlimited range, 18 against spawners. He fires without slowing down. The dash passes through foes, big ones too, deals no damage, and can't go through spawners. Magic Bomb 56 on a 2s fuse, Explosive Shot 56 + 2 direct (not Lethal). Root Shot 22 first / 14 after, Root 5. Smoke Bomb 14 + stagger and 4s invisibility. Ultimate Arrow (Heartpiercer) 438. Spirit Guardians (Grove Sprites): 3 orbs, 14, 12s.
+- Changed:
+  - Tumble has no cooldown. The spam guard is the 0.3s roll plus a new 0.15s end pause, during which he stands still and can be hit (FAQ: "a slight pause at the end of the dash"). Rolling over and over now outruns running, as the FAQ says (~1.7x). The i-frames cover the roll only (0.4 to 0.3s).
+  - Smoke invisibility ends as soon as he shoots or rolls. The shot that breaks it still gets the hidden x2. Standing in the cloud no longer renews it after that.
+  - Shadowstrike-style cooldown 7 to 5s.
+  - The Questor's Bow bomb and explosive arrow cooldown 4 to 6s. They share it with the Mortar, as the FAQ says.
+- Still different (not built): Shadow Shot 202, so ours uses the hidden x2 shot instead. Root Field. Deep Woods' piercing 22 aimed shots and 15s cooldown, kept at 5s because the Root Field is missing. The Messenger's Vault Shot, and Mortar 154 + 6x14 fire with 44 burn; our base bow blends Questor's Bow and the Messenger, with Mortar 56. Dryad's Song. The pause after a Spirit Guardians cast.
+
+**Zoey to Merlin the Wizard**
+- Already right: 50 HP. Firebolt 22 at 1.8/s. Fireball 56 with a 2s cooldown. Flaming Serpents 16 + 96 burn over 12s with a 6s cooldown. Freezing Wave 3s freeze with a 3s cooldown and no damage. Cold Sphere 9s with a 20s cooldown. Shock Blast 14 at 1/s, knocking skeletons down. Chain Lightning 22 at 1/s, up to 7 targets. Storm Barrier 6s with a 20s cooldown. Ice Beam ~56 DPS with Slow 3, rooted while casting. Searing Blast 70 + 44 burn with a 5s cooldown. Hellfire ~40 DPS. Burning Orb 6 x 12 over 9s with a 20s cooldown.
+- Changed: Ice Beam hits one target at a time, the first foe or spawner on the line, and the beam stops there. Before, it pierced the whole line.
+- Still different: the Blink dash is David's deviation 1, and Serpents remains the long teleport. The other books differ: Endrich's Mystic Sphere (Rift Jump, Repeater Bolts 8 at 6.5/s, Storm Barrage) is not built, and our Hollow Chapters and Firebound Tomes are our own designs.
+
+**Hero HP from the FAQ:** Thor 100, Thyra 75, Questor 50, Merlin 50, Lilith 50. These match our display HP 100 / 75 / 50 / 50 / 50 (internal x2).
+
+**Big general systems in the FAQ, listed and not built**
+- Enemy momentum. Chasing foes speed up the longer they run, and slows, stuns and switching targets reset them (it has to stay under David's ground speed cap). Size: medium, about 1 day plus tuning.
+- Barrels and secret rooms. Barrels you can carry and throw, and that explode when hit or dashed into. Cracked walls that hide treasure rooms. Size: large, 2-3 days including map generation.
+- Spawner rarity. Each summoning stone rolls a rarity that sets its foe mix and tier. Size: small to medium, half a day to a day.

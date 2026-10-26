@@ -86,7 +86,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Isaac Mortar Shot: 6s, 3m', wres.isaac_base, { cd: 6, r: 96 });
   chk('Isaac Rooting Shot: 5s, 2.5s root', wres.isaac_thorn, g => g.cd === 5 && g.root >= 2);
   chk('Isaac Sparks trap: 8s, 1m trigger mine', wres.isaac_sparks, { cd: 8, mine: true, trigger: 32 });
-  chk('Isaac Smoke Bomb: 7s, 2m cloud, 2s invisible, aggro lost', wres.isaac_dusk, { cd: 7, invis: true, smoke: true, lost: true });
+  chk('Isaac Smoke Bomb: 5s (FAQ Shadowstrike), 2m cloud, invisible, aggro lost', wres.isaac_dusk, { cd: 5, invis: true, smoke: true, lost: true });
   chk('Vesper Raise Skeletons: no cd, spends ALL Soul Power, full meter = 5', wres.vesper_base, { cd: 0, essence: 0, minions: 5 });
   chk('Vesper Summon Shades: full meter = 20 shades of 28', wres.vesper_lantern, { cd: 0, essence: 0, shades: 20, dmg: 28 });
   chk('Vesper Bone Archers: 5 souls = 5 archers behind her, 20s, meter emptied', wres.vesper_marrow, { cd: 0, essenceLeft: 0, archers: 5, behind: true, life: 20 });

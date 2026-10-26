@@ -138,6 +138,11 @@ function vesperHunger(h) {   // Hungering Heart: the drain ring follows her for 
   G.hazards.push({ kind: 'darkHunger', x: h.x, y: h.y, r: S.hungerR, life: S.hungerTime, t: 0, owner: h, follow: h, dps: heroDmg(h, S.hungerDps), team: 'hero' });
 }
 // Sir Theo helpers (Slayer Warrior guide)
+function breakSmoke(h) { if (h.smokeInv) { h.smokeInv = false; h.smokeOff = true; if (h.invisT > 0.05) h.invisT = 0.05; } }   // Shadowstrike smoke (FAQ): attacking or dashing ends the invisibility (the shot that breaks it still gets the shadow bonus)
+function rayFirst(h, len) { let best = null; const c = Math.cos(h.fa), sn = Math.sin(h.fa);   /* nearest foe or spawner on the beam line */
+  for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, al = px * c + py * sn; if (al < 0 || al > len || Math.abs(-px * sn + py * c) > f.r + 8) continue; if (!best || al < best.d) best = { e: f, d: al }; }
+  for (const s of G.spawners) { if (s.hp <= 0) continue; const px = s.x - h.x, py = s.y - h.y, al = px * c + py * sn; if (al > 0 && al < len && Math.abs(-px * sn + py * c) < s.r + 8 && (!best || al < best.d)) best = { e: s, d: al, sp: true }; }
+  return best; }
 function theoSlash(h, idx) {
   const S = SPEC.theo, D = DEV.dmg.theo;
   h.combo = idx; h.comboT = 0.75;
@@ -467,8 +472,11 @@ const KITS = {
   // ------------------------------------------------ Kestrel: archer
   kestrel(h, inp, dt) {
     const D = DEV.dmg.isaac;
+    if (h.rolling && !(h.dash && h.dash.roll)) { h.rolling = false; h.rollPause = SPEC.isaac.rollPause; }   // Tumble (FAQ): a slight pause at the end of the roll
+    if (h.rollPause > 0) { h.rollPause -= dt; h.moveMul = 0; return; }
+    if (h.smokeInv && h.invisT <= 0) h.smokeInv = false;
     if (inp.pressed.defend && cdReady(h, 'defend')) {
-      setCd(h, 'defend', SPEC.isaac.rollCd); Snd.play('roll'); h.atkT = 0;   // a roll cancels Rapid Fire recovery
+      setCd(h, 'defend', SPEC.isaac.rollCd); Snd.play('roll'); h.atkT = 0; h.rolling = true; breakSmoke(h);   // a roll cancels Rapid Fire recovery; no real cooldown (FAQ), the spam guard is the roll plus its end pause
       const a = (inp.mx || inp.my) ? Math.atan2(inp.my, inp.mx) : h.fa;
       startDash(h, a, 150 * h.body.rollDist, 0.3, { inv: SPEC.isaac.rollIframes, trail: 'rgba(200,240,160,0.4)', roll: true, ethereal: true, stopOnWall: true });   // Circle Tumble: no damage, passes through enemies
       return;
@@ -476,12 +484,13 @@ const KITS = {
     if (h.charging === 'power') {
       h.charge = Math.min(1, h.charge + dt / SPEC.isaac.sniperDraw * hasteMul(h));   // full draw at 90 frames h.moveMul = 0.5;
       if (h.charge >= 1 && !h.chargedSnd) { h.chargedSnd = true; Snd.play('ready'); }
-      if (inp.pressed.ability && cdReady(h, 'ability') && h.weapon === 'base') { h.explosiveArrow = true; setCd(h, 'ability', abilityCd(h, 4)); Snd.play('load'); }
+      if (inp.pressed.ability && cdReady(h, 'ability') && h.weapon === 'base') { h.explosiveArrow = true; setCd(h, 'ability', abilityCd(h, SPEC.weapons.kestrel.base)); Snd.play('load'); }
       if (!inp.down.secondary) {
         const c = h.charge; h.charging = null; h.charge = 0; h.chargedSnd = false; setCd(h, 'secondary', 0.25);
         const full = c >= 0.98, expl = h.explosiveArrow; h.explosiveArrow = false;
         Snd.play(full ? 'powershot' : 'bow'); if (full) { addTrauma(0.15); moveEnt(h, -Math.cos(h.fa) * 0.2 * MTR, -Math.sin(h.fa) * 0.2 * MTR); }   // 0.2m recoil
         const shadow = h.weapon === 'dusk' && h.invis ? 2 : 1;
+        breakSmoke(h);
         shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 980, vy: Math.sin(h.fa) * 980, dmg: heroDmg(h, (D.powerMin + (D.powerMax - D.powerMin) * c) * shadow), tier: full ? 3 : c > 0.5 ? 2 : 1, lethal: full, spawnerHits: full ? D.sniperSpawnerHits : 0.5, r: full ? 8 : 6, life: full ? D.sniperLife : 0.7, kind: 'power', owner: h, pierce: full ? 9999 : Math.floor(c * 3), knock: 120 + 320 * c, sig: true, big: full, col: '#ffef9a',
           fx: { stagger: 0.2 + 0.6 * c, hitstop: full ? 0.05 : 0 },
           onEnd: expl ? s => explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, D.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }) : null,
@@ -495,12 +504,12 @@ const KITS = {
       h.atkT = D.quickRate / hasteMul(h);
       const a = h.fa + R(-0.05, 0.05);
       shoot({ team: 'hero', x: h.x + Math.cos(a) * 10, y: h.y + Math.sin(a) * 10, vx: Math.cos(a) * 780, vy: Math.sin(a) * 780, dmg: heroDmg(h, D.quick), tier: 1, spawnerHits: D.quickSpawnerHits, r: 4, life: 0.5, kind: 'arrow', owner: h, knock: 50, col: '#e8d8b0', noSpawner: !ELF_LIGHT_ARROWS_HIT_SPAWNERS });   // Quick Shot: 14, 4/s, 8 vs spawners
-      Snd.play('arrow');
+      Snd.play('arrow'); breakSmoke(h);
     }
     if (inp.pressed.ability && cdReady(h, 'ability')) {
       const W = SPEC.wpn, cd = SPEC.weapons.kestrel[h.weapon] ?? SPEC.weapons.kestrel.base;
       if (h.weapon === 'base' && h.dash && h.dash.roll) { // mid-roll: drop a bomb where you are (shoot it for an explosive arrow)
-        setCd(h, 'ability', abilityCd(h, 4)); Snd.play('throw');
+        setCd(h, 'ability', abilityCd(h, SPEC.weapons.kestrel.base)); Snd.play('throw');
         G.hazards.push({ kind: 'bomb', x: h.x, y: h.y, r: SPEC.isaac.bombR, delay: 2.0, t: 0, owner: h, onFire: hz => { const big = hz.boost; if (big) text(hz.x, hz.y - 30, 'EXPLOSIVE SHOT!', '#ffcf5a'); explode(hz.x, hz.y, big ? SPEC.isaac.bombR * 1.3 : SPEC.isaac.bombR, heroDmg(h, (big ? D.bomb * 1.5 : D.bomb) * (1 + h.mods.ability)), { src: h, col: big ? '#ffd84a' : '#ff9a4a', sigKill: true, tag: 'bomb' }); } });
       } else if (h.weapon === 'thorn') { // Rooting Shot: T2 long thin piercing line, 2.5s hard root
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('powershot');
@@ -508,8 +517,8 @@ const KITS = {
       } else if (h.weapon === 'sparks') { // Sparks trap: hidden 1m-trigger mine, T2, 3s group snare
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('load');
         G.hazards.push({ kind: 'mine', x: h.x, y: h.y, r: W.sparksTrigger, life: 60, t: 0, owner: h });
-      } else if (h.weapon === 'dusk') { // Smoke Bomb: 0 damage, 2m cloud, aggro wipe, 2s full invisibility
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('smoke'); h.invisT = Math.max(h.invisT, W.smokeInvis); burst(h.x, h.y, '#9a9aa8', 30, 160, 5, 0.8); areaHit(h.x, h.y, W.smokeR, heroDmg(h, DEV.dmg.isaac.smoke), { src: h, stagger: 0.5, knock: 160, tier: 1 });   /* Smoke Bomb: 14, Stagger Small */
+      } else if (h.weapon === 'dusk') { // Smoke Bomb: 14 + stagger, 2m cloud, aggro wipe, 4s invisibility that attacking or rolling ends (FAQ)
+        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('smoke'); h.invisT = Math.max(h.invisT, W.smokeInvis); h.smokeInv = true; h.smokeOff = false; burst(h.x, h.y, '#9a9aa8', 30, 160, 5, 0.8); areaHit(h.x, h.y, W.smokeR, heroDmg(h, DEV.dmg.isaac.smoke), { src: h, stagger: 0.5, knock: 160, tier: 1 });   /* Smoke Bomb: 14, Stagger Small */
         G.hazards.push({ kind: 'smoke', x: h.x, y: h.y, r: W.smokeR, life: W.smokeLife, t: 0, owner: h });
         for (const f of G.foes) if (ALIVE(f) && (f.t3By === h || hyp(f.x - h.x, f.y - h.y) < 12 * MTR)) { f.t3Lock = 0; f.t3By = null; f.state = 'move'; f.lostT = 1.0; }
       } else { // Mortar Shot (default): T3, 3m target circle, x3 hits on spawners
@@ -677,11 +686,11 @@ const SPELLS = {
   rime: [
     { name: 'Flash Freeze', cd: 5, cast: h => { Snd.play('freeze'); for (let i = 0; i < 18; i++) { const a = h.fa + R(-0.6, 0.6), s = R(200, 420); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: '#dff8ff', size: 4, grav: 0 }); } areaHit(h.x, h.y, 150, 0.001, { cone: h.fa, arc: 1.3, src: h, freeze: DEV.dmg.zoey.freeze, quiet: true }); } },   // Freezing Wave: freeze 3s
     { name: 'Frost Ray', channel: (h, dt) => {
-        h.rayT = (h.rayT || 0) + dt; const len = rayWall(h.x, h.y, h.fa, 380); const ramp = Math.min(1, h.rayT / 1.5);
+        h.rayT = (h.rayT || 0) + dt; const wl = rayWall(h.x, h.y, h.fa, 380), ramp = Math.min(1, h.rayT / 1.5); const t0 = rayFirst(h, wl), len = t0 ? t0.d : wl;
         G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(h.fa) * len, y2: h.y + Math.sin(h.fa) * len, col: '#bff4ff', life: dt * 1.5, w: 6 + ramp * 6, glow: true });
         h.rayTick = (h.rayTick || 0) - dt; if (h.rayTick > 0) return; h.rayTick = 0.1; Snd.play('ray');
-        for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along < 0 || along > len) continue; const perp = Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)); if (perp > f.r + 8) continue; hitFoe(f, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1 * (0.5 + 0.5 * ramp)), { quiet: ramp < 0.5, slow: 3, slowM: 0.4, src: h, tier: 1 }); }   // Ice Beam: ramps to ~56 DPS, Slow 3
-        for (const s of G.spawners) { const px = s.x - h.x, py = s.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along > 0 && along < len && Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) < s.r + 8) hitSpawner(s, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1), h); }
+        const t = rayFirst(h, len); if (!t) return;   // Ice Beam (FAQ): one target at a time, the first thing the beam touches
+        if (t.sp) hitSpawner(t.e, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1), h); else hitFoe(t.e, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1 * (0.5 + 0.5 * ramp)), { quiet: ramp < 0.5, slow: 3, slowM: 0.4, src: h, tier: 1 });   // ramps to ~56 DPS, Slow 3
       }, moveMul: 0 },
     { name: 'Winter Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'iceorb', col: '#bff4ff', owner: h, pierce: 99, fx: { slow: 2, slowM: 0.4 }, onEnd: s => { Snd.play('freeze'); G.hazards.push({ kind: 'frost', x: s.x, y: s.y, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, cap: RULE('orbCap') ? 30 : 0, caught: new Set(), dps: heroDmg(h, 4), owner: h }); }, onWall: s => G.hazards.push({ kind: 'frost', x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, dps: heroDmg(h, 4), owner: h }) }); } },
   ],
