@@ -57,7 +57,7 @@ function mastery(h, stat, v) {
 const PARTY = []; // [{dev, hero}] chosen in the select screen
 function resetLists() {
   Object.assign(G, { foes: [], allies: [], shots: [], hazards: [], spawners: [], pickups: [], props: [], parts: [], texts: [], rings: [], beams: [], decals: [], swings: [], claws: [], hands: [], waves: [], decor: [] });
-  G.boss = null; G.deathsFloor = 0; G.pendingComplete = 0; G.exitT = -1; G.exitOpen = true; G.arena = null; G.gimmick = null; G.banner = null; G.newMasteries = G.newMasteries || [];
+  G.boss = null; G.deathsFloor = 0; G.pendingComplete = 0; G.exitT = -1; G.exitOpen = true; G.exitFx = null; G.exitArm = 0; G.arena = null; G.gimmick = null; G.banner = null; G.newMasteries = G.newMasteries || [];
 }
 function newRun() {
   G.heroes = PARTY.map((p, i) => mkHero(i, p.hero, p.dev));
@@ -248,10 +248,14 @@ function updateMode(dt) {
   if (G.arena) updateArena(dt);
   updateBattleRooms(dt);
   // exit
+  if (G.exitFx) { const X = G.exitFx; X.t += dt; X.next -= dt; if (X.t > EXIT.pulseFor) G.exitFx = null; else if (X.next <= 0) { X.next = EXIT.pulse; ring(X.x, X.y, 46, '#9fffe0', 0.7, 3); } }
   if (G.exitOpen && G.map.exit) {
-    const alive = G.heroes.filter(h => !h.dead), on = alive.filter(h => tileAt(Math.floor(h.x / T), Math.floor(h.y / T)) === TL.EXIT);
+    const onExit = h => tileAt(Math.floor(h.x / T), Math.floor(h.y / T)) === TL.EXIT;
+    if (G.exitArm > 0) { G.exitArm -= dt; for (const h of G.heroes) if (onExit(h)) h.exitHold = true; }   // a fresh exit: whoever is on it now must step off first
+    for (const h of G.heroes) if (h.exitHold && !onExit(h)) h.exitHold = false;
+    const alive = G.heroes.filter(h => !h.dead), on = alive.filter(h => onExit(h) && !h.exitHold);
     if (on.length && G.exitT < 0) { G.exitT = alive.length === on.length ? 0.6 : 5; Snd.play('exitopen'); }
-    if (G.exitT >= 0) { const prev = Math.ceil(G.exitT); G.exitT -= dt; if (Math.ceil(G.exitT) !== prev && G.exitT > 0) Snd.play('tick'); if (alive.length && alive.every(h => tileAt(Math.floor(h.x / T), Math.floor(h.y / T)) === TL.EXIT)) G.exitT = Math.min(G.exitT, 0.4); if (G.exitT <= 0) floorComplete(); }
+    if (G.exitT >= 0) { const prev = Math.ceil(G.exitT); G.exitT -= dt; if (Math.ceil(G.exitT) !== prev && G.exitT > 0) Snd.play('tick'); if (alive.length && alive.every(h => onExit(h) && !h.exitHold)) G.exitT = Math.min(G.exitT, 0.4); if (G.exitT <= 0) floorComplete(); }
   }
   // defeat
   if (G.heroes.every(h => h.dead)) {
@@ -407,12 +411,42 @@ function dropWaveSupplies() {
   if (G.arena.wave % 2 === 1) drop('potion');
   for (let k = 0; k < 4; k++) { const i = pick(tiles); dropGold((i % m.w + 0.5) * T, (Math.floor(i / m.w) + 0.5) * T, RI(20, 40)); }
 }
+// Every floor ends at an exit (David, Oct 2026: "each level that ends should have an exit door ... picking up all loot instead of
+// it abruptly just ending"). openExitPortal turns a reachable, open floor tile EXIT.near to EXIT.far tiles from (x, y), clear of
+// the heroes and of any loot, into the exit, with a burst, rings and a chime. Heroes already standing on an exit tile when it
+// opens, or who runs onto it in the first EXIT.arm seconds (still charging from the kill), is held until stepping off and back on, so
+// nobody leaves by accident.
+const EXIT = { near: 4.5, far: 9, want: 6, heroGap: 4, lootGap: 30, pulse: 0.6, pulseFor: 4, arm: 1.2 };
+function openExitPortal(x, y) {
+  const m = G.map, w = m.w; computeFlow(); let best = -1, bs = 1e9;
+  const heroes = G.heroes.filter(h => !h.dead), open = i => { const t = m.t[i]; return t === TL.FLOOR; };
+  for (const strict of [true, false]) { if (best >= 0) break;   // an open 3x3 spot first; in tight corridors any floor tile
+  for (let i = 0; i < m.t.length; i++) {
+    if (!open(i) || !(flowDist && flowDist[i] >= 0)) continue;
+    const tx = i % w, ty = (i / w) | 0; if (tx < 1 || ty < 1 || tx >= w - 1 || ty >= m.h - 1) continue;
+    let ok = true; if (strict) for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1; dx++) if (blocksWalk(m.t[i + dy * w + dx], false)) { ok = false; break; }
+    if (!ok) continue;
+    const cx = (tx + 0.5) * T, cy = (ty + 0.5) * T, d = hyp(cx - x, cy - y) / T; if (d < EXIT.near || d > (strict ? EXIT.far : EXIT.far * 1.6)) continue;
+    if (heroes.some(h => hyp(h.x - cx, h.y - cy) < EXIT.heroGap * T || hyp(h.x + (h.vx || 0) * 0.6 - cx, h.y + (h.vy || 0) * 0.6 - cy) < EXIT.heroGap * T)) continue;   // nor where a hero is heading
+    if (G.pickups.some(it => !it.dead && hyp(it.x - cx, it.y - cy) < EXIT.lootGap) || G.props.some(p => p.hp > 0 && hyp(p.x - cx, p.y - cy) < p.r + 20)) continue;
+    const s = Math.abs(d - EXIT.want); if (s < bs) { bs = s; best = i; }
+  } }
+  if (best < 0 && m.exit && m.exit.i !== undefined && flowDist[m.exit.i] >= 0) best = m.exit.i;   // the map's own exit
+  if (best < 0) { let tx = Math.floor(x / T), ty = Math.floor(y / T); if (blocksWalk(tileAt(tx, ty))) { tx = Math.floor(w / 2); ty = Math.floor(m.h / 2); } best = ty * w + tx; }
+  for (let i = 0; i < m.t.length; i++) if (m.t[i] === TL.EXIT && i !== best) {   // another exit under the loot (an area boss standing on the map's own exit): close it so gathering never leaves
+    const ex = (i % w + 0.5) * T, ey = ((i / w | 0) + 0.5) * T; if (G.pickups.some(it => !it.dead && it.kind !== 'key' && hyp(it.x - ex, it.y - ey) < 2 * T)) { m.t[i] = TL.FLOOR; redrawTile(i % w, (i / w) | 0); } }
+  const tx = best % w, ty = (best / w) | 0; m.t[best] = TL.EXIT; m.exit = { x: (tx + 0.5) * T, y: (ty + 0.5) * T, i: best }; redrawTile(tx, ty); G.exitOpen = true; G.exitT = -1; G.exitArm = EXIT.arm;
+  exitFlourish(m.exit.x, m.exit.y); msg('An exit opens \u2014 gather the loot, then walk through', '#9fffe0', 4);
+  return m.exit;
+}
+function exitFlourish(x, y) { G.exitFx = { x, y, t: 0, next: 0 }; burst(x, y, '#9fffe0', 40, 220, 4, 1.0); ring(x, y, 70, '#9fffe0', 0.9, 6); Snd.play('exitopen'); }
 function arenaDone() {
-  if (G.arena.kind === 'floor') { G.exitOpen = true; setArenaGates(false); msg('The way onward opens!', '#9fffe0', 3); Snd.play('victory'); G.banner = { s: 'Arena cleared', sub: 'THE EXIT IS OPEN', t: 2.5 }; return; }
+  if (G.arena.kind === 'floor') { G.exitOpen = true; setArenaGates(false); if (G.map.exit) exitFlourish(G.map.exit.x, G.map.exit.y); msg('The way onward opens!', '#9fffe0', 3); Snd.play('victory'); G.banner = { s: 'Arena cleared', sub: 'THE EXIT IS OPEN', t: 2.5 }; return; }
   // daily arena victory
   G.purse += 1000; SAVE.arena.best = Math.max(SAVE.arena.best, 6); SAVE.arena.daily[todayKey()] = true;
   G.banner = { s: 'The Pit is conquered!', sub: '+1000 GOLD', t: 3 }; Snd.play('victory');
-  G.arena.state = 'done'; G.pendingComplete = 2.5;
+  G.arena.state = 'done'; const at = arenaTiles(), c = at.reduce((a, i) => (a.x += (i % G.map.w + 0.5) * T / at.length, a.y += (Math.floor(i / G.map.w) + 0.5) * T / at.length, a), { x: 0, y: 0 });
+  openExitPortal(c.x, c.y);   // the Pit ends at its exit too, not on the last kill
 }
 
 // ---------------------------------------------------------------- completion / defeat

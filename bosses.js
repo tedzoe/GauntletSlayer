@@ -152,11 +152,9 @@ function bossFinish(f) {
   for (let k = 0; k < 24; k++) dropGold(f.x + R(-90, 90), f.y + R(-90, 90), RI(40, 90));
   G.pickups.push({ kind: 'feast', x: f.x - 40, y: f.y + 30, dropped: true }, { kind: 'potion', x: f.x + 40, y: f.y + 30, dropped: true });
   for (const h of G.heroes) { mastery(h, 'bosses', 1); mastery(h, 'boss_' + f.kind, 1); }   // per boss kind (f.type is always 'boss')
-  // open the way out where the boss fell
-  let tx = Math.floor(f.x / T), ty = Math.floor(f.y / T);
-  if (blocksWalk(tileAt(tx, ty))) { tx = Math.floor(G.map.w / 2); ty = Math.floor(G.map.h / 2); }
-  G.map.t[ty * G.map.w + tx] = TL.EXIT; G.map.exit = { x: (tx + 0.5) * T, y: (ty + 0.5) * T }; redrawTile(tx, ty); G.exitOpen = true;
-  G.boss = null; G.banner = { s: f.name + ' falls!', sub: 'VICTORY', t: 3 }; Snd.play('victory');
+  // an exit portal opens a few strides from where the boss fell, clear of its loot: the floor ends only when the heroes walk through
+  openExitPortal(f.x, f.y);
+  G.boss = null; G.banner = { s: f.name + ' falls!', sub: 'VICTORY \u2014 THE EXIT IS OPEN', t: 3 }; Snd.play('victory');
 }
 // expanding shockwave rings (forgemaster hammer)
 function updateWaves(dt) {
