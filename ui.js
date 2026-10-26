@@ -22,10 +22,11 @@ function heroMoves(h) {
   const pot = [{ lab: 'POT', col: '#4a8cff', cd: () => 0, ok: () => h.potions > 0, count: () => h.potions }];
   const main = lab => ({ lab, col: '#f2e6c8', cd: () => Math.max(0, h.atkT), main: true });
   const dash = { lab: 'DSH', col: '#7fffd0', cd: cd(DEV.dash[h.id].cdKey) };
+  const shield = { lab: 'BLK', col: '#cfeaff', cd: () => 0, ok: () => !h.shieldOut, act: () => !!h.blocking, noCd: true };   // shields never cool down
   const L = {
     brannoc: [main('ATK'), { lab: 'LEAP', col: '#ffb070', cd: cd('secondary') }, { lab: 'SPIN', col: '#ffd27a', cd: cd('ability'), act: () => h.spin > 0 }, dash],
-    sela: [main('ATK'), { lab: 'THR', col: '#ffb070', cd: cd('secondary'), act: () => !!h.thrust }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability'), ok: () => !h.shieldOut }, dash, { lab: 'BASH', col: '#9ad0ff', cd: cd('bash') }],
-    paladin: [main('ATK'), { lab: 'JDG', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'judgment' }, { lab: 'SLAM', col: '#ffd27a', cd: cd('ability') }, dash, { lab: 'CONS', col: '#fff2a0', cd: cd('consecrate') }],
+    sela: [main('ATK'), shield, { lab: 'THR', col: '#ffb070', cd: cd('secondary'), act: () => !!h.thrust }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability'), ok: () => !h.shieldOut }, dash, { lab: 'BASH', col: '#9ad0ff', cd: cd('bash') }],
+    paladin: [main('ATK'), shield, { lab: 'JDG', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'judgment' }, { lab: 'SLAM', col: '#ffd27a', cd: cd('ability') }, dash, { lab: 'CONS', col: '#fff2a0', cd: cd('consecrate') }],
     kestrel: [main('ATK'), { lab: 'PWR', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'power' }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability') }, dash],
     mirelle: [main('BOLT'), { lab: 'SPL', col: '#ffb070', cd: () => { if (!h.spell || !h.schools) return 0; return h.spellCd[zk(h.schools[h.spell[0]], h.spell[1])] || 0; } },
       { lab: 'MRT', col: '#ffd27a', cd: () => h.spellCd[zk('ember', 2)] || 0 }, dash],

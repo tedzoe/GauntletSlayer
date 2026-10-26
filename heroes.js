@@ -18,7 +18,7 @@ function heroMods(id) {
 function mkHero(pi, id, dev) {
   const def = HERO[id], lo = SAVE.loadout[id], mods = heroMods(id);
   const body = heroBody(def);
-  const h = { isHero: true, pi, id, def, dev, body, x: 0, y: 0, r: body.r, maxHp: SPEC.hero[id].hp + mods.hp * HP_SCALE, hp: SPEC.hero[id].hp + mods.hp * HP_SCALE, baseSpeed: heroSpeed(id), stam: SPEC.gela.stamina, calmT: 0, bubble: false, crown: false, armor: SPEC.hero[id].armor || 0, mods,
+  const h = { isHero: true, pi, id, def, dev, body, x: 0, y: 0, r: body.r, maxHp: SPEC.hero[id].hp + mods.hp * HP_SCALE, hp: SPEC.hero[id].hp + mods.hp * HP_SCALE, baseSpeed: heroSpeed(id), calmT: 0, bubble: false, crown: false, armor: SPEC.hero[id].armor || 0, mods,
     potions: 2, keys: 0, fa: 0, ax: 1, ay: 0, kx: 0, ky: 0, vx: 0, vy: 0, inv: 0, ethereal: 0, invisT: 0, invis: false, hurtT: 0, slowT: 0,
     cd: {}, atkT: 0, combo: 0, comboT: 0, charge: 0, charging: null, blocking: false, blockFlash: 0, spin: 0, spinTick: 0, dash: null, lock: 0,
     rushWin: 0, souls: 30, runes: [], runeT: 0, spell: [0, 0], spellCd: {}, channel: null, shieldOut: false, buff: {}, swing: null, walk: 0,
@@ -50,8 +50,7 @@ function updateHero(h, inp, dt) {
   if (h.lowFlash > 0) h.lowFlash -= dt;
   // damage-immunity bubble (damage-taken mastery): 20s without being hit grows a bubble that eats the next hit
   if (h.mods.bubble && G.mode !== 'hub') { h.calmT = (h.calmT || 0) + dt; if (!h.bubble && h.calmT >= SPEC.bubble.after) { h.bubble = true; ring(h.x, h.y, 34, '#bfefff', 0.4, 4); } }
-  // Valkyrie shield stamina regen
-  if (h.id === 'sela' || h.id === 'paladin') { if (h.blockBroken > 0) h.blockBroken -= dt; if (h.stamT > 0) h.stamT -= dt; else h.stam = Math.min(SPEC.gela.stamina, (h.stam ?? 100) + 40 * dt); }
+  // (shields have no stamina: David / Slayer Valkyrie rule)
   if (SAVE.settings.hunger && G.mode !== 'hub') { h.hp -= dt * 0.8 * HP_SCALE; if (h.hp <= 0) { killHero(h); return; } }
   // aim
   if (inp.aim === 'mouse') { const wx = Input.mouse.x + G.cam.x, wy = Input.mouse.y + G.cam.y; h.aimPt = { x: wx, y: wy }; const a = Math.atan2(wy - h.y, wx - h.x); h.ax = Math.cos(a); h.ay = Math.sin(a); }
@@ -74,7 +73,8 @@ function updateHero(h, inp, dt) {
     h.vx = inp.mx * spd; h.vy = inp.my * spd;
     if (mx || my) { moveEnt(h, mx, my, false, g => tryGate(h, g)); h.walk += dt * 10; }
   }
-  if (G.heroes.length > 1 && G.mode !== 'hub') { h.x = clamp(h.x, G.cam.x + 16, G.cam.x + W - 16); h.y = clamp(h.y, G.cam.y + 70, G.cam.y + H - 16); }
+  if (G.heroes.length > 1 && G.mode !== 'hub') { const ox = h.x, oy = h.y; h.x = clamp(h.x, G.cam.x + 16, G.cam.x + W - 16); h.y = clamp(h.y, G.cam.y + 70, G.cam.y + H - 16); if ((h.x !== ox || h.y !== oy) && collide(h.x, h.y, h.r, false)) { h.x = ox; h.y = oy; } }   // the shared-screen leash never shoves anyone into a wall
+  antiStuck(h, inp, dt);
   if (G.mode === 'hub') return hubInteract(h, inp);
   if (inp.pressed.dash && !h.dash && heroDash(h, inp)) { /* dashed this tick */ }
   else KITS[h.id](h, inp, dt);
@@ -117,6 +117,15 @@ function tryGate(h, g) {
   if (!G.heroes.some(o => o.keys > 0) && !reachableKey(h)) { openGate(g.tx, g.ty, h); msg('The rusted lock gives way.', '#fd5', 2); return; }
   if ((h.gateMsg || 0) < G.time) { h.gateMsg = G.time + 2.5; msg('Locked. Find a key.', '#fd5', 1.6); Snd.play('error'); }
 }
+// safety net: a hero overlapping solid geometry (e.g. a leap landing on a pit, a gate shutting) is moved to the nearest free spot at once;
+// a hero giving input who cannot move in any direction for SPEC.stuck.frozen seconds is nudged too
+function antiStuck(h, inp, dt) {
+  if (h.dead || (h.dash && h.dash.jump) || h.z > 0) { h.inWallT = 0; h.frozenT = 0; return; }
+  if (collide(h.x, h.y, h.r, false)) { h.inWallT = (h.inWallT || 0) + dt; if (h.inWallT >= SPEC.stuck.overlap) { unstick(h); h.inWallT = 0; } return; }
+  h.inWallT = 0;
+  if ((inp.mx || inp.my) && [[4, 0], [-4, 0], [0, 4], [0, -4]].every(([dx, dy]) => collide(h.x + dx, h.y + dy, h.r, false))) { h.frozenT = (h.frozenT || 0) + dt; if (h.frozenT >= SPEC.stuck.frozen) { const p = freeSpot(h.x, h.y, h.r - 3, false); if (p) { h.x = p.x; h.y = p.y; G.unstuck = (G.unstuck || 0) + 1; } h.frozenT = 0; } }
+  else h.frozenT = 0;
+}
 function startDash(h, ang, dist, dur, o = {}) {
   h.dash = Object.assign({ ang, dist, dur, t: 0, vx: Math.cos(ang) * dist / dur, vy: Math.sin(ang) * dist / dur, hit: new Set() }, o);
   if (o.inv) h.inv = Math.max(h.inv, typeof o.inv === 'number' ? o.inv : dur + 0.05);   // exact i-frame windows from the spec
@@ -134,7 +143,7 @@ function updateDash(h, dt) {
   }
   if (d.hitR) for (const s of G.spawners) if (!d.hit.has(s) && hyp(s.x - h.x, s.y - h.y) < s.r + h.r + d.hitR) { d.hit.add(s); if (d.dmg) hitSpawner(s, d.dmg, h); }
   if (d.armor && !d.jump) for (const p of G.props) if (p.hp > 0 && p.kind === 'chest' && hyp(p.x - h.x, p.y - h.y) < p.r + h.r + 2) { h.dash = null; h.z = 0; h.lock = 10 / 60; h.atkT = 10 / 60; Snd.play('clank'); text(h.x, h.y - 30, 'CLANG', '#ccc'); return; }
-  if (d.t >= d.dur || (blocked && !d.jump && d.stopOnWall !== false)) { h.dash = null; h.z = 0; d.onEnd && d.onEnd(blocked); }
+  if (d.t >= d.dur || (blocked && !d.jump && d.stopOnWall !== false)) { h.dash = null; h.z = 0; if (d.jump && collide(h.x, h.y, h.r, false)) unstick(h); d.onEnd && d.onEnd(blocked); }   // a leap never lands inside a pit or wall
 }
 function swingFx(h, ang, arc, r, col, w = 5, dur = 0.13) { G.swings.push({ x: h.x, y: h.y, a: ang, arc, r, life: dur, max: dur, col, w, follow: h }); }
 function melee(h, ang, arc, r, dmg, o = {}) {
@@ -223,7 +232,7 @@ const KITS = {
   sela(h, inp, dt) {
     const S = SPEC.gela;
     const was = h.blocking;
-    h.blocking = inp.down.defend && !h.shieldOut && !h.dash && !h.thrust && !(h.blockBroken > 0);
+    h.blocking = inp.down.defend && !h.shieldOut && !h.dash && !h.thrust;   // held = up, no limit
     if (h.blocking && !was) h.blockStart = G.time;   // perfect-block window starts when the shield goes up
     if (h.blocking) h.moveMul = 0.45;
     // Spear Thrust: 12-frame wind-up, 4-frame lunge hitbox, heavy piercing line; a shield tap cancels the recovery
@@ -305,7 +314,7 @@ const KITS = {
       return;
     }
     const was = h.blocking;
-    h.blocking = inp.down.defend && !h.dash && !(h.slamT > 0) && !(h.blockBroken > 0);
+    h.blocking = inp.down.defend && !h.dash && !(h.slamT > 0);   // held = up, no limit
     if (h.blocking && !was) h.blockStart = G.time;
     if (h.blocking) {
       h.moveMul = 0.4;

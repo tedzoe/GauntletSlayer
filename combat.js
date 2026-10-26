@@ -160,10 +160,7 @@ function hurtHero(h, dmg, o = {}) {
     const a = Math.atan2(o.y - h.y, o.x - h.x);
     let guard = Math.abs(angDiff(a, h.fa)) < (SH ? SH.blockArc / 2 : 1.15);
     const perfect = guard && SH && G.time - (h.blockStart || -9) <= SH.perfectWindow;
-    if (guard && SH && !perfect) {   // shield stamina: a brute's charge or an empty bar breaks the guard
-      h.stam = (h.stam ?? SPEC.gela.stamina) - (o.breakBlock ? 999 : o.proj ? 10 : dmg * 1.2); h.stamT = 0.8;
-      if (h.stam <= 0) { h.stam = 0; h.blockBroken = 1.5; h.blocking = false; guard = false; text(h.x, h.y - 34, 'GUARD BROKEN', '#ff9a7a'); Snd.play('clank'); }
-    }
+    if (guard && SH && !perfect && o.breakBlock) guard = false;   // David's rule (Slayer Valkyrie): the shield has no stamina, cooldown or break timer; only an unblockable charge passes this one hit
     if (perfect) { text(h.x, h.y - 34, 'PERFECT', '#fff2b0'); if (h.mods.reflect) areaHit(h.x + Math.cos(h.fa) * 30, h.y + Math.sin(h.fa) * 30, 48, heroDmg(h, DMG.light), { src: h, knock: 260, tier: 1 }); }
     if (guard) {
       h.blockFlash = 0.15; Snd.play(h.id === 'sela' ? 'windblock' : 'clank'); sparkDir(h.x + Math.cos(h.fa) * 16, h.y + Math.sin(h.fa) * 16, h.fa, h.id === 'sela' ? '#cfeaff' : '#fff2b0', 8);
@@ -195,6 +192,7 @@ function dropCrown(h) { h.crown = false; h.crownSlowT = RULE('crownLinger') ? 45
 function killHero(h) {
   if (h.crown) dropCrown(h);
   h.dead = true; h.hp = 0; h.deadAt = G.time; h.blocking = false; h.spin = 0; h.channel = null;
+  resetHeroTimers(h);   // David's rule: dying resets every cooldown, so a revived hero has everything ready
   Snd.play('herodeath'); burst(h.x, h.y, h.def.color, 40, 260, 4, 1); burst(h.x, h.y, '#fff', 15, 160, 2, 0.8); addTrauma(0.6); hitstop(0.12);
   const lost = Math.floor(Math.max(0, G.gold - (G.bankedRun || 0)) * 0.2); if (lost > 0) { G.gold -= lost; dropGold(h.x, h.y, lost, 'hero'); text(h.x, h.y - 30, `-${lost} gold dropped`, '#ffd27a', true); }   // only unbanked gold can drop (gate/exit banking keeps the rest safe)
   for (let k = 0; k < h.keys; k++) G.pickups.push({ kind: 'key', x: h.x + R(-16, 16), y: h.y + R(-16, 16) });
@@ -202,13 +200,19 @@ function killHero(h) {
   G.deathsFloor = (G.deathsFloor || 0) + 1; if (G.deathsFloor === 8) mastery(h, 'deaths8', 1);
   msg(`${h.def.name} has fallen! ${G.heroes.length > 1 ? 'Press CONFIRM to spend a rez coin' + (isFinite(G.rez) ? ` (${G.rez} left)` : '') + '.' : ''}`, '#ff6a5a', 4);
 }
+function resetHeroTimers(h) {
+  h.cd = {}; h.spellCd = {}; h._cdm = {}; h._rdy = {};
+  for (const k of ['atkT', 'slamT', 'throwT', 'comboT', 'heavyT', 'hbT', 'gT', 'runeT', 'rayT', 'finT', 'drainT', 'absorbT', 'spikeT', 'lock', 'blockBroken', 'stamT', 'dashMsg', 'gateMsg']) if (h[k]) h[k] = 0;
+  h.dash = null; h.charging = null; h.thrust = null; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
+  if (h.relicState) h.relicState = null;
+}
 function reviveCost() { return 0; }   // revives cost rez coins, not gold
 function reviveHero(h, free) {
   if (!h.dead) return false;
   const cost = reviveCost();
   if (!free) { if (!(G.rez > 0)) { msg('No rez coins left', '#ffd27a', 2); Snd.play('error'); return false; } if (isFinite(G.rez)) G.rez--; }
   const ally = G.heroes.find(o => !o.dead && o !== h);
-  if (ally) { h.x = ally.x; h.y = ally.y; }
+  if (ally) { h.x = ally.x; h.y = ally.y; } unstick(h);
   if (!free && G.heroes.length === 1 && RULE('reviveShock')) { ring(h.x, h.y, W, '#fff6c0', 0.7, 10); addTrauma(0.5);   // solo coin revive: map-wide shockwave
     for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper') continue; const a = Math.atan2(f.y - h.y, f.x - h.x);
       if (f.elite || f.heavy) { f.kx += Math.cos(a) * 700; f.ky += Math.sin(a) * 700; } else { f.stag = Math.max(f.stag, 1.5); f.kx += Math.cos(a) * 250; f.ky += Math.sin(a) * 250; } } }

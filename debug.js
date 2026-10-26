@@ -18,7 +18,6 @@ const DEBUG = {
       lines.push([`  cd: ${cds}`, '#ddd']);
       const meters = [`potions ${h.potions}`, `shards ${Math.round(h.shardMeter || 0)}/100`];
       if (h.def.id === 'vesper') meters.push(`essence ${Math.round(h.souls || 0)}/${SPEC.vesper.essenceMax}`);
-      if (h.def.id === 'sela') meters.push(`stamina ${Math.round(h.stam || 0)}`);
       if (h.crown) meters.push('CROWN'); if (h.bubble) meters.push('bubble');
       lines.push([`  ${meters.join('  ')}`, '#ddd']);
     }

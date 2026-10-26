@@ -369,3 +369,21 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
      - Then the whole room's encounter wakes: each foe shows a "!" and acts after a 0.25-0.7s reaction delay.
      - Death, bosses on boss floors, arena waves and corridor foes are not affected.
    - Guess: Slayer Edition's own trigger is per battle room, where the doors lock and waves come in. Its camera also zooms out in battle rooms; here every large room fits the fixed 1152×648 view instead.
+
+# David's rules: stuck heroes, death and shields (Oct 2026)
+- **Nothing closes on a hero.**
+  - When a room's gates shut (the arena gates now, battle-room gates later), any hero standing in a gateway is moved fully inside. A co-op partner left outside is pulled in next to the party, which is how the original handles a locked battle room.
+  - Pets go inside too. Foes caught in a gateway are pushed clear.
+- **Anti-stuck safety net** (`SPEC.stuck`):
+  - A hero overlapping solid geometry for 0.1s is moved to the nearest free spot.
+  - A hero who is steering but can't move in any direction for 0.5s is nudged.
+  - Leaps never land inside a pit or wall.
+  - The co-op screen leash never shoves a hero into a wall.
+  - Revives never place a hero inside geometry.
+  - `tests/stucktest.js` sweeps every gate, door and narrow spot on the camp, every campaign floor, Endless and Extended Realm floors and the arena. It also tries dashes, blinks, leaps, rolls, charges and knockback into walls, corners and the camp pits for all six heroes.
+- **Death resets cooldowns:** when a hero dies, every cooldown and ability timer is cleared (dash, secondary, special, relic, potion/talisman, spell cooldowns, attack timers). A revived hero has everything ready.
+- **Shields have no limits.** Gela's wind shield and Highlord David's Holy Bulwark stay up for as long as Defend is held, and can be raised again on the next frame.
+  - There is no cooldown, duration, stamina or guard-break timer. The old 100-point stamina bar and the 1.5s "GUARD BROKEN" state are removed.
+  - Front hits are blocked and missiles are blocked or reflected as before. Hits from the side or back still land.
+  - Guess: the Brimstone Fiend's heavy cleave stays unblockable, so that one hit passes the shield while the shield stays up.
+  - In the HUD the shield icon never shows a cooldown and lights while held. These checks are in `tests/fixtest.js`.

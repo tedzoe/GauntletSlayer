@@ -81,7 +81,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Theo Demonic Cleave: 8s, 6m line of 4s fire', wres.theo_demonic, g => g.cd === 8 && g.fireTiles >= 5 && g.fireLife === 4 && g.len === 6);
   chk('Gela Extreme Prejudice: 9s', wres.gela_base, { cd: 9 });
   chk('Gela Shield Splitter: 6s, 3 piercing shields, 45-degree fan', wres.gela_splitter, { cd: 6, shields: 3, fanDeg: 45, pierce: 99 });
-  chk('Gela Deflecting Thrust: no cd, 6 missiles max per 30 frames, no stamina', wres.gela_vanguard, { cd: 0, broken: 6, capped: 0, stamina: 100 });
+  chk('Gela Deflecting Thrust: no cd, 6 missiles max per 30 frames, no stamina', wres.gela_vanguard, g => g.cd === 0 && g.broken === 6 && g.capped === 0 && !g.stamina);   // shields have no stamina at all (David's rule)
   chk('Gela Shield Ricochet: 8s, up to 4 targets, 4m hops', wres.gela_ricochet, g => g.cd === 8 && g.hitFoes >= 1 && g.hitFoes <= 4 && g.hop === 128);
   chk('Isaac Mortar Shot: 6s, 3m', wres.isaac_base, { cd: 6, r: 96 });
   chk('Isaac Rooting Shot: 5s, 2.5s root', wres.isaac_thorn, g => g.cd === 5 && g.root >= 2);
@@ -158,7 +158,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return out; });
   chk('Crusader combo tiers T1, T1, T2', pal.combo, [1, 1, 2]);
   chk('Judgment: charged T3 overhead stuns, 1.6s cd', pal.judgment, g => g.cd === 1.6 && g.hit >= 1 && g.stun >= 1);
-  chk('Holy Bulwark: reflects missiles, front melee blocked, stamina drains', pal.bulwark, g => g.reflect === 'reflect' && g.meleeBlocked === false && g.stamDrained && g.hp === 200);
+  chk('Holy Bulwark: reflects missiles, front melee blocked, no stamina drain (David: shields have no limits)', pal.bulwark, g => g.reflect === 'reflect' && g.meleeBlocked === false && !g.stamDrained && g.hp === 200);
   chk('Righteous Advance: armored dash, 5s cd', pal.advance, { cd: 5, armored: true });
   chk('Consecration: 3m, 5s, 12s cd, T1 ticks foes, heals ally 2 bar HP/tick', pal.consecration, g => g.cd === 12 && g.r === 96 && g.life === 5 && g.ticks >= 4 && g.allyHealed >= 16 && g.foeDmg > 0);
   chk('Devotion Aura: ally within 4m takes 10% less', pal.aura, g => Math.abs(g.near / g.far - 0.9) < 0.01);

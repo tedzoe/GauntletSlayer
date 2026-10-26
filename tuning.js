@@ -50,7 +50,7 @@ const SPEC = {
     spinCd: 12, spinDmg: 'heavy', spinTicksPerSec: 5, spinR: 2.0 * MTR, spinTime: 210 / 60 },
   // Valkyrie -> Dawnbringer Gela
   gela: { combo: 7, comboDmg: 'light', stunHits: [4, 7], stun: 1.0, comboArc: 1.4, comboR: 56,
-    thrustDmg: 'heavy', thrustCd: 0, thrustWindupFrames: 12, thrustLungeFrames: 4, thrustRecovery: 0.45, stamina: 100, perfectWindow: 0.2, chargeCd: 2,
+    thrustDmg: 'heavy', thrustCd: 0, thrustWindupFrames: 12, thrustLungeFrames: 4, thrustRecovery: 0.45, perfectWindow: 0.2, chargeCd: 2,
     blockArc: Math.PI / 2, reflectAfter: 10,
     throwDmg: 'medium', throwChains: 4, execCd: 9, execDmg: 'massive', execR: 90 },
   // Wizard -> Sorceress Zoey. key = first element + second element
@@ -66,7 +66,7 @@ const SPEC = {
   // Paladin -> Highlord David (light element). Radii in px (1m = 32px).
   paladin: { combo: 3, comboArc: 2.4, comboR: 68, finisherArc: 3.1, finisherR: 82,
     judgmentCd: 1.6, judgmentMaxCharge: 0.8, judgmentMinCharge: 0.25, judgmentR: 78, judgmentStun: 1.2,
-    blockArc: 2.9, perfectWindow: 0.2, stamina: 100,
+    blockArc: 2.9, perfectWindow: 0.2,
     advanceCd: 5, advanceDist: 170, advanceWidth: 14,
     consCd: 12, consR: 3 * MTR, consTime: 5, consTick: 0.5, consHeal: 2 * 2,   // 2 bar HP per tick = 4 internal HP
     auraR: 4 * MTR, auraMit: 0.10,
@@ -104,6 +104,7 @@ const SPEC = {
   talisman: { feastFood: 2, feastFeast: 1, aegisR: 3 * MTR, aegisTime: 6, aegisHeal: 4, dreadR: 3.5 * MTR, dreadTime: 6, dreadFear: 1.0, dreadDps: 6, valkCount: 3, valkTime: 10 },
   potion: { shockR: 12 * MTR, shockStagger: 0.6, foodInv: 0.5, aiFreeze: 1.5, exitGold: 500, spawnerStop: 4 },
   gateBank: { min: 1, flash: 1.6 },
+  stuck: { overlap: 0.1, frozen: 0.5 },   // anti-stuck safety net: seconds overlapping geometry / frozen while steering before a nudge
   splash: { fadeIn: 0.6, hold: 2.0, fadeOut: 0.6, maxWait: 1.5, logo: 400 },   // Tezois Studio splash on page load (seconds, logo px)   // gate crossings bank carried gold (min amount to trigger, HUD flash seconds)
   crown: { goldMul: 2, floatTime: 5, endBonus: 500, slow: 0.1, aggroR: 10 * MTR },
   coins: { capPerPlayer: 5 },

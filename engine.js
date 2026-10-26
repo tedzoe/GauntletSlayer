@@ -120,6 +120,30 @@ function breakWall(tx, ty) {
 function setArenaGates(closed) {
   for (const i of G.map.agates) { G.map.t[i] = closed ? TL.AGATE : TL.FLOOR; redrawTile(i % G.map.w, (i / G.map.w) | 0); }
   flowT = 0;
+  if (closed && G.map.arenaSet) sealInside(G.map.arenaSet);
+}
+// ---- anti-stuck (David, Oct 2026): nothing may ever end up inside geometry
+// nearest spot (tile centre, then small offsets) where a body of radius r fits; ok(i) optionally restricts the tile (e.g. "inside this room")
+function freeSpot(x, y, r, fly, ok, maxR = 14) {
+  const m = G.map, tx0 = Math.floor(x / T), ty0 = Math.floor(y / T), cand = [];
+  for (let dy = -maxR; dy <= maxR; dy++) for (let dx = -maxR; dx <= maxR; dx++) { const tx = tx0 + dx, ty = ty0 + dy; if (tx < 0 || ty < 0 || tx >= m.w || ty >= m.h) continue; const i = ty * m.w + tx; if (blocksWalk(m.t[i], fly) || (ok && !ok(i))) continue; const cx = (tx + 0.5) * T, cy = (ty + 0.5) * T; cand.push([hyp(cx - x, cy - y), cx, cy]); }
+  cand.sort((a, b) => a[0] - b[0]);
+  for (const [, cx, cy] of cand) { if (!collide(cx, cy, r, fly)) return { x: cx, y: cy }; for (const [ox, oy] of [[8, 0], [-8, 0], [0, 8], [0, -8]]) if (!collide(cx + ox, cy + oy, r, fly)) return { x: cx + ox, y: cy + oy }; }
+  return null;
+}
+function unstick(e, ok) {
+  if (!collide(e.x, e.y, e.r, false) && (!ok || ok(Math.floor(e.y / T) * G.map.w + Math.floor(e.x / T)))) return false;
+  const p = freeSpot(e.x, e.y, e.r, false, ok) || (ok ? freeSpot(e.x, e.y, e.r, false) : null); if (!p) return false;
+  e.x = p.x; e.y = p.y; e.kx = e.ky = 0; if (e.isHero) { e.dash = null; e.z = 0; G.unstuck = (G.unstuck || 0) + 1; G.lastUnstuck = { id: e.id, x: p.x, y: p.y, t: G.time }; }
+  return true;
+}
+// a room's gates just shut: everyone (heroes, their pets, revived heroes later) is pulled fully inside; foes caught in a gateway are pushed out of it
+function sealInside(set) {
+  const inRoom = i => set.has(i), anchor = G.heroes.find(h => !h.dead && inRoom(Math.floor(h.y / T) * G.map.w + Math.floor(h.x / T))) || G.heroes[0];
+  for (const h of G.heroes) { const i = Math.floor(h.y / T) * G.map.w + Math.floor(h.x / T);
+    if (!inRoom(i) || collide(h.x, h.y, h.r, false)) { const p = freeSpot(inRoom(i) ? h.x : anchor.x, inRoom(i) ? h.y : anchor.y, h.r, false, inRoom); if (p) { if (!inRoom(i)) burst(h.x, h.y, '#fff6c0', 14, 120, 3, 0.5); h.x = p.x; h.y = p.y; h.kx = h.ky = 0; h.dash = null; if (!inRoom(i)) { ring(p.x, p.y, 40, '#fff6c0', 0.4, 3); h.pulledIn = (h.pulledIn || 0) + 1; } } } }
+  for (const a of G.allies || []) if (a.hp > 0 && a.owner && collide(a.x, a.y, a.r || 10, false)) unstick(a, inRoom);
+  for (const f of G.foes) if (ALIVE(f) && !f.fly && collide(f.x, f.y, f.r, false)) unstick(f);
 }
 
 // ---------------------------------------------------------------- map pre-render (procedural tiles)
