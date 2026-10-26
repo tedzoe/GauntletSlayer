@@ -19,9 +19,14 @@ function tickSplash() {
   SPLASH.t += DT;
   if (SPLASH.skip || SPLASH.t >= splashLen()) { scene = 'title'; sceneT = 0; }
 }
+// The starting hero-select screen is ARCHIVED (David, Oct 2026: the camp right after it already has the Hero Shrine and the mode
+// portals). Start goes straight to camp with the last hero played (SAVE.lastHero), else the first hero; more players drop in at camp.
+// tickSelect/drawSelect are kept intact: set HERO_SELECT_SCREEN = true to bring the screen back.
+const HERO_SELECT_SCREEN = false;
+function defaultHeroIdx() { const i = HEROES.findIndex(h => h.id === SAVE.lastHero); return i >= 0 ? i : 0; }
 function tickTitle() {
   if (Input.keyPressed('KeyC')) { scene = 'controls'; CONTROLS_BACK = 'title'; sceneT = 0; return; }
-  const d = sceneT > 0.4 && anyPressed('confirm'); if (d) { Snd.init(); Snd.play('confirm'); SEL.slots = [{ dev: d, idx: 0, ready: false }]; scene = 'select'; sceneT = 0; }
+  const d = sceneT > 0.4 && anyPressed('confirm'); if (d) { Snd.init(); Snd.play('confirm'); if (HERO_SELECT_SCREEN) { SEL.slots = [{ dev: d, idx: 0, ready: false }]; scene = 'select'; sceneT = 0; } else { SEL.slots = [{ dev: d, idx: defaultHeroIdx(), ready: true }]; startParty(); } }
 }
 function tickControls() { const d = anyPressed('back') || anyPressed('confirm'); if (d && sceneT > 0.2) { scene = CONTROLS_BACK; sceneT = 0; if (scene === 'game') menuGuard = 0.2; } }
 function heroTaken(s, idx) { return SEL.slots.some(o => o !== s && o.ready && o.idx === idx); }
@@ -44,7 +49,7 @@ function tickSelect() {
 }
 function startParty() {
   PARTY.length = 0; for (const s of SEL.slots) PARTY.push({ dev: s.dev, hero: HEROES[s.idx].id });
-  newRun(); startHub(); scene = 'game'; sceneT = 0; menuGuard = 0.3; SAVE.stats.runs++; persist();
+  SAVE.lastHero = PARTY[0].hero; newRun(); startHub(); scene = 'game'; sceneT = 0; menuGuard = 0.3; SAVE.stats.runs++; persist();
 }
 function tickResults() {
   if (RESULTS.tally && RESULTS.tally.open) return tickTally(DT);

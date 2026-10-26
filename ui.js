@@ -219,7 +219,7 @@ function drawMenu() {
 // ---------------------------------------------------------------- hub stations
 function rebuildHero(h, heroId) {
   const i = G.heroes.indexOf(h), nh = mkHero(h.pi, heroId || h.id, h.dev);
-  nh.x = h.x; nh.y = h.y; nh.fa = h.fa; G.heroes[i] = nh; PARTY[h.pi].hero = nh.id;
+  nh.x = h.x; nh.y = h.y; nh.fa = h.fa; G.heroes[i] = nh; PARTY[h.pi].hero = nh.id; if (h.pi === 0 && SAVE.lastHero !== nh.id) { SAVE.lastHero = nh.id; persist(); }   // Start opens camp with this hero next time
   G.allies = G.allies.filter(a => a.owner !== h); return nh;
 }
 function beginRun() { G.purse = 0; G.secured = 0; G.bankedRun = 0; G.deathsRun = 0; G.rez = diff().rez; G.victory = false; G.newMasteries = []; for (const h of G.heroes) { h.goldRun = 0; h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 0; h.cd = {}; h.buff = {}; } G.allies = []; }
@@ -357,6 +357,7 @@ function drawTitle() {
   });
   HEROES.forEach((d, i) => txt(d.name, slotX(i), 390, 13, d.color, 'center'));
   if (Math.floor(sceneT * 2) % 2 === 0) txt('Press ENTER / CLICK / (A) to begin', W / 2, 460, 20, '#fff', 'center');
+  txt('Starts at camp with your last hero \u00b7 change hero at the Hero Shrine \u00b7 friends press confirm at camp to join', W / 2, 488, 12, '#bba88a', 'center', 'normal');
   txt('C — controls    ·    up to 4 players: keyboard+mouse, a second keyboard cluster, and gamepads', W / 2, 500, 12, '#bba88a', 'center', 'normal');
   txt(`Banked ${bankTotal()} gold · Worlds ${['w1', 'w2', 'w3'].filter(w => SAVE.progress[w] >= 4).length}/3 · Endless best ${SAVE.endless.best} · Arena best ${SAVE.arena.best}/6`, W / 2, 530, 12, '#998a70', 'center', 'normal');
   txt('An original action-dungeon crawler. All art and sound are generated in code.', W / 2, H - 16, 10, '#665a4a', 'center', 'normal');
