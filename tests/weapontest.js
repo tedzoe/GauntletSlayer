@@ -58,7 +58,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // Gela
     { const { h } = fire('sela', 'base'); out.gela_base = { cd: WT.cd(h) }; }
     { const { h, before } = fire('sela', 'splitter'); const ss = G.shots.slice(before.shots); out.gela_splitter = { cd: WT.cd(h), shields: ss.length, fanDeg: Math.round((Math.atan2(ss[2].vy, ss[2].vx) - Math.atan2(ss[0].vy, ss[0].vx)) * 180 / Math.PI), pierce: ss[0].pierce }; }
-    { const h = WT.equip('sela', 'vanguard'); for (let i = 0; i < 9; i++) shoot({ team: 'foe', x: h.x + 40, y: h.y + (i % 3 - 1) * 4, vx: -10, vy: 0, dmg: 5, r: 5, life: 3, kind: 'arrow' }); h.atkT = 0; KITS.sela(h, WT.I('secondary'), 1 / 60); const first = h.lastDeflect; h.atkT = 0; KITS.sela(h, WT.I('ability'), 1 / 60); out.gela_vanguard = { cd: WT.cd(h), broken: first, capped: h.lastDeflect, stamina: Math.round(h.stam) }; }
+    { const h = WT.equip('sela', 'vanguard'); for (let i = 0; i < 9; i++) shoot({ team: 'foe', x: h.x + 40, y: h.y + (i % 3 - 1) * 4, vx: -10, vy: 0, dmg: 5, r: 5, life: 3, kind: 'arrow' }); h.atkT = 0; KITS.sela(h, WT.I('ability'), 1 / 60); const first = h.lastDeflect;   /* Intercept is on the ability button; the secondary is the javelin */ h.atkT = 0; KITS.sela(h, WT.I('ability'), 1 / 60); out.gela_vanguard = { cd: WT.cd(h), broken: first, capped: h.lastDeflect, stamina: Math.round(h.stam) }; }
     { const { h } = fire('sela', 'ricochet', () => { for (let i = 0; i < 6; i++) WT.foe('shambler', 60 + i * 90, (i % 2) * 20); }); const cd0 = WT.cd(h); WT.tick(2.5); out.gela_ricochet = { cd: cd0, hitFoes: G.foes.filter(f => f.hp < 5000).length, hop: SPEC.wpn.ricochetHop }; }
     // Isaac
     { const { h } = fire('kestrel', 'base'); out.isaac_base = { cd: WT.cd(h), r: SPEC.wpn.mortarR }; }
@@ -75,7 +75,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (const w of ['base', 'hollow', 'ashen']) { const h = WT.equip('mirelle', w); const cds = []; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { h.spell = [a, b]; cds.push(+spellCdOf(h).toFixed(2)); } out['zoey_' + w] = cds; }
     return out;
   });
-  chk('Theo Destructo-Spin: 3.5s spin, 12s cd, 2m radius', wres.theo_base, { spin: 3.5, cd: 12, r: 64 });
+  chk('Theo Destructo-Spin: 2.5s spin (Slayer reference), 12s cd, 2m radius', wres.theo_base, { spin: 2.5, cd: 12, r: 64 });
   chk('Theo Thrown Axe: 5s, one T2 projectile', wres.theo_axe, { cd: 5, shot: 1, tier: 2 });
   chk('Theo Turbo-Slam: 7s, hits, resets elite wind-up, stuns', wres.theo_turbo, { cd: 7, hit: 1, windupReset: true, stun: true });
   chk('Theo Demonic Cleave: 8s, 6m line of 4s fire', wres.theo_demonic, g => g.cd === 8 && g.fireTiles >= 5 && g.fireLife === 4 && g.len === 6);
@@ -91,9 +91,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Vesper Summon Shades: all 100 essence, elite hunters', wres.vesper_lantern, { cd: 0, essence: 0, shades: 4, hunter: true });
   chk('Vesper Sacrificial Detonation: 10 essence, blasts on each skeleton', wres.vesper_marrow, g => g.cd === 0 && g.essenceLeft === 50 && g.rushed === 2 && g.blasts === 2 && g.atSkeleton);
   chk('David weapon cooldowns: Slam 9, Hammer 6, Lance 7, Pulse 10', [wres.david_base.cd, wres.david_hammer.cd, wres.david_lance.cd, wres.david_sanctuary.cd], [9, 6, 7, 10]);
-  chk('Zoey Spellweaver cooldowns = spec matrix', wres.zoey_base, [0, 6, 4, 5, 0, 8, 2, 3, 10]);
+  chk('Zoey Spellweaver cooldowns = spec matrix', wres.zoey_base, [0, 6, 2, 3, 0, 20, 1, 1, 20]);
   chk('Zoey Hollow Chapters: even 5s cooldowns', wres.zoey_hollow, [5, 5, 5, 5, 5, 5, 5, 5, 5]);
-  chk('Zoey Firebound Tomes: +20% cooldowns', wres.zoey_ashen, [0, 7.2, 4.8, 6, 0, 9.6, 2.4, 3.6, 12]);
+  chk('Zoey Firebound Tomes: +20% cooldowns', wres.zoey_ashen, [0, 7.2, 2.4, 3.6, 0, 24, 1.2, 1.2, 24]);
   const school = await ev(() => { const r = {}; for (const w of ['hollow', 'ashen']) { const h = WT.equip('mirelle', w); WT.foe('shambler', 120); h.spell = [1, 2]; const n0 = G.hazards.length; spellOf(h).cast(h); TT.run(0.8); r[w] = { name: spellOf(h).name, zone: G.hazards.some(z => z.kind === 'gloom' && z.tier === 2), dmg: Math.round(5000 - G.foes[0].hp) }; } return r; });
   chk('Hollow Chapters spell = persistent T2 shadow zone', school.hollow, g => g.zone && g.dmg > 0);
   chk('Firebound Tomes spell = explosive splash', school.ashen, g => g.dmg > 0);
@@ -112,7 +112,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Spell queue: combo entered during recovery fires when recovery ends', q, g => g.queued && g.during === g.first && g.after === 'Static Ward');
   // ======================= utility moves
   const ep = await ev(() => { const h = WT.equip('sela', 'base'); const f = WT.foe('shambler', 50); f.spd = 0; const x0 = f.x, h0 = f.hp; KITS.sela(h, WT.I('ability'), 1 / 60); const swing = h0 - f.hp; TT.run(1.0); return { swingDmg: swing, knockPx: Math.round(f.x - x0), crushed: !!f.crushed }; });
-  chk('Extreme Prejudice: DEV.dmg.gela.execHit (40) swing damage (David deviation), big knockback in the open', ep, g => g.swingDmg === 40 && g.knockPx >= 100 && !g.crushed);
+  chk('Extreme Prejudice: 70 swing damage (Slayer reference), big knockback in the open', ep, g => g.swingDmg === 70 && g.knockPx >= 100 && !g.crushed);
   const crush = await ev(() => { const h = WT.equip('sela', 'base'); h.x = 36 * 32; const g = WT.foe('hulk', 40, 0, 900); g.elite = true; const sk = WT.foe('shambler', 40, 40, 300); KITS.sela(h, WT.I('ability'), 1 / 60); TT.run(0.6); return { wall: Math.round((38 * 32 - g.x)), eliteCrushed: g.crushed || 0, eliteDmg: Math.round(900 - Math.max(0, g.hp)), eliteStun: +g.stag.toFixed(1), gruntDead: !ALIVE(sk) }; });
   chk('Wall crush: T4 damage + 2s stun on elites, grunts executed', crush, g => g.eliteCrushed >= 1 && g.eliteDmg >= 60 && g.eliteStun >= 1.5 && g.gruntDead);
   const feast = await ev(() => { const r = {}; for (const fl of [5, 40]) { TT.setup(['brannoc']); beginRun(); startEndlessFloor(fl); const h = G.heroes[0]; h.talisman = 'base'; h.potions = 1; G.foes.forEach(f => f.hp = f.maxhp = 1e6); const h0 = G.foes.reduce((a, f) => a + f.hp, 0); usePotion(h); for (let i = 0; i < 30; i++) updatePickups(1 / 60); r[fl] = { food: G.pickups.filter(i => i.talisman && (i.kind === 'ration' || i.kind === 'feast') && !i.dead).length, dmg: Math.round(h0 - G.foes.reduce((a, f) => a + f.hp, 0)) }; } return r; });
@@ -133,7 +133,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (let i = 0; i < 3; i++) { h.atkT = 0; DEBUG.on = true; DEBUG.log = []; KITS.paladin(h, WT.I('primary'), 1 / 60); tiers.push(DEBUG.log.length ? DEBUG.log[0].tier : 0); }
     DEBUG.on = false; out.combo = tiers;
     h.cd = {}; KITS.paladin(h, WT.I('secondary'), 1 / 60); for (let i = 0; i < 50; i++) KITS.paladin(h, { pressed: {}, down: { secondary: true }, mx: 0, my: 0, dev: 'kb1' }, 1 / 60); e.stag = 0; KITS.paladin(h, WT.N(), 1 / 60);
-    out.judgment = { cd: WT.cd(h, 'secondary'), hit: h.lastJudgment, stun: +e.stag.toFixed(1) };
+    out.judgment = { cd: WT.cd(h, 'secondary'), hit: h.lastJudgment, stun: +e.stag.toFixed(1), executed: e.hp <= 0 };
     // Holy Bulwark: block, reflect, stamina, perfect
     h.blocking = false; KITS.paladin(h, WT.I('defend'), 1 / 60); const r1 = hurtHero(h, 5, { x: h.x + 30, y: h.y, proj: true }); G.time += 1; const st0 = h.stam; const r2 = hurtHero(h, 10, { x: h.x + 30, y: h.y, foe: e }); out.bulwark = { reflect: r1, meleeBlocked: r2, stamDrained: st0 - h.stam > 0, hp: h.hp };
     // Righteous Advance
@@ -156,8 +156,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     TT.setup(['paladin', 'brannoc']); TT.testRoom(); h = G.heroes[0]; SAVE.owned.paladin.talismans.push('layhands'); h.talisman = 'layhands'; h.potions = 1; h.hp = 40; const d = G.heroes[1]; d.x = h.x + 60; d.y = h.y; killHero(d); G.rez = 0; usePotion(h);
     out.lay = { revived: !d.dead, allyFull: d.hp === d.maxHp, selfFull: h.hp === h.maxHp, coinsUsed: G.rez };
     return out; });
-  chk('Crusader combo tiers T1, T1, T2', pal.combo, [1, 1, 2]);
-  chk('Judgment: charged T3 overhead stuns, 1.6s cd', pal.judgment, g => g.cd === 1.6 && g.hit >= 1 && g.stun >= 1);
+  chk('Crusader combo tiers T1, T1, T3 (18 / 18 / strong 48)', pal.combo, [1, 1, 3]);
+  chk('Judgment: full charge is a Lethal 50 (executes a non-elite) or stuns, 1.6s cd', pal.judgment, g => g.cd === 1.6 && g.hit >= 1 && (g.stun >= 1 || g.executed));
   chk('Holy Bulwark: reflects missiles, front melee blocked, no stamina drain (David: shields have no limits)', pal.bulwark, g => g.reflect === 'reflect' && g.meleeBlocked === false && !g.stamDrained && g.hp === 200);
   chk('Righteous Advance: armored dash, 5s cd', pal.advance, { cd: 5, armored: true });
   chk('Consecration: 3m, 5s, 12s cd, T1 ticks foes, heals ally 2 bar HP/tick', pal.consecration, g => g.cd === 12 && g.r === 96 && g.life === 5 && g.ticks >= 4 && g.allyHealed >= 16 && g.foeDmg > 0);

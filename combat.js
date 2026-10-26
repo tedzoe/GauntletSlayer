@@ -10,7 +10,7 @@ function mkFoe(type, x, y, o = {}) {
   f.maxhp = f.hp; G.foes.push(f); return f;
 }
 const ALIVE = e => !e.dead && e.hp > 0;
-function heroDmg(h, base) { return base * h.mods.dmg * (h.buff.titan > 0 ? 1.6 : 1) * (h.buff.valk > 0 ? 1.3 : 1) * (G.mods.glass ? 1.5 : 1); }
+function heroDmg(h, base) { return base * h.mods.dmg * (h.buff.titan > 0 ? DEV.dmg.theo.titanMul : 1) * (h.buff.valk > 0 ? 1.3 : 1) * (G.mods.glass ? 1.5 : 1); }
 function hitFoe(f, dmg, o = {}) {
   if (!ALIVE(f)) return false;
   if (roomAsleep(f.room)) wakeRoom(f.room, 'hit');
@@ -29,9 +29,9 @@ function hitFoe(f, dmg, o = {}) {
   if (tier >= 3) { if (f.conjuring > 0) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; text(f.x, f.y - 30, 'INTERRUPTED', '#ffd27a'); } if (f.state === 'windup' && f.elite) f.state = 'move';
     const hh = o.src && o.src.isHero ? o.src : null; if (hh) { f.t3Lock = 4; f.t3By = hh; } }
   const shatter = f.frz > 0 && tier >= 3 && !f.boss; if (shatter) dmg *= SHATTER.mul;   // frozen + T3/T4 = x2
-  if (tier >= 4 && !f.boss && !f.elite && !f.heavy && f.type !== 'reaper') { f.hp = 0; text(f.x, f.y - 22, 'EXECUTE', '#ffcf5a'); killFoe(f, o.src, o); return true; }
+  if ((o.tier >= 4 || o.lethal) && !f.boss && (!f.elite || (o.lethal && f.d.beh === 'caster')) && !f.heavy && f.type !== 'reaper') { f.hp = 0; text(f.x, f.y - 22, 'EXECUTE', '#ffcf5a'); killFoe(f, o.src, o); return true; }   // Lethal kills small foes and casters
   if (!f.boss) { const st = TIER_STAGGER[tier] * (f.heavy || f.elite ? (tier >= 3 ? 0.6 : 0.2) : 1); if (st > (o.stagger || 0)) o = Object.assign({}, o, { stagger: st }); if (tier >= 4) o = Object.assign({}, o, { knock: Math.max(o.knock || 0, 600) }); }
-  if (o.src && o.src.isHero && f.charm > 0) return false;
+  if (o.src && o.src.isHero && f.charm > 0) { if (o.tag === 'bomb') return false; dmg *= 2; }   // charmed foes don't defend: x2 (Neoseeker FAQ); mortars and bombs spare them
   if (f.type === 'reaper' || f.invuln) {
     if (o.repel && f.type === 'reaper') repelReaper(f);
     if (!o.silent) { Snd.play('tink'); sparkDir(f.x, f.y, R(0, 6.28), '#9ff', 3, 120); }
@@ -54,7 +54,7 @@ function hitFoe(f, dmg, o = {}) {
   if (o.freeze && !f.boss) f.frz = Math.max(f.frz, o.freeze * (f.heavy ? 0.6 : 1));
   if (o.slow) { f.slowT = Math.max(f.slowT, o.slow); f.slowM = Math.min(f.slowT > 0 ? f.slowM : 1, o.slowM || 0.5); }
   if (o.root && !f.boss) f.root = Math.max(f.root, o.root);
-  if (o.burn) { f.burn = Math.max(f.burn, o.burn); f.burnT = 3; }
+  if (o.burn) { f.burn = Math.max(f.burn, o.burn); f.burnT = Math.max(f.burnT || 0, o.burnT || 3); }
   if (o.hitstop) hitstop(o.hitstop);
   if (o.shake) addTrauma(o.shake);
   if (dmg >= 0.5 && !o.quiet) text(f.x + R(-6, 6), f.y - f.r - 4, Math.round(dmg), dmg >= 25 ? '#ffcf5a' : '#fff');
@@ -156,6 +156,7 @@ function hurtHero(h, dmg, o = {}) {
   if (h.bubble && !blockedFront) { h.bubble = false; text(h.x, h.y - 30, 'BUBBLE POPPED', '#bfefff'); ring(h.x, h.y, 34, '#bfefff', 0.3, 4); Snd.play('tink'); return false; }
   if (!o.raw) dmg *= HP_SCALE;   // internal HP is 2x the spec, so enemy hits scale with it
   if (h.dash && h.dash.armor && dmg <= 24 * HP_SCALE) o = Object.assign({}, o, { knock: 0 });   // Furious Charge armor shrugs off T1/T2 hits
+  if (h.thrust && !h.thrust.fx && h.id === 'sela') { h.thrust = null; text(h.x, h.y - 30, 'KNOCKED OUT', '#cfeaff'); }   // hit in the thrust start-up pause
   if (h.blocking && o.x !== undefined) {
     const a = Math.atan2(o.y - h.y, o.x - h.x);
     let guard = Math.abs(angDiff(a, h.fa)) < (SH ? SH.blockArc / 2 : 1.15);
@@ -165,8 +166,10 @@ function hurtHero(h, dmg, o = {}) {
     if (guard) {
       h.blockFlash = 0.15; Snd.play(h.id === 'sela' ? 'windblock' : 'clank'); sparkDir(h.x + Math.cos(h.fa) * 16, h.y + Math.sin(h.fa) * 16, h.fa, h.id === 'sela' ? '#cfeaff' : '#fff2b0', 8);
       mastery(h, 'signature', 1);
-      if (h.id === 'sela' && o.foe && SKELETAL(o.foe) && ALIVE(o.foe)) killFoe(o.foe, h, { tag: 'block' });   // bones shatter on the raised shield
-      if (o.proj) { if (h.id === 'sela') { mastery(h, 'blockedShots', 1); return h.mods.reflect || perfect ? 'reflect' : false; } return 'reflect'; }   // Holy Bulwark always throws missiles back
+      if (h.id === 'sela' && o.foe && SMALL_FOE(o.foe) && ALIVE(o.foe)) killFoe(o.foe, h, { tag: 'block' });   // small foes shatter on the raised shield
+      if (o.slow) h.slowT = Math.max(h.slowT, o.slow);   // the shield does not stop slows
+      if (h.id === 'sela') gelaShieldBash(h);   // struck: bash and push back everything in front
+      if (o.proj) { if (h.id === 'sela') { mastery(h, 'blockedShots', 1); return 'reflect'; } return 'reflect'; }   // the Valkyrie deflects missiles back; Holy Bulwark too
       if (SH) { if (o.foe && ALIVE(o.foe) && !o.foe.boss) { o.foe.kx += Math.cos(h.fa) * 260; o.foe.ky += Math.sin(h.fa) * 260; } return false; }   // front block: invulnerable, shoves the attacker back
       dmg *= 0.1; o = Object.assign({}, o, { knock: (o.knock || 0) * 0.3 });
     }
@@ -203,7 +206,7 @@ function killHero(h) {
 function resetHeroTimers(h) {
   h.cd = {}; h.spellCd = {}; h._cdm = {}; h._rdy = {};
   for (const k of ['atkT', 'slamT', 'throwT', 'comboT', 'heavyT', 'hbT', 'gT', 'runeT', 'rayT', 'finT', 'drainT', 'absorbT', 'spikeT', 'lock', 'blockBroken', 'stamT', 'dashMsg', 'gateMsg']) if (h[k]) h[k] = 0;
-  h.dash = null; h.charging = null; h.thrust = null; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
+  h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
   if (h.relicState) h.relicState = null;
 }
 function reviveCost() { return 0; }   // revives cost rez coins, not gold
@@ -615,11 +618,12 @@ function shotCollide(s) {
       if (Math.abs(f.x - s.x) > f.r + s.r || Math.abs(f.y - s.y) > f.r + s.r || hyp(f.x - s.x, f.y - s.y) > f.r + s.r) continue;
       s.hit.add(f);
       const a = Math.atan2(s.vy, s.vx);
-      hitFoe(f, s.dmg, Object.assign({ x: s.x - Math.cos(a) * 20, y: s.y - Math.sin(a) * 20, kx: Math.cos(a) * (s.knock || 60), ky: Math.sin(a) * (s.knock || 60), src: s.owner, sigKill: s.sig, shot: s.kind }, s.fx || {}));
+      hitFoe(f, s.dmg, Object.assign({ x: s.x - Math.cos(a) * 20, y: s.y - Math.sin(a) * 20, kx: Math.cos(a) * (s.knock || 60), ky: Math.sin(a) * (s.knock || 60), src: s.owner, sigKill: s.sig, shot: s.kind, tier: s.tier, lethal: s.lethal }, s.fx || {}));
+      if (s.dmgAfter !== undefined) s.dmg = s.dmgAfter;   // Root Shot: first foe takes the full hit, the rest less
       s.onHit && s.onHit(s, f);
       if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; }
     }
-    for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); hitSpawner(sp, s.dmg, s.owner); if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; } }
+    for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); hitSpawner(sp, s.dmg, s.owner, { tier: s.tier, spawnerHits: s.spawnerHits }); if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; } }
     for (const p of G.props) if (p.hp > 0 && p.kind !== 'legend' && hyp(p.x - s.x, p.y - s.y) < p.r + s.r) { hitProp(p, s.dmg, { src: s.owner }); s.dead = true; s.onEnd && s.onEnd(s); return; }
     if (!s.noFood) for (const it of G.pickups) if (!it.dead && (it.kind === 'ration' || it.kind === 'feast' || it.kind === 'potion') && hyp(it.x - s.x, it.y - s.y) < 10 + s.r) { smashFood(it, s.owner); if (!s.big) { s.dead = true; return; } }
     for (const hz of G.hazards) if (hz.kind === 'bomb' && !hz.done && s.owner && s.owner.id === 'kestrel' && hyp(hz.x - s.x, hz.y - s.y) < 16) { hz.boost = true; hz.t = hz.delay; s.dead = true; return; }
@@ -628,7 +632,7 @@ function shotCollide(s) {
     for (const h of G.heroes) {
       if (h.dead || hyp(h.x - s.x, h.y - s.y) > h.r + s.r) continue;
       const res = hurtHero(h, s.dmg, { x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, proj: true, knock: 80, slow: s.slow, freeze: s.freeze });
-      if (res === 'reflect' && s.reflectable !== false) { s.team = 'hero'; s.vx *= -1.2; s.vy *= -1.2; s.dmg *= 1.5; s.owner = h; s.hit = new Set(); s.life = 1.5; s.homing = 0; text(h.x, h.y - 30, 'REFLECT', '#fff2b0'); return; }
+      if (res === 'reflect' && s.reflectable !== false) { s.team = 'hero'; s.vx *= -1.2; s.vy *= -1.2; s.dmg *= h.id === 'sela' ? SPEC.gela.reflectMul : 1.5; s.owner = h; s.hit = new Set(); s.life = 1.5; s.homing = 0; text(h.x, h.y - 30, 'REFLECT', '#fff2b0'); return; }
       if (res === false && (h.inv > 0 || h.ethereal > 0)) continue;
       s.dead = true; burst(s.x, s.y, s.col || '#f8a', 6, 100, 2, 0.3); return;
     }
@@ -656,10 +660,10 @@ function updateBoomer(s, dt) { // returning missiles (shield throw, hatchets)
     if (!ALIVE(f) || s.hit.has(f) || f.charm > 0 || hyp(f.x - s.x, f.y - s.y) > f.r + s.r) continue;
     s.hit.add(f); b.hits++;
     const a = Math.atan2(s.vy, s.vx);
-    hitFoe(f, s.dmg, { x: s.x, y: s.y, kx: Math.cos(a) * 180, ky: Math.sin(a) * 180, stagger: Math.max(0.35, (s.fx && s.fx.stagger) || 0), tier: s.tier, src: owner, hitstop: 0.03, sigKill: s.sig, shot: s.kind });
+    hitFoe(f, s.dmg, { x: s.x, y: s.y, kx: Math.cos(a) * 180, ky: Math.sin(a) * 180, stagger: Math.max(0.35, (s.fx && s.fx.stagger) || 0), tier: s.tier, lethal: s.lethal, src: owner, hitstop: 0.03, sigKill: s.sig, shot: s.kind });
     if (b.seek) b.tgt = null;
   }
-  for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); if (!s.noSpawner) hitSpawner(sp, s.dmg, owner); else { s.dead = true; text(sp.x, sp.y - 20, 'no effect', '#aaa'); } b.hits++; }   // Isaac's rapid shots glance off spawners
+  for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); if (!s.noSpawner) hitSpawner(sp, s.dmg, owner, { tier: s.tier, spawnerHits: s.spawnerHits }); else { s.dead = true; text(sp.x, sp.y - 20, 'no effect', '#aaa'); } b.hits++; }   // Isaac's rapid shots glance off spawners
   for (const it of G.pickups) if (!it.dead && (it.kind === 'ration' || it.kind === 'feast' || it.kind === 'potion') && hyp(it.x - s.x, it.y - s.y) < 10 + s.r) smashFood(it, owner);   // the bouncing shield wrecks food too
   for (const p of G.props) if (p.hp > 0 && p.kind !== 'legend' && hyp(p.x - s.x, p.y - s.y) < p.r + s.r) hitProp(p, 1, { src: owner });
 }
@@ -727,14 +731,14 @@ function nearSpikes(h) { for (let dy = -3; dy <= 3; dy++) for (let dx = -3; dx <
 
 // ---------------------------------------------------------------- allies (skeletons, gargoyle, illusions, sprites, shades)
 const ALLY = {
-  warrior: { hp: 70, spd: 125, r: 11, dmg: 9, reach: 22, rate: 0.8, col: '#e8e0c8' },
-  archer: { hp: 45, spd: 115, r: 11, dmg: 6, ranged: true, rate: 0.9, col: '#d8d0b8' },
+  warrior: { hp: 70, spd: 125, r: 11, dmg: 8, reach: 22, rate: 0.8, col: '#e8e0c8' },
+  archer: { hp: 45, spd: 115, r: 11, dmg: 14, ranged: true, rate: 0.9, col: '#d8d0b8' },
   shade: { hp: 1, spd: 260, r: 9, dmg: 24, explode: true, life: 6, col: '#7ff5d0' },
   gargoyle: { hp: 140, spd: 130, r: 14, dmg: 12, ranged: true, rate: 1.0, fly: true, life: 20, col: '#8a8a9a' },
-  illusion: { hp: 60, spd: 150, r: 12, dmg: 7, ranged: true, rate: 0.5, life: 12, col: '#bfe8ff' },
-  sprite: { hp: 1, spd: 0, r: 8, dmg: 10, orbit: true, life: 12, col: '#d8ff8a' },
+  illusion: { hp: 60, spd: 150, r: 12, dmg: 12, ranged: true, rate: 0.5, life: 12, col: '#bfe8ff' },
+  sprite: { hp: 1, spd: 0, r: 8, dmg: 14, orbit: true, life: 12, col: '#d8ff8a' },
   // Vesper Linda's minions
-  spear: { hp: 60, spd: 125, r: 11, dmg: 11, reach: 34, rate: 0.85, col: '#e8e0c8' },
+  spear: { hp: 60, spd: 125, r: 11, dmg: 8, reach: 34, rate: 0.85, col: '#e8e0c8' },
   guard: { hp: 190, spd: 100, r: 13, dmg: 6, reach: 20, rate: 1.0, col: '#c8c0b0', taunt: true, armor: 0.4 },
   mage: { hp: 45, spd: 110, r: 11, dmg: 10, ranged: true, rate: 1.1, col: '#b07aff', shot: 'soulbolt' },
   wraith: { hp: 40, spd: 210, r: 10, dmg: 8, reach: 16, rate: 0.5, fly: true, life: 16, col: '#9a7aff', slow: true },

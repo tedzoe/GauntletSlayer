@@ -58,7 +58,7 @@ function updateHero(h, inp, dt) {
   else if (inp.mx || inp.my) { h.ax = inp.mx; h.ay = inp.my; h.aimPt = null; }
   let fa = Math.atan2(h.ay, h.ax);
   if (inp.aim !== 'mouse' && inp.aim !== 'stick') fa = autoAim(h, fa);
-  if (!h.dash && !h.channelLock) h.fa = fa;
+  if (!h.dash && !h.channelLock && !(h.id === 'sela' && h.blocking && inp.aim !== 'mouse' && inp.aim !== 'stick')) h.fa = fa;   // Gela strafes behind her shield
   h.aimDist = h.aimPt ? hyp(h.aimPt.x - h.x, h.aimPt.y - h.y) : null;
   // knockback
   if (h.kx || h.ky) { moveEnt(h, clamp(h.kx * dt, -12, 12), clamp(h.ky * dt, -12, 12), false, g => tryGate(h, g)); h.kx *= Math.pow(0.002, dt); h.ky *= Math.pow(0.002, dt); if (Math.abs(h.kx) + Math.abs(h.ky) < 8) h.kx = h.ky = 0; }
@@ -95,10 +95,28 @@ function heroDash(h, inp) {
     startDash(h, h.fa, D.dist, D.dur, { inv: D.iframes, trail: 'rgba(190,224,255,0.6)', trailSize: 7, stopOnWall: true });
     return true;
   }
-  if (h.id === 'sela' || h.id === 'paladin') KITS[h.id](h, fake({ secondary: true }, { defend: true, secondary: true }), 0);
+  if (h.id === 'sela') gelaCharge(h);
+  else if (h.id === 'paladin') KITS[h.id](h, fake({ secondary: true }, { defend: true, secondary: true }), 0);
   else KITS[h.id](h, fake({ defend: true }, { defend: true }), 0);
   if (h.id === 'sela' || h.id === 'paladin') h.blocking = false;
   return !cdReady(h, D.cdKey);
+}
+// Gela's Shield Charge (dash button): burst forward behind the shield; skeletons shatter, others take 8 and fall over
+function gelaCharge(h) {
+  const S = SPEC.gela, D = DEV.dmg.gela; if (!cdReady(h, 'scharge')) return;
+  setCd(h, 'scharge', S.chargeCd); Snd.play('rush'); h.thrust = null;
+  startDash(h, h.fa, 170, 0.22, { trail: 'rgba(200,230,255,0.5)', hitR: 8, armor: true, inv: 0.1, onHitFoe: f => { if (SKELETAL(f)) killFoe(f, h, { tag: 'block' }); else hitFoe(f, heroDmg(h, D.charge), { x: h.x, y: h.y, knock: 380, stagger: f.heavy || f.elite ? 0.6 : 1.0, src: h, tier: 1 }); } });
+}
+// small foes (Valkyrie guide: ghosts, skeletons, baby spiders) die when they touch Gela's raised shield
+const SMALL_FOE = f => !f.boss && !f.elite && !f.heavy && f.type !== 'reaper' && (SKELETAL(f) || f.d.beh === 'wraith' || (f.d.hp || 99) <= 12);
+// Shield struck: bash and push back ALL foes directly in front (0 damage), interrupt casters behind them, open a follow-up window
+function gelaShieldBash(h) {
+  const S = SPEC.gela; if (G.time - (h.lastBashAt || -9) < S.bashEvery) return 0; h.lastBashAt = G.time; h.bashWin = S.bashWindow;
+  let n = 0; swingFx(h, h.fa, S.blockArc, S.bashR, 'rgba(220,240,255,0.9)', 8, 0.14);
+  for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper') continue; const d = hyp(f.x - h.x, f.y - h.y), off = Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa));
+    if (d < S.bashR + f.r && off < S.blockArc / 2) { const big = f.heavy || f.elite, k = big ? 0.5 : 1; f.kx += Math.cos(h.fa) * S.bashKnock * k; f.ky += Math.sin(h.fa) * S.bashKnock * k; f.stag = Math.max(f.stag, big ? 0.8 : 1.2);   /* Stagger Large, Knockdown Small */ if (f.state === 'windup') f.state = 'move'; n++; }
+    else if (d < S.bashInterruptR && off < S.blockArc / 2 && (f.conjuring > 0 || (f.state === 'windup' && /caster|ranged|lobber/.test(f.d.beh)))) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; f.state = 'move'; f.atkT = Math.max(f.atkT || 0, 0.6); text(f.x, f.y - 30, 'INTERRUPTED', '#cfeaff'); n++; } }
+  h.lastBash = n; return n;
 }
 function autoAim(h, fa) { // soft aim assist for keyboard players
   let best = null, bs = 0.55;
@@ -167,38 +185,49 @@ const KITS = {
   // ------------------------------------------------ Sir Theo (id 'brannoc'): melee spinner
   brannoc(h, inp, dt) {
     const S = SPEC.theo;
-    // Whirlwind (Destructo-Spin): 3.5s of full i-frames, ~5 ticks/s, large circle that follows Theo, 12s cooldown
+    const D = DEV.dmg.theo;
+    // Whirlwind (Destructo-Spin): 2.5s of full i-frames, 8 ticks of 20 (reference 8 x 20 = 160), large circle that follows Theo, 12s cooldown
     if (h.spin > 0) {
       h.spin -= dt; h.spinTick -= dt; h.moveMul = 0.85; h.fa += dt * 18;
       if (h.spinTick <= 0) {
-        h.spinTick = 1 / DEV.dmg.theo.spinTicksPerSec; Snd.play('spin');
-        const n = areaHit(h.x, h.y, S.spinR, heroDmg(h, DEV.dmg.theo.spinTick * (1 + h.mods.ability)), { src: h, knock: 200, stagger: 0.2, sigKill: true, tag: 'spin', tier: 2 });
+        h.spinTick = D.spinTime / D.spinTicks; Snd.play('spin');
+        const n = areaHit(h.x, h.y, S.spinR, heroDmg(h, D.spinTick * (1 + h.mods.ability)), { src: h, knock: 200, stagger: 0.2, sigKill: true, tag: 'spin', tier: 2 });
         if (n) { hitstop(0.02); mastery(h, 'signature', n); }
         G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 6.28, r: S.spinR, life: 0.16, max: 0.16, col: 'rgba(255,220,160,0.55)', w: 6, follow: h });
       }
       if (h.spin <= 0) setCd(h, 'ability', abilityCd(h, S.spinCd));
       return;
     }
-    // 4th-swing finisher: 1.5m circle, active for 24 frames
-    if (h.finT > 0) { h.finT -= dt; areaHit(h.x, h.y, S.finisherR, heroDmg(h, DMG.medium), { src: h, knock: 260, stagger: 0.45, set: h.finSet, tier: 2 }); }
-    // Furious Charge (defend): 5s cooldown, medium damage, narrow line, armor vs T1/T2, kills skeletons outright
+    // 7th-swing finisher: 1.5m circle, active for 24 frames, strong hit (42, Stagger Large)
+    if (h.finT > 0) { h.finT -= dt; areaHit(h.x, h.y, S.finisherR, heroDmg(h, D.combo[S.combo - 1]), { src: h, knock: 300, stagger: 0.8, set: h.finSet, tier: 3 }); }
+    // Super Slash (Rush + attack): a fast 4-hit chain 42 / 14 / 14 / 42
+    if (h.superSlash) { const ss = h.superSlash; ss.t -= dt; h.moveMul = 0.3;
+      if (ss.t <= 0) { const v = D.superSlash[ss.i], strong = v >= 40; ss.t = D.superT / hasteMul(h); ss.i++;
+        Snd.play(strong ? 'heavyswing' : 'swing'); swingFx(h, h.fa, strong ? 2.4 : S.comboArc, S.comboR + 10, 'rgba(255,220,150,0.95)', strong ? 8 : 5); G.swings[G.swings.length - 1].dir = ss.i % 2 ? 1 : -1;
+        melee(h, h.fa, strong ? 2.4 : S.comboArc, S.comboR + 6, v, { knock: strong ? 260 : 110, stagger: strong ? 0.8 : 0.15, hitstop: strong ? 0.05 : 0.03, tier: strong ? 3 : 1, tag: 'superSlash' });
+        if (ss.i >= D.superSlash.length) { h.superSlash = null; h.atkT = 0.3 / hasteMul(h); h.combo = 0; h.comboT = 0; } }
+      return; }
+    if (h.rushWin > 0 && !h.dash && inp.pressed.primary && h.atkT <= 0) { h.rushWin = 0; h.superSlash = { i: 0, t: 0 }; text(h.x, h.y - 34, 'SUPER SLASH', '#ffcf7a'); return; }
+    // Rush / Furious Charge (defend): 5s cooldown, 8 damage (reference), knocks small foes down, armor vs T1/T2, kills skeletons outright
     if (inp.pressed.defend && cdReady(h, 'defend')) {
       setCd(h, 'defend', S.chargeCd); Snd.play('rush'); h.rushWin = 0.55;
-      const thru = f => { mastery(h, 'chargeThrough', 1); if (SKELETAL(f)) killFoe(f, h, { tag: 'charge' }); else hitFoe(f, heroDmg(h, DMG.medium), { x: h.x, y: h.y, knock: 320, stagger: 0.4, src: h, tag: 'charge', tier: 2 }); };
-      if (h.mods.leap) startDash(h, h.fa, S.chargeDist + 20, 0.32, { jump: true, armor: true, inv: 0.12, onHitFoe: thru, hitR: S.chargeWidth, onEnd: () => { Snd.play('slam'); addTrauma(0.3); ring(h.x, h.y, 70, '#ffcf7a', 0.3, 6); areaHit(h.x, h.y, 70, heroDmg(h, DMG.medium), { src: h, knock: 300, stagger: 0.6, tag: 'charge', tier: 2 }); } });   // Bull Rush mastery: leap smash
+      const thru = f => { mastery(h, 'chargeThrough', 1); if (SKELETAL(f)) killFoe(f, h, { tag: 'charge' }); else hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 320, stagger: f.heavy || f.elite ? 0.4 : 1.0, src: h, tag: 'charge', tier: 1 }); };
+      if (h.mods.leap) startDash(h, h.fa, S.chargeDist + 20, 0.32, { jump: true, armor: true, inv: 0.12, onHitFoe: thru, hitR: S.chargeWidth, onEnd: () => { Snd.play('slam'); addTrauma(0.3); ring(h.x, h.y, 70, '#ffcf7a', 0.3, 6); areaHit(h.x, h.y, 70, heroDmg(h, D.rush), { src: h, knock: 300, stagger: 0.8, tag: 'charge', tier: 1 }); } });   // Bull Rush mastery: leap smash
       else startDash(h, h.fa, S.chargeDist, 0.22, { trail: 'rgba(255,200,140,0.5)', hitR: S.chargeWidth, armor: true, inv: 0.12, onHitFoe: thru });
       return;
     }
-    // 4-swing axe combo: swings 1-3 light in a narrow front arc, swing 4 a medium 360 finisher
+    // 7-swing axe combo (reference): weak 14s in a narrow front arc, swing 4 a strong 42 wide cleave, swing 7 a strong 42 360 finisher
     if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
       h.combo = h.comboT > 0 ? (h.combo + 1) % S.combo : 0; h.comboT = 0.75;
-      const fin = h.combo === S.combo - 1;
-      h.atkT = (fin ? 0.42 : 0.27) / hasteMul(h); h.lock = 0.1;
+      const fin = h.combo === S.combo - 1, strong = S.strongHits.includes(h.combo + 1);
+      h.atkT = (strong ? D.strongT : D.weakT) / hasteMul(h); h.lock = 0.1;
       moveEnt(h, Math.cos(h.fa) * 8, Math.sin(h.fa) * 8);
       Snd.play(fin ? 'heavyswing' : 'swing');
       if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, 'rgba(255,220,150,0.95)', 8, 0.4); h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }
-      swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = h.combo === 1 ? -1 : 1;
-      melee(h, h.fa, S.comboArc, S.comboR, DMG.light, { knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
+      if (strong) { Snd.play('heavyswing'); swingFx(h, h.fa, 2.4, S.comboR + 10, 'rgba(255,226,160,0.95)', 8); addTrauma(0.08);
+        melee(h, h.fa, 2.4, S.comboR + 6, D.combo[h.combo], { knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3 }); return; }
+      swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = h.combo % 2 ? -1 : 1;
+      melee(h, h.fa, S.comboArc, S.comboR, D.combo[h.combo], { knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
       return;
     }
     // Leap Cleave (secondary): 3s cooldown, heavy, medium circle, hard hit-stun. Alternate weapon: straight shockwave with a fire trail.
@@ -206,7 +235,7 @@ const KITS = {
       setCd(h, 'secondary', S.leapCd);
       const p = aimPoint(h, 190, 60), d = hyp(p.x - h.x, p.y - h.y);
       Snd.play('leap');
-      startDash(h, Math.atan2(p.y - h.y, p.x - h.x), d, 0.38, { jump: true, inv: 0.3, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7); areaHit(h.x, h.y, S.leapR, heroDmg(h, DEV.dmg.theo.leap), { src: h, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3 }); } });
+      startDash(h, Math.atan2(p.y - h.y, p.x - h.x), d, 0.38, { jump: true, inv: 0.3, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7); areaHit(h.x, h.y, S.leapR, heroDmg(h, D.leap), { src: h, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3, lethal: true }); } });   // Smash / Leap Attack: 50, Stagger Large, Lethal
       return;
     }
     // weapon signature (ability button); every weapon swaps it
@@ -214,80 +243,104 @@ const KITS = {
       const W = SPEC.wpn, cd = SPEC.weapons.brannoc[h.weapon] ?? SPEC.weapons.brannoc.base;
       if (h.weapon === 'axe') { // Thrown Axe: T2 straight projectile, no AoE
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('throw'); h.throwT = 0.3;
-        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * W.axeSpeed, vy: Math.sin(h.fa) * W.axeSpeed, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: 10, life: W.axeLife, kind: 'hatchet', owner: h, sig: true, knock: 180 });
+        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * W.axeSpeed, vy: Math.sin(h.fa) * W.axeSpeed, dmg: heroDmg(h, D.axe * (1 + h.mods.ability)), tier: 2, r: 10, life: W.axeLife, kind: 'hatchet', owner: h, sig: true, knock: 180 });
       } else if (h.weapon === 'turbo') { // Turbo-Slam: T3 + hard stun, 90-degree cone to 3m, resets elite wind-ups
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('slam'); h.slamT = 0.4; addTrauma(0.45); hitstop(0.08);
         swingFx(h, h.fa, W.turboArc, W.turboR, 'rgba(255,210,140,0.95)', 10, 0.25); burst(h.x + Math.cos(h.fa) * 40, h.y + Math.sin(h.fa) * 40, '#a08060', 24, 260, 4, 0.6);
         for (const f of G.foes) if (ALIVE(f) && hyp(f.x - h.x, f.y - h.y) < W.turboR + f.r && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < W.turboArc / 2) { if (f.state === 'windup') f.state = 'move'; if (f.conjuring > 0) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; } f.atkT = Math.max(f.atkT, 0.8); }
-        h.lastTurbo = areaHit(h.x, h.y, W.turboR, heroDmg(h, DMG.heavy * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.turboArc, stagger: W.turboStun, knock: 300, heavy: true, sigKill: true, tier: 3 });
+        h.lastTurbo = areaHit(h.x, h.y, W.turboR, heroDmg(h, D.turbo * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.turboArc, stagger: W.turboStun, knock: 300, heavy: true, sigKill: true, tier: 3 });
+        areaHit(h.x, h.y, W.turboR * 1.4, heroDmg(h, D.turboAoe), { src: h, stagger: 0.3, knock: 160, tier: 1 });   // Turbo-Slam 140 + 14 AoE
       } else if (h.weapon === 'demonic') { // Demonic Cleave: T2 impact along a 1m x 6m line, 4s fire surface (T1 ticks + burn)
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.35); h.slamT = 0.35; const a = h.fa, step = W.demonicW;
+        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.35); h.slamT = 0.35; h.inv = Math.max(h.inv, 0.5); h.demonicSet = new Set(); const a = h.fa, step = W.demonicW;   // Demonic Cleave: 140 once per foe, invulnerable
         for (let k = 1; k * step <= W.demonicLen; k++) { const x = h.x + Math.cos(a) * k * step, y = h.y + Math.sin(a) * k * step; if (shotSolid(x, y)) break;
-          G.hazards.push({ kind: 'tele', x, y, r: step / 2, delay: 0.03 * k, t: 0, col: '#ff5a2a', silent: true, onFire: hz => { burst(hz.x, hz.y, '#ff6a2a', 8, 160, 4, 0.5); areaHit(hz.x, hz.y, step / 2 + 4, heroDmg(h, DMG.medium), { src: h, stagger: 0.5, knock: 160, tier: 2, burn: W.demonicBurn });
-            G.hazards.push({ kind: 'fire', x: hz.x, y: hz.y, r: step / 2, life: W.demonicFire, t: 0, dps: heroDmg(h, DMG.light) * 2, team: 'hero', owner: h, demonic: true }); } }); }
+          G.hazards.push({ kind: 'tele', x, y, r: step / 2, delay: 0.03 * k, t: 0, col: '#ff5a2a', silent: true, onFire: hz => { burst(hz.x, hz.y, '#ff6a2a', 8, 160, 4, 0.5); areaHit(hz.x, hz.y, step / 2 + 4, heroDmg(h, D.demonic), { src: h, stagger: 0.5, knock: 160, tier: 3, burn: W.demonicBurn, set: h.demonicSet });
+            G.hazards.push({ kind: 'fire', x: hz.x, y: hz.y, r: step / 2, life: W.demonicFire, t: 0, dps: heroDmg(h, D.demonicFire), team: 'hero', owner: h, demonic: true }); } }); }
       } else { h.spin = S.spinTime; h.spinTick = 0; Snd.play('spinstart'); }   // Destructo-Spin (cooldown starts when the spin ends)
     }
   },
   // ------------------------------------------------ Dawnbringer Gela (id 'sela'): shield fighter
   sela(h, inp, dt) {
-    const S = SPEC.gela;
+    const S = SPEC.gela, D = DEV.dmg.gela;
     const was = h.blocking;
     h.blocking = inp.down.defend && !h.shieldOut && !h.dash && !h.thrust;   // held = up, no limit
     if (h.blocking && !was) h.blockStart = G.time;   // perfect-block window starts when the shield goes up
-    if (h.blocking) h.moveMul = 0.45;
-    // Spear Thrust: 12-frame wind-up, 4-frame lunge hitbox, heavy piercing line; a shield tap cancels the recovery
+    if (h.bashWin > 0) h.bashWin -= dt;
+    if (h.blocking) { h.moveMul = 0.45;
+      for (const f of G.foes) if (ALIVE(f) && SMALL_FOE(f) && hyp(f.x - h.x, f.y - h.y) < h.r + f.r + S.shieldReach && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < S.blockArc / 2) { killFoe(f, h, { tag: 'block' }); burst(f.x, f.y, '#cfeaff', 6, 100, 2, 0.3); } }   // ghosts, skeletons, spiderlings die on the shield
+    // Spear Thrust (Slayer Valkyrie guide): wind-up, an invincible lunge that covers about running pace, then end lag.
+    // Lesser foes in the path die (Lethal), heavies are stunned and stop her, a wall stuns her briefly.
+    // Shield cancel: holding block after the lunge ends the end lag at once. Wall cancel: block held when the thrust STARTS
+    // = no wall stun, and she passes THROUGH every foe (mini-bosses included).
     if (h.thrust) {
-      const t = h.thrust; t.t += dt; h.moveMul = 0.15;
-      const wu = S.thrustWindupFrames / 60, lu = S.thrustLungeFrames / 60;
-      if (t.t >= wu && t.t < wu + lu + dt) { moveEnt(h, Math.cos(h.fa) * 160 * dt * 3, Math.sin(h.fa) * 160 * dt * 3);
-        const n = areaHit(h.x, h.y, 96, heroDmg(h, DEV.dmg.gela.thrust), { src: h, cone: h.fa, arc: 0.45, set: t.set, knock: 260, hitstop: 0.05, heavy: true, tier: 3 });
-        if (!t.fx) { t.fx = true; Snd.play('lunge'); swingFx(h, h.fa, 0.45, 100, 'rgba(240,230,160,0.95)', 6, 0.12); } }
-      if (t.t >= wu + lu && inp.pressed.defend) { h.thrust = null; text(h.x, h.y - 28, 'CANCEL', '#cfeaff'); return; }
-      if (t.t >= wu + lu + S.thrustRecovery) h.thrust = null;
-      return;
+      const t = h.thrust; t.t += dt; h.moveMul = 0;
+      const wu = t.fast ? 0 : S.thrustWindupFrames / 60, lu = S.thrustLungeFrames / 60;
+      if (t.stunT > 0) { t.stunT -= dt; h.lock = Math.max(h.lock, dt); if (t.stunT <= 0) h.thrust = null; return; }   // wall impact: can't move or attack
+      if (t.t >= wu && !t.done) {
+        if (!t.fx) { t.fx = true; Snd.play('lunge'); swingFx(h, h.fa, 0.45, 100, 'rgba(240,230,160,0.95)', 6, 0.12); h.inv = Math.max(h.inv, lu + 0.05); if (t.wallCancel) h.ethereal = Math.max(h.ethereal, lu + 0.05); }
+        const step = t.dist / lu * dt, ca = Math.cos(h.fa), sa = Math.sin(h.fa);
+        if (!t.wallCancel) for (const f of G.foes) { if (!ALIVE(f) || !(f.heavy || f.elite || f.boss) || f.type === 'reaper') continue; const px = f.x - h.x, py = f.y - h.y, al = px * ca + py * sa;
+          if (al > 0 && al < h.r + f.r + step + 4 && Math.abs(-px * sa + py * ca) < f.r + h.r * 0.6) { t.done = true; t.blockedBy = f.type; } }   // can't pass a heavy without the wall cancel
+        if (!t.done) { const ox = h.x, oy = h.y; moveEnt(h, ca * step, sa * step, false, g => tryGate(h, g));
+          if (hyp(h.x - ox, h.y - oy) < step * 0.4) { t.done = true; t.wall = true;
+            if (!t.wallCancel) { t.stunT = S.wallStun; h.kx -= ca * 220; h.ky -= sa * 220; text(h.x, h.y - 30, 'THUD', '#cfeaff'); addTrauma(0.2); Snd.play('clank'); return; } } }   // rebounds off the wall, stunned
+        const n = areaHit(h.x, h.y, 70, heroDmg(h, D.thrust), { src: h, cone: h.fa, arc: 0.9, set: t.set, knock: 260, stagger: 0.8, hitstop: 0.05, heavy: true, tier: 3, lethal: true });   // Spear Thrust: 42, Stagger Large, Lethal
+        for (const f of t.set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.thrustHeavyStun);
+        if (t.t >= wu + lu) t.done = true;
+        if (t.done) t.doneAt = t.t;
+      }
+      if (t.done) {
+        if (t.doneAt === undefined) t.doneAt = t.t;
+        if (inp.down.defend) { h.thrust = null; t.canceled = true; h.lastThrust = t; text(h.x, h.y - 28, 'CANCEL', '#cfeaff'); return; }   // shield cancel
+        if (inp.pressed.ability && h.weapon === 'base' && cdReady(h, 'ability')) { h.lastThrust = t; h.thrust = null; }   // Extreme Prejudice links two thrusts
+        else { if (t.t - t.doneAt >= S.thrustRecovery) { h.lastThrust = t; h.thrust = null; } return; }
+      } else return;
     }
-    // Shield Charge: burst forward behind the raised shield
-    if (h.blocking && inp.pressed.secondary && cdReady(h, 'scharge')) {
-      setCd(h, 'scharge', S.chargeCd); Snd.play('rush');
-      startDash(h, h.fa, 170, 0.22, { trail: 'rgba(200,230,255,0.5)', hitR: 8, armor: true, inv: 0.1, onHitFoe: f => { if (SKELETAL(f)) killFoe(f, h, { tag: 'block' }); else hitFoe(f, heroDmg(h, DMG.medium), { x: h.x, y: h.y, knock: 380, stagger: 0.6, src: h, tier: 2 }); } });
-      return;
-    }
+    if (h.javT > 0) { h.javT -= dt; h.moveMul = 0.3; if (h.javT <= 0) { Snd.play('throw'); h.throwT = 0.25;   // Freedom Protector: the thrust becomes a javelin throw
+      shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1100, vy: Math.sin(h.fa) * 1100, dmg: heroDmg(h, D.javelin), tier: 3, r: 7, life: 0.9, kind: 'power', owner: h, pierce: 2, knock: 200, col: '#dff2ff', fx: { stagger: 0.6 } }); } return; }
     if (h.blocking && inp.pressed.primary && cdReady(h, 'bash')) { // shield bash
       setCd(h, 'bash', 0.55); Snd.play('bash'); swingFx(h, h.fa, 1.8, 54, 'rgba(240,240,200,0.9)', 9, 0.12);
       moveEnt(h, Math.cos(h.fa) * 10, Math.sin(h.fa) * 10);
-      melee(h, h.fa, 1.9, 56, DMG.light, { knock: 360, stagger: 1.0, hitstop: 0.06, heavy: true, unblockable: true, tier: 2 });
+      melee(h, h.fa, 1.9, 56, D.bash, { knock: 360, stagger: 1.0, hitstop: 0.06, heavy: true, unblockable: true, tier: 2 });
       return;
     }
     // 7-strike slash chain: light front cone; strikes 4 and 7 stun (elites too)
     if (!h.blocking && (inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
       h.combo = h.comboT > 0 ? (h.combo + 1) % S.combo : 0; h.comboT = 0.6;
       const n = h.combo + 1, stun = S.stunHits.includes(n);
-      h.atkT = (stun ? 0.34 : 0.24) / hasteMul(h); h.lock = 0.08; Snd.play(stun ? 'heavyswing' : 'swing');
-      swingFx(h, h.fa, S.comboArc, S.comboR + 8, stun ? 'rgba(230,245,255,0.95)' : 'rgba(210,235,255,0.85)', stun ? 6 : 4); G.swings[G.swings.length - 1].dir = h.combo % 2 ? -1 : 1;
+      h.atkT = (stun ? D.strongT : D.weakT) / hasteMul(h); h.lock = 0.08; Snd.play(stun ? 'heavyswing' : 'swing');
+      moveEnt(h, Math.cos(h.fa) * S.slashStep, Math.sin(h.fa) * S.slashStep, false, g => tryGate(h, g));   // each slash steps her slightly forward
+      swingFx(h, h.fa, S.comboArc, S.comboR + 8, stun ? 'rgba(255,255,255,0.98)' : 'rgba(210,235,255,0.85)', stun ? 6 : 4); G.swings[G.swings.length - 1].dir = h.combo % 2 ? -1 : 1;
+      if (stun) G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: S.comboArc + 0.5, r: S.comboR + 18, life: 0.22, max: 0.22, col: 'rgba(255,255,255,0.55)', w: 12, follow: h });   // heavy: white blur trail
       if (h.weapon === 'vanguard') for (const s of G.shots) if (s.team === 'foe' && !s.dead && hyp(s.x - h.x, s.y - h.y) < S.comboR + 20 && Math.abs(angDiff(Math.atan2(s.y - h.y, s.x - h.x), h.fa)) < S.comboArc / 2 + 0.3 && (h.parryLog = (h.parryLog || []).filter(t => G.time - t < 0.5)).length < (RULE('spearCap') ? 6 : Infinity)) { h.parryLog.push(G.time); const a = R(0, 6.28), v = hyp(s.vx, s.vy); s.vx = Math.cos(a) * v; s.vy = Math.sin(a) * v; s.team = 'hero'; s.owner = h; s.dmg *= 0.5; s.hit = new Set(); s.life = Math.min(s.life, 0.6); text(s.x, s.y - 10, 'PARRY', '#cfeaff'); }   // intercept spear: knock missiles away, no stamina
-      melee(h, h.fa, S.comboArc, S.comboR, DMG.light, { knock: stun ? 220 : 110, stagger: stun ? S.stun : 0.15, hitstop: stun ? 0.05 : 0.03, tier: 1 });
-      if (stun) for (const f of G.foes) if (ALIVE(f) && f.elite && !f.boss && hyp(f.x - h.x, f.y - h.y) < S.comboR + f.r && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < S.comboArc / 2 + 0.2) f.stag = Math.max(f.stag, S.stun);
+      melee(h, h.fa, S.comboArc, S.comboR, D.combo[h.combo], { knock: stun ? 220 : 110, stagger: stun ? S.stun : 0.15, hitstop: stun ? 0.05 : 0.03, tier: stun ? 3 : 1 });   // 8s, strikes 4 and 7 are 42
+      // a heavy stuns large foes just long enough to reach the next heavy (4 -> 7 -> 4 ...), so the chain can stun-lock one heavy
+      const lockT = (D.strongT + 3 * D.weakT) / hasteMul(h) + S.stunLockPad;
+      if (stun) for (const f of G.foes) if (ALIVE(f) && (f.elite || f.heavy) && !f.boss && hyp(f.x - h.x, f.y - h.y) < S.comboR + f.r && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < S.comboArc / 2 + 0.2) { f.stag = Math.max(f.stag, lockT); if (f.state === 'windup') f.state = 'move'; }
       return;
     }
-    if (h.weapon === 'vanguard' && !h.blocking && (inp.pressed.secondary || inp.pressed.ability)) { deflectThrust(h); return; }   // Deflecting Thrust replaces the lunge (and is her signature)
-    if (inp.pressed.secondary && !h.blocking && cdReady(h, 'secondary')) { h.thrust = { t: 0, set: new Set() }; Snd.play('charge'); return; }
+    if (h.weapon === 'vanguard' && inp.pressed.secondary && cdReady(h, 'secondary') && !(h.javT > 0)) { h.blocking = false; h.javT = S.javelinWindup; setCd(h, 'secondary', (S.thrustWindupFrames / 60 + S.thrustLungeFrames / 60 + S.thrustRecovery) / 2); Snd.play('charge'); return; }   // twice as fast as a thrust
+    if (h.weapon === 'vanguard' && !h.blocking && inp.pressed.ability) { deflectThrust(h); return; }   // Intercept (signature)
+    if (inp.pressed.secondary && cdReady(h, 'secondary') && !h.shieldOut) {
+      const wu = S.thrustWindupFrames / 60, lu = S.thrustLungeFrames / 60;
+      h.thrust = { t: 0, set: new Set(), wallCancel: h.blocking, fast: h.bashWin > 0, dist: h.baseSpeed * (wu + lu + S.thrustRecovery) }; h.blocking = false; h.bashWin = 0;
+      Snd.play('charge'); return; }   // vulnerable in the start-up pause (a hit knocks her out of it, Neoseeker FAQ), invincible in the lunge
     if (inp.pressed.ability && cdReady(h, 'ability') && !h.shieldOut) {
       const W = SPEC.wpn, cd = SPEC.weapons.sela[h.weapon] ?? SPEC.weapons.sela.base;
       if (h.weapon === 'splitter') { // Shield Splitter: 3 piercing T2 shields in a 45-degree fan
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('throw'); h.throwT = 0.3;
         for (const off of [-W.splitterFan / 2, 0, W.splitterFan / 2]) { const a = h.fa + off;
-          shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(a) * W.splitterSpeed, vy: Math.sin(a) * W.splitterSpeed, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: 8, life: 0.7, kind: 'shield', owner: h, pierce: 99, sig: true, knock: 160, fx: { stagger: 0.3 } }); }
+          shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(a) * W.splitterSpeed, vy: Math.sin(a) * W.splitterSpeed, dmg: heroDmg(h, D.splitter * (1 + h.mods.ability)), tier: 2, r: 8, life: 0.7, kind: 'shield', owner: h, pierce: 99, sig: true, knock: 160, fx: { stagger: 0.3 } }); }
       } else if (h.weapon === 'ricochet') { // Shield Ricochet: T2 + interrupt, up to 4 targets, 4m hops, then returns
         h.shieldOut = true; Snd.play('throw'); h.throwT = 0.3; setCd(h, 'ability', abilityCd(h, cd));
-        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 620, vy: Math.sin(h.fa) * 620, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: 12, life: 8, kind: 'shield', owner: h, sig: true, fx: { stagger: W.ricochetInterrupt },
+        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 620, vy: Math.sin(h.fa) * 620, dmg: heroDmg(h, D.ricochet * (1 + h.mods.ability)), tier: 3, spawnerHits: 3 * D.ricochetSpawnerMul, r: 12, life: 8, kind: 'shield', owner: h, sig: true, fx: { stagger: W.ricochetInterrupt },
           boomer: { phase: 'out', seek: true, hop: W.ricochetHop, spd: 620, dist: 0, range: 520, hits: 0, maxHits: W.ricochetTargets, onReturn: () => { h.shieldOut = false; Snd.play('catch'); } } });
-      } else { // Extreme Prejudice (default): 0 damage, 180-degree 2.5m knockback; a foe slammed into a wall takes T4 + 2s stun
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('heavyswing'); addTrauma(0.35); hitstop(0.08); h.throwT = 0.3;
+      } else { // Extreme Prejudice (default): 70, 180-degree 2.5m knockback, invulnerable during the sweep; a foe slammed into a wall takes T4 + 2s stun
+        setCd(h, 'ability', abilityCd(h, cd)); h.inv = Math.max(h.inv, 0.5); Snd.play('heavyswing'); addTrauma(0.35); hitstop(0.08); h.throwT = 0.3;
         swingFx(h, h.fa, W.execArc, W.execR, 'rgba(255,240,190,0.95)', 10, 0.22);
         let n = 0;
         for (const f of G.foes) { if (!ALIVE(f) || f.type === 'reaper') continue; const d = hyp(f.x - h.x, f.y - h.y); if (d > W.execR + f.r || Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) > W.execArc / 2) continue;
           const a = Math.atan2(f.y - h.y, f.x - h.x), k = f.boss ? 0.25 : f.heavy || f.elite ? 0.6 : 1;
-          hitFoe(f, heroDmg(h, DEV.dmg.gela.execHit * (1 + h.mods.ability)), { x: h.x, y: h.y, src: h, tier: 3, sigKill: true });   // David's deviation 6: the special now hits hardest
+          f.stag = Math.max(f.stag, f.boss ? 0 : 1.0); hitFoe(f, heroDmg(h, D.execHit * (1 + h.mods.ability)), { x: h.x, y: h.y, src: h, tier: 3, sigKill: true });   // Extreme Prejudice: 70 (reference), the special hits hardest
           if (!ALIVE(f)) { n++; continue; }
           f.kx = Math.cos(a) * W.execKnock * k; f.ky = Math.sin(a) * W.execKnock * k; f.stag = Math.max(f.stag, 0.4); f.crushT = W.crushWindow; f.crushBy = h; n++; }
         for (const it of G.pickups) if (!it.dead && ['ration', 'feast', 'potion'].includes(it.kind) && hyp(it.x - h.x, it.y - h.y) < W.execR && Math.abs(angDiff(Math.atan2(it.y - h.y, it.x - h.x), h.fa)) < W.execArc / 2) smashFood(it, h);
@@ -298,7 +351,7 @@ const KITS = {
 
   // ------------------------------------------------ Highlord David: paladin (light element)
   paladin(h, inp, dt) {
-    const S = SPEC.paladin, W = SPEC.weapons.paladin;
+    const S = SPEC.paladin, W = SPEC.weapons.paladin, D = DEV.dmg.paladin;
     if (h.charging === 'judgment') { // Judgment: hold to charge, release a T3 stunning overhead
       h.charge = Math.min(S.judgmentMaxCharge, h.charge + dt); h.moveMul = 0.3; h.heavyT = 0;
       if (h.charge >= S.judgmentMaxCharge && !h.chargedSnd) { h.chargedSnd = true; Snd.play('ready'); }
@@ -309,7 +362,7 @@ const KITS = {
         const x = h.x + Math.cos(h.fa) * 46, y = h.y + Math.sin(h.fa) * 46, r = S.judgmentR * (0.7 + 0.3 * c);
         Snd.play('slam'); addTrauma(0.38); hitstop(0.1); ring(x, y, r, '#ffe08a', 0.3, 7); burst(x, y, '#fff2c0', 22, 220, 4, 0.6); decal(x, y, 32, 'rgba(0,0,0,0.3)', 12);
         G.beams.push({ x1: x, y1: y - 260, x2: x, y2: y, col: '#fff2c0', life: 0.25, w: 12 });
-        h.lastJudgment = areaHit(x, y, r, heroDmg(h, DEV.dmg.paladin.judgmentMin + (DEV.dmg.paladin.judgmentMax - DEV.dmg.paladin.judgmentMin) * c), { src: h, knock: 320, stagger: S.judgmentStun * c, heavy: true, tier: 3, light: true });
+        h.lastJudgment = areaHit(x, y, r, heroDmg(h, D.judgmentMin + (D.judgmentMax - D.judgmentMin) * c), { src: h, knock: 320, stagger: S.judgmentStun * c, heavy: true, tier: 3, light: true, lethal: c >= 0.98 });   // full charge = Smash-like 50, Lethal
       }
       return;
     }
@@ -320,7 +373,7 @@ const KITS = {
       h.moveMul = 0.4;
       // Righteous Advance: block + heavy = short armored charge
       if (inp.pressed.secondary && cdReady(h, 'advance')) { h.blocking = false; setCd(h, 'advance', S.advanceCd); Snd.play('rush'); h.advance = true;
-        startDash(h, h.fa, S.advanceDist, 0.26, { trail: 'rgba(255,230,150,0.55)', hitR: S.advanceWidth, armor: true, inv: SPEC.hero.paladin.iframes, onHitFoe: f => hitFoe(f, heroDmg(h, DMG.medium), { x: h.x, y: h.y, knock: 360, stagger: 0.5, src: h, tier: 2, light: true }), onEnd: () => { h.advance = false; } });
+        startDash(h, h.fa, S.advanceDist, 0.26, { trail: 'rgba(255,230,150,0.55)', hitR: S.advanceWidth, armor: true, inv: SPEC.hero.paladin.iframes, onHitFoe: f => hitFoe(f, heroDmg(h, D.advance), { x: h.x, y: h.y, knock: 360, stagger: f.heavy || f.elite ? 0.5 : 1.0, src: h, tier: 1, light: true }), onEnd: () => { h.advance = false; } });
         return; }
       // Consecration: block + signature = holy ground (3m, 5s): T1 ticks to foes, heals allies 2 bar HP per tick
       if (inp.pressed.ability && cdReady(h, 'consecrate')) { h.blocking = false; consecrate(h); return; }
@@ -331,13 +384,13 @@ const KITS = {
     if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
       h.combo = h.comboT > 0 ? (h.combo + 1) % S.combo : 0; h.comboT = 0.85;
       const fin = h.combo === S.combo - 1, arc = fin ? S.finisherArc : S.comboArc, r = fin ? S.finisherR : S.comboR;
-      h.atkT = (fin ? 0.48 : 0.34) / hasteMul(h); h.lock = 0.12;
+      h.atkT = (fin ? D.finT : D.weakT) / hasteMul(h); h.lock = 0.12;
       moveEnt(h, Math.cos(h.fa) * 6, Math.sin(h.fa) * 6);
       Snd.play(fin ? 'heavyswing' : 'swing');
       swingFx(h, h.fa, arc, r, fin ? 'rgba(255,226,140,0.95)' : 'rgba(255,244,210,0.85)', fin ? 9 : 6);
       G.swings[G.swings.length - 1].dir = h.combo === 1 ? -1 : 1;
       if (fin) { G.swings.push({ x: h.x, y: h.y, a: h.fa, arc, r: r + 18, life: 0.2, max: 0.2, col: 'rgba(255,240,170,0.6)', w: 4, follow: h }); }
-      melee(h, h.fa, arc, r, fin ? DMG.medium : DMG.light, { knock: fin ? 300 : 130, stagger: fin ? 0.5 : 0.15, hitstop: fin ? 0.07 : 0.035, shake: fin ? 0.15 : 0, tier: fin ? 2 : 1, light: true });
+      melee(h, h.fa, arc, r, D.combo[h.combo], { knock: fin ? 300 : 130, stagger: fin ? 0.8 : 0.15, hitstop: fin ? 0.07 : 0.035, shake: fin ? 0.15 : 0, tier: fin ? 3 : 1, light: true });   // 18 / 18 / 48
       return;
     }
     if (inp.pressed.secondary && cdReady(h, 'secondary')) { h.charging = 'judgment'; h.charge = 0; Snd.play('windupHero'); return; }
@@ -346,10 +399,11 @@ const KITS = {
 
   // ------------------------------------------------ Kestrel: archer
   kestrel(h, inp, dt) {
+    const D = DEV.dmg.isaac;
     if (inp.pressed.defend && cdReady(h, 'defend')) {
       setCd(h, 'defend', SPEC.isaac.rollCd); Snd.play('roll'); h.atkT = 0;   // a roll cancels Rapid Fire recovery
       const a = (inp.mx || inp.my) ? Math.atan2(inp.my, inp.mx) : h.fa;
-      startDash(h, a, 150 * h.body.rollDist, 0.3, { inv: SPEC.isaac.rollIframes, trail: 'rgba(200,240,160,0.4)', roll: true });
+      startDash(h, a, 150 * h.body.rollDist, 0.3, { inv: SPEC.isaac.rollIframes, trail: 'rgba(200,240,160,0.4)', roll: true, ethereal: true, stopOnWall: true });   // Circle Tumble: no damage, passes through enemies
       return;
     }
     if (h.charging === 'power') {
@@ -361,40 +415,40 @@ const KITS = {
         const full = c >= 0.98, expl = h.explosiveArrow; h.explosiveArrow = false;
         Snd.play(full ? 'powershot' : 'bow'); if (full) { addTrauma(0.15); moveEnt(h, -Math.cos(h.fa) * 0.2 * MTR, -Math.sin(h.fa) * 0.2 * MTR); }   // 0.2m recoil
         const shadow = h.weapon === 'dusk' && h.invis ? 2 : 1;
-        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 980, vy: Math.sin(h.fa) * 980, dmg: heroDmg(h, (DEV.dmg.isaac.powerMin + (DEV.dmg.isaac.powerMax - DEV.dmg.isaac.powerMin) * c) * shadow), tier: full ? 3 : c > 0.5 ? 2 : 1, r: full ? 8 : 6, life: full ? 3 : 0.7, kind: 'power', owner: h, pierce: full ? 9999 : Math.floor(c * 3), knock: 120 + 320 * c, sig: true, big: full, col: '#ffef9a',
+        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 980, vy: Math.sin(h.fa) * 980, dmg: heroDmg(h, (D.powerMin + (D.powerMax - D.powerMin) * c) * shadow), tier: full ? 3 : c > 0.5 ? 2 : 1, lethal: full, spawnerHits: full ? D.sniperSpawnerHits : 0.5, r: full ? 8 : 6, life: full ? D.sniperLife : 0.7, kind: 'power', owner: h, pierce: full ? 9999 : Math.floor(c * 3), knock: 120 + 320 * c, sig: true, big: full, col: '#ffef9a',
           fx: { stagger: 0.2 + 0.6 * c, hitstop: full ? 0.05 : 0 },
-          onEnd: expl ? s => explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DEV.dmg.isaac.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }) : null,
-          onHit: expl ? (s, f) => { if (!s.boomed) { s.boomed = true; explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DEV.dmg.isaac.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }); s.dead = true; } } : null });
+          onEnd: expl ? s => explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, D.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }) : null,
+          onHit: expl ? (s, f) => { if (!s.boomed) { s.boomed = true; hitFoe(f, heroDmg(h, D.explosiveDirect), { src: h, quiet: true }); explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, D.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }); s.dead = true; } } : null });   // Explosive Shot: 56 (+2 direct)
       }
       return;
     }
     if (inp.pressed.secondary && cdReady(h, 'secondary')) { h.charging = 'power'; h.charge = 0; Snd.play('draw'); return; }
     const fireHeld = inp.down.primary || (inp.aim === 'stick' && inp.aimFire);
     if (fireHeld && h.atkT <= 0) {
-      h.atkT = SPEC.isaac.rapidRate / hasteMul(h);
+      h.atkT = D.quickRate / hasteMul(h);
       const a = h.fa + R(-0.05, 0.05);
-      shoot({ team: 'hero', x: h.x + Math.cos(a) * 10, y: h.y + Math.sin(a) * 10, vx: Math.cos(a) * 780, vy: Math.sin(a) * 780, dmg: heroDmg(h, DMG.light), tier: 1, r: 4, life: 0.5, kind: 'arrow', owner: h, knock: 50, col: '#e8d8b0', noSpawner: !ELF_LIGHT_ARROWS_HIT_SPAWNERS });
+      shoot({ team: 'hero', x: h.x + Math.cos(a) * 10, y: h.y + Math.sin(a) * 10, vx: Math.cos(a) * 780, vy: Math.sin(a) * 780, dmg: heroDmg(h, D.quick), tier: 1, spawnerHits: D.quickSpawnerHits, r: 4, life: 0.5, kind: 'arrow', owner: h, knock: 50, col: '#e8d8b0', noSpawner: !ELF_LIGHT_ARROWS_HIT_SPAWNERS });   // Quick Shot: 14, 4/s, 8 vs spawners
       Snd.play('arrow');
     }
     if (inp.pressed.ability && cdReady(h, 'ability')) {
       const W = SPEC.wpn, cd = SPEC.weapons.kestrel[h.weapon] ?? SPEC.weapons.kestrel.base;
       if (h.weapon === 'base' && h.dash && h.dash.roll) { // mid-roll: drop a bomb where you are (shoot it for an explosive arrow)
         setCd(h, 'ability', abilityCd(h, 4)); Snd.play('throw');
-        G.hazards.push({ kind: 'bomb', x: h.x, y: h.y, r: SPEC.isaac.bombR, delay: 1.3, t: 0, owner: h, onFire: hz => { const big = hz.boost; if (big) text(hz.x, hz.y - 30, 'EXPLOSIVE SHOT!', '#ffcf5a'); explode(hz.x, hz.y, big ? SPEC.isaac.bombR * 1.3 : SPEC.isaac.bombR, heroDmg(h, (big ? DMG.massive : DEV.dmg.isaac.bomb) * (1 + h.mods.ability)), { src: h, col: big ? '#ffd84a' : '#ff9a4a', sigKill: true, tag: 'bomb' }); } });
+        G.hazards.push({ kind: 'bomb', x: h.x, y: h.y, r: SPEC.isaac.bombR, delay: 2.0, t: 0, owner: h, onFire: hz => { const big = hz.boost; if (big) text(hz.x, hz.y - 30, 'EXPLOSIVE SHOT!', '#ffcf5a'); explode(hz.x, hz.y, big ? SPEC.isaac.bombR * 1.3 : SPEC.isaac.bombR, heroDmg(h, (big ? D.bomb * 1.5 : D.bomb) * (1 + h.mods.ability)), { src: h, col: big ? '#ffd84a' : '#ff9a4a', sigKill: true, tag: 'bomb' }); } });
       } else if (h.weapon === 'thorn') { // Rooting Shot: T2 long thin piercing line, 2.5s hard root
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('powershot');
-        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1100, vy: Math.sin(h.fa) * 1100, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: W.rootWidth / 2, life: W.rootLen / 1100, kind: 'power', owner: h, pierce: 9999, sig: true, col: '#9ad04a', knock: 60, fx: { root: W.rootTime } });
+        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1100, vy: Math.sin(h.fa) * 1100, dmg: heroDmg(h, D.root * (1 + h.mods.ability)), dmgAfter: heroDmg(h, D.rootAfter * (1 + h.mods.ability)), tier: 2, r: W.rootWidth / 2, life: W.rootLen / 1100, kind: 'power', owner: h, pierce: 9999, sig: true, col: '#9ad04a', knock: 60, fx: { root: W.rootTime } });   // Root Shot: 22 first, 14 after
       } else if (h.weapon === 'sparks') { // Sparks trap: hidden 1m-trigger mine, T2, 3s group snare
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('load');
         G.hazards.push({ kind: 'mine', x: h.x, y: h.y, r: W.sparksTrigger, life: 60, t: 0, owner: h });
       } else if (h.weapon === 'dusk') { // Smoke Bomb: 0 damage, 2m cloud, aggro wipe, 2s full invisibility
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('smoke'); h.invisT = Math.max(h.invisT, W.smokeInvis); burst(h.x, h.y, '#9a9aa8', 30, 160, 5, 0.8);
+        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('smoke'); h.invisT = Math.max(h.invisT, W.smokeInvis); burst(h.x, h.y, '#9a9aa8', 30, 160, 5, 0.8); areaHit(h.x, h.y, W.smokeR, heroDmg(h, DEV.dmg.isaac.smoke), { src: h, stagger: 0.5, knock: 160, tier: 1 });   /* Smoke Bomb: 14, Stagger Small */
         G.hazards.push({ kind: 'smoke', x: h.x, y: h.y, r: W.smokeR, life: W.smokeLife, t: 0, owner: h });
         for (const f of G.foes) if (ALIVE(f) && (f.t3By === h || hyp(f.x - h.x, f.y - h.y) < 12 * MTR)) { f.t3Lock = 0; f.t3By = null; f.state = 'move'; f.lostT = 1.0; }
       } else { // Mortar Shot (default): T3, 3m target circle, x3 hits on spawners
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('throw'); const p = aimPoint(h, 360, 80);
         lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.7, r: 8, kind: 'magma', col: '#ffcf5a', owner: h, tele: W.mortarR,
-          onLand: s => { explode(s.tx, s.ty, W.mortarR, heroDmg(h, DEV.dmg.isaac.mortar * (1 + h.mods.ability)), { src: h, col: '#ffcf5a', tag: 'bomb', tier: 3, spawnerHits: W.mortarSpawnerHits, sigKill: true }); } });
+          onLand: s => { explode(s.tx, s.ty, W.mortarR, heroDmg(h, D.mortar * (1 + h.mods.ability)), { src: h, col: '#ffcf5a', tag: 'bomb', tier: 3, spawnerHits: W.mortarSpawnerHits, sigKill: true }); } });
       }
     }
   },
@@ -440,7 +494,7 @@ const KITS = {
       const a = (inp.mx || inp.my) ? Math.atan2(inp.my, inp.mx) : h.fa;
       let gained = 0;
       startDash(h, a, 210, 0.34, { ethereal: true, inv: 0.36, trail: 'rgba(176,122,255,0.45)', trailSize: 10, hitR: 4, stopOnWall: false,
-        onHitFoe: f => { f.slowT = 2.5; f.slowM = 0.4; hitFoe(f, heroDmg(h, 3), { quiet: true, src: h }); if (gained < 3) { gained++; addEssence(h, 10); burst(f.x, f.y, VC, 6, 80, 2, 0.4); } } });
+        onHitFoe: f => { f.slowT = DEV.dmg.vesper.ghostSlow; f.slowM = 0.4; hitFoe(f, heroDmg(h, DEV.dmg.vesper.ghost), { quiet: true, src: h, tier: 1 }); if (gained < 3) { gained++; addEssence(h, 10); burst(f.x, f.y, VC, 6, 80, 2, 0.4); } } });   // Ghostwalk: 4 + Slow 5
       return;
     }
     if (h.charging === 'smash') { // Bone Spikes: hold to aim, release to erupt at the target
@@ -450,7 +504,9 @@ const KITS = {
         h.charging = null; h.reticle = null; setCd(h, 'secondary', 1.0); Snd.play('grave'); h.slamT = 0.35;
         G.hazards.push({ kind: 'tele', x: p.x, y: p.y, r: 74, delay: 0.25, t: 0, col: VC, onFire: hz => { Snd.play('slam'); addTrauma(0.3); hitstop(0.06);
           G.hazards.push({ kind: 'spikes', x: hz.x, y: hz.y, r: 74, life: 0.6, t: 0, seed: Math.random() * 99 }); burst(hz.x, hz.y, '#e8e0c8', 24, 220, 3, 0.6); ring(hz.x, hz.y, 74, VC, 0.3, 5);
-          areaHit(hz.x, hz.y, 74, heroDmg(h, DEV.dmg.vesper.spikes), { src: h, knock: 260, stagger: 0.9, root: 0.8, heavy: true }); } });
+          const hitSet = new Set(); areaHit(hz.x, hz.y, 40, heroDmg(h, DEV.dmg.vesper.spikes), { src: h, set: hitSet, knock: 260, stagger: 0.9, root: 0.8, heavy: true, tier: 3 });
+          areaHit(hz.x, hz.y, 74, heroDmg(h, DEV.dmg.vesper.spikesSplash), { src: h, set: hitSet, knock: 120, stagger: 0.3, tier: 1 });   // Skeleton Smash: 46 in the middle + 2 splash
+          for (const f of G.foes) if (ALIVE(f) && hitSet.has(f)) { f.t3By = h; f.t3Lock = Math.max(f.t3Lock || 0, 2); } } });   // draws aggro
       }
       return;
     }
@@ -458,7 +514,7 @@ const KITS = {
       h.moveMul = 0.4; h.drainT = (h.drainT || 0) + dt;
       let tgt = h.drainTgt; if (!tgt || !ALIVE(tgt) || hyp(tgt.x - h.x, tgt.y - h.y) > 300) { tgt = null; let bd = 280; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < 0.8 && los(h.x, h.y, f.x, f.y)) { bd = d; tgt = f; } } h.drainTgt = tgt; }
       if (tgt) { h.fa = Math.atan2(tgt.y - h.y, tgt.x - h.x); G.beams.push({ x1: h.x + Math.cos(h.fa) * 14, y1: h.y - 18, x2: tgt.x, y2: tgt.y - 6, col: VC, life: 0.05, w: 4, zig: true });
-        h.drainTick = (h.drainTick || 0) - dt; if (h.drainTick <= 0) { h.drainTick = 0.2; const d = heroDmg(h, 5 * (1 + h.mods.ability)); hitFoe(tgt, d, { quiet: true, src: h, sigKill: true }); healHero(h, d * 0.45); }
+        h.drainTick = (h.drainTick || 0) - dt; if (h.drainTick <= 0) { h.drainTick = 0.2; const d = heroDmg(h, DEV.dmg.vesper.drain * (1 + h.mods.ability)); hitFoe(tgt, d, { quiet: true, src: h, sigKill: true }); healHero(h, d * 0.45); }
         h.drainSoul = (h.drainSoul || 0) + dt; if (h.drainSoul > 1.2) { h.drainSoul = 0; addEssence(h, 10); } }
       if (!inp.down.ability || h.drainT > 4) { h.channel = null; h.drainTgt = null; setCd(h, 'ability', abilityCd(h, 3)); }
       return;
@@ -480,15 +536,15 @@ const KITS = {
         if (golem) { addTrauma(0.4); ring(h.x, h.y, 90, VC, 0.5, 8); msg('A Bone Golem rises!', VC, 1.5); }
         const burstSet = new Set();   // David's deviation 6: the ground erupts where the dead rise (one hit per foe per cast)
         kinds.forEach((kind, k) => { const a = h.fa + (k - (kinds.length - 1) / 2) * 0.6, x = h.x + Math.cos(a) * 38, y = h.y + Math.sin(a) * 38;
-          const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h); if (h.weapon === 'lantern' && kind === 'wraith') { al.eliteHunter = true; al.dmg = heroDmg(h, DMG.heavy) / 2; al.tier = 3; } al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability; mastery(h, 'signature', 1);
+          const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h); if (h.weapon === 'lantern' && kind === 'wraith') { al.eliteHunter = true; al.dmg = heroDmg(h, DEV.dmg.vesper.minion.wraith); al.tier = 3; } al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability; mastery(h, 'signature', 1);   // shades 28 each
           const VD = DEV.dmg.vesper; ring(al.x, al.y, VD.raiseBurstR, VC, 0.35, 5); burst(al.x, al.y, '#e8e0c8', 14, 180, 3, 0.5); areaHit(al.x, al.y, VD.raiseBurstR, heroDmg(h, VD.raiseBurst * (1 + h.mods.ability)), { src: h, set: burstSet, knock: 220, stagger: 0.5, tier: 3, sigKill: true }); });
       }
       return;
     }
     if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) { // Soul Reap: medium, 140-degree front arc; every foe hit feeds the essence bar
-      h.atkT = 0.38 / hasteMul(h); h.lock = 0.08; Snd.play('swing');
+      h.atkT = DEV.dmg.vesper.reapT / hasteMul(h); h.lock = 0.08; Snd.play('swing');
       swingFx(h, h.fa, SPEC.vesper.reapArc, SPEC.vesper.reapR + 6, 'rgba(190,140,255,0.85)', 6, 0.16);
-      const n = melee(h, h.fa, SPEC.vesper.reapArc, SPEC.vesper.reapR, DMG.medium, { knock: 140, stagger: 0.2, hitstop: 0.03, tier: 2 });
+      const n = melee(h, h.fa, SPEC.vesper.reapArc, SPEC.vesper.reapR, DEV.dmg.vesper.reap, { knock: 140, stagger: 0.2, hitstop: 0.03, tier: 1 });   // Skeleton Slash: 2.5/s x 8
       if (n) addEssence(h, n * SPEC.vesper.essencePerHit);
       return;
     }
@@ -510,7 +566,7 @@ const KITS = {
 function deflectThrust(h) {   // Deflecting Thrust: T1 narrow poke, no cooldown, breaks at most 6 missiles per 30 frames, no stamina
   const W = SPEC.wpn; if (h.atkT > 0) return; h.atkT = 0.22 / hasteMul(h); h.lock = 0.08; Snd.play('swing');
   swingFx(h, h.fa, 0.35, W.deflectR + 8, 'rgba(210,235,255,0.95)', 5, 0.12);
-  melee(h, h.fa, 0.35, W.deflectR, DMG.light, { knock: 140, stagger: 0.2, tier: 1 });
+  melee(h, h.fa, 0.35, W.deflectR, DEV.dmg.gela.intercept, { knock: 140, stagger: 0.2, tier: 1 });   // Intercept: 14
   h.parryLog = (h.parryLog || []).filter(t => G.time - t < W.deflectWindow); let n = 0;
   for (const s of G.shots) { if (s.team !== 'foe' || s.dead) continue; if (RULE('spearCap') && h.parryLog.length >= W.deflectMax) break;
     const px = s.x - h.x, py = s.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (al < 0 || al > W.deflectR + 20 || Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) > W.deflectWidth + s.r) continue;
@@ -527,19 +583,19 @@ function paladinSignature(h) {
   setCd(h, 'ability', abilityCd(h, cd));
   if (h.weapon === 'hammer') { // Hammer of Light: T2 thrown hammer, pierces, comes back
     Snd.play('throw'); h.throwT = 0.3;
-    shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * S.hammerSpeed, vy: Math.sin(h.fa) * S.hammerSpeed, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: 12, life: 6, kind: 'hatchet', col: '#ffe08a', owner: h, sig: true, light: true,
+    shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * S.hammerSpeed, vy: Math.sin(h.fa) * S.hammerSpeed, dmg: heroDmg(h, DEV.dmg.paladin.hammer * (1 + h.mods.ability)), tier: 2, r: 12, life: 6, kind: 'hatchet', col: '#ffe08a', owner: h, sig: true, light: true,
       boomer: { phase: 'out', spd: S.hammerSpeed, dist: 0, range: S.hammerRange, hits: 0, maxHits: 99, resetOnReturn: true } });
   } else if (h.weapon === 'lance') { // Radiant Lance: T3 straight piercing beam, x2 vs shadow and undead
     Snd.play('holyslam'); h.throwT = 0.3; addTrauma(0.25); const len = rayWall(h.x, h.y, h.fa, S.lanceLen);
     G.beams.push({ x1: h.x, y1: h.y - 10, x2: h.x + Math.cos(h.fa) * len, y2: h.y - 10 + Math.sin(h.fa) * len, col: '#fff2c0', life: 0.35, w: 14, glow: true });
     let n = 0; for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (al < 0 || al > len) continue; if (Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) > S.lanceWidth + f.r) continue;
       const undead = SKELETAL(f) || FOE_FAMILY[f.type] === 'shrouds' || f.type === 'wraith';
-      if (hitFoe(f, heroDmg(h, DMG.heavy * (1 + h.mods.ability)) * (undead ? S.lanceUndeadMul : 1), { x: h.x, y: h.y, src: h, knock: 220, stagger: 0.6, tier: 3, light: true, sigKill: true })) n++; }
+      if (hitFoe(f, heroDmg(h, DEV.dmg.paladin.lance * (1 + h.mods.ability)) * (undead ? S.lanceUndeadMul : 1), { x: h.x, y: h.y, src: h, knock: 220, stagger: 0.6, tier: 3, light: true, sigKill: true })) n++; }
     for (const s of G.spawners) { const px = s.x - h.x, py = s.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (al > 0 && al < len && Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) < s.r + S.lanceWidth) hitSpawner(s, heroDmg(h, DMG.heavy), h, { tier: 3 }); }
     h.lastLance = n;
   } else if (h.weapon === 'sanctuary') { // Sanctuary Pulse: T1 4m ring, knockback; allies inside get a 3s shield absorbing 30 HP
     Snd.play('holy'); h.slamT = 0.35; ring(h.x, h.y, S.pulseR, '#fff2a0', 0.5, 8);
-    areaHit(h.x, h.y, S.pulseR, heroDmg(h, DMG.light), { src: h, knock: 520, stagger: 0.5, tier: 1, light: true });
+    areaHit(h.x, h.y, S.pulseR, heroDmg(h, DEV.dmg.paladin.pulse), { src: h, knock: 520, stagger: 0.5, tier: 1, light: true });
     for (const o of G.heroes) if (!o.dead && hyp(o.x - h.x, o.y - h.y) < S.pulseR) { o.absorb = S.pulseShield; o.absorbT = S.pulseShieldTime; ring(o.x, o.y, 30, '#fff2a0', 0.5, 4); }
   } else { // Holy Slam (default): T3 pillar of light, medium radius
     h.slamT = 0.55; Snd.play('windupHero');
@@ -573,38 +629,38 @@ function spellCdOf(h) {   // per-weapon cooldown rule: Spellweaver = spec matrix
 }
 const SPELLS = {
   ember: [
-    { name: 'Cinder Bolt', hold: true, rate: 0.2, cd: 0, cast: h => { Snd.play('firebolt'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 620, vy: Math.sin(h.fa) * 620, dmg: heroDmg(h, DMG.medium), noFood: true, r: 7, life: 0.7, kind: 'fire', owner: h, col: '#ff8a2a', fx: { burn: 2 }, knock: 70 }); } },
-    { name: 'Twin Serpents', cd: 6, cast: h => { Snd.play('serpent'); explode(h.x, h.y, MTR, heroDmg(h, DEV.dmg.zoey.serpentBurst), { src: h, col: '#ff7a2a', tier: 2 }); h.tpBuf = false; startDash(h, h.fa, 300, SPEC.zoeyTeleport.iframes + SPEC.zoeyTeleport.vulnerable, { inv: SPEC.zoeyTeleport.iframes, trail: 'rgba(255,120,30,0.7)', trailSize: 9, hitR: 16, stopOnWall: false, onHitFoe: f => hitFoe(f, heroDmg(h, DEV.dmg.zoey.serpentPass), { x: h.x, y: h.y, burn: 6, stagger: 0.5, slow: 2, src: h }) }); } },
-    { name: 'Magma Mortar', cd: 1.1, cast: h => { Snd.play('throw'); const p = aimPoint(h, 340, 80); lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.6, r: 11, kind: 'magma', col: '#ff6a1a', owner: h, arc: 110, tele: 85, onLand: s => explode(s.tx, s.ty, 85, heroDmg(h, DEV.dmg.zoey.mortar), { src: h, col: '#ff7a2a', burn: 4 }) }); } },
+    { name: 'Cinder Bolt', hold: true, rate: DEV.dmg.zoey.boltRate, cd: 0, cast: h => { Snd.play('firebolt'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 620, vy: Math.sin(h.fa) * 620, dmg: heroDmg(h, DEV.dmg.zoey.bolt), tier: 2, noFood: true, r: 7, life: 0.7, kind: 'fire', owner: h, col: '#ff8a2a', knock: 70, fx: { stagger: 0.3 } }); } },   // Firebolts: 1.8/s x 22
+    { name: 'Twin Serpents', cd: 6, cast: h => { Snd.play('serpent'); ring(h.x, h.y, MTR, '#ff7a2a', 0.35, 6); burst(h.x, h.y, '#ff7a2a', 20, 160, 4, 0.5); h.tpBuf = false; startDash(h, h.fa, 300, SPEC.zoeyTeleport.iframes + SPEC.zoeyTeleport.vulnerable, { inv: SPEC.zoeyTeleport.iframes, trail: 'rgba(255,120,30,0.7)', trailSize: 9, hitR: 16, stopOnWall: false, onHitFoe: f => hitFoe(f, heroDmg(h, DEV.dmg.zoey.serpentPass), { x: h.x, y: h.y, burn: heroDmg(h, DEV.dmg.zoey.serpentBurn), burnT: DEV.dmg.zoey.serpentBurnT, stagger: 0.5, slow: 2, src: h, tier: 1 }) }); } },   // Flaming Serpents: 16 + 96 burn over 12s
+    { name: 'Magma Mortar', cd: 1.1, cast: h => { Snd.play('throw'); const p = aimPoint(h, 340, 80); lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.6, r: 11, kind: 'magma', col: '#ff6a1a', owner: h, arc: 110, tele: 85, onLand: s => explode(s.tx, s.ty, 85, heroDmg(h, DEV.dmg.zoey.mortar), { src: h, col: '#ff7a2a', tier: 3, stagger: 1.0 }) }); } },   // Fireball mortar: 56, knocks small foes down
   ],
   rime: [
-    { name: 'Flash Freeze', cd: 5, cast: h => { Snd.play('freeze'); for (let i = 0; i < 18; i++) { const a = h.fa + R(-0.6, 0.6), s = R(200, 420); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: '#dff8ff', size: 4, grav: 0 }); } areaHit(h.x, h.y, 150, heroDmg(h, 6), { cone: h.fa, arc: 1.3, src: h, freeze: 2.6 }); } },
+    { name: 'Flash Freeze', cd: 5, cast: h => { Snd.play('freeze'); for (let i = 0; i < 18; i++) { const a = h.fa + R(-0.6, 0.6), s = R(200, 420); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: '#dff8ff', size: 4, grav: 0 }); } areaHit(h.x, h.y, 150, 0.001, { cone: h.fa, arc: 1.3, src: h, freeze: DEV.dmg.zoey.freeze, quiet: true }); } },   // Freezing Wave: freeze 3s
     { name: 'Frost Ray', channel: (h, dt) => {
         h.rayT = (h.rayT || 0) + dt; const len = rayWall(h.x, h.y, h.fa, 380); const ramp = Math.min(1, h.rayT / 1.5);
         G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(h.fa) * len, y2: h.y + Math.sin(h.fa) * len, col: '#bff4ff', life: dt * 1.5, w: 6 + ramp * 6, glow: true });
         h.rayTick = (h.rayTick || 0) - dt; if (h.rayTick > 0) return; h.rayTick = 0.1; Snd.play('ray');
-        for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along < 0 || along > len) continue; const perp = Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)); if (perp > f.r + 8) continue; hitFoe(f, heroDmg(h, (3 + 4 * ramp)), { quiet: ramp < 0.5, slow: 1, slowM: 0.4, src: h }); }
-        for (const s of G.spawners) { const px = s.x - h.x, py = s.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along > 0 && along < len && Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) < s.r + 8) hitSpawner(s, heroDmg(h, 3 + 4 * ramp), h); }
+        for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along < 0 || along > len) continue; const perp = Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)); if (perp > f.r + 8) continue; hitFoe(f, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1 * (0.5 + 0.5 * ramp)), { quiet: ramp < 0.5, slow: 3, slowM: 0.4, src: h, tier: 1 }); }   // Ice Beam: ramps to ~56 DPS, Slow 3
+        for (const s of G.spawners) { const px = s.x - h.x, py = s.y - h.y, along = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (along > 0 && along < len && Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) < s.r + 8) hitSpawner(s, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1), h); }
       }, moveMul: 0 },
-    { name: 'Winter Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'iceorb', col: '#bff4ff', owner: h, pierce: 99, fx: { slow: 2, slowM: 0.4 }, onEnd: s => { Snd.play('freeze'); G.hazards.push({ kind: 'frost', x: s.x, y: s.y, r: 115, life: 6, t: 0, cap: RULE('orbCap') ? 30 : 0, caught: new Set(), dps: heroDmg(h, 4), owner: h }); }, onWall: s => G.hazards.push({ kind: 'frost', x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, r: 115, life: 6, t: 0, dps: heroDmg(h, 4), owner: h }) }); } },
+    { name: 'Winter Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'iceorb', col: '#bff4ff', owner: h, pierce: 99, fx: { slow: 2, slowM: 0.4 }, onEnd: s => { Snd.play('freeze'); G.hazards.push({ kind: 'frost', x: s.x, y: s.y, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, cap: RULE('orbCap') ? 30 : 0, caught: new Set(), dps: heroDmg(h, 4), owner: h }); }, onWall: s => G.hazards.push({ kind: 'frost', x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, dps: heroDmg(h, 4), owner: h }) }); } },
   ],
   storm: [
-    { name: 'Thunderclap', cd: 1.6, cast: h => { Snd.play('thunder'); ring(h.x, h.y, 95, '#ffe95a', 0.3, 7); burst(h.x, h.y, '#fff6a0', 20, 260, 2, 0.4); addTrauma(0.2); areaHit(h.x, h.y, 95, heroDmg(h, DEV.dmg.zoey.thunderclap), { src: h, knock: 460, stagger: 0.8, hitstop: 0.05 }); } },
+    { name: 'Thunderclap', cd: 1.6, cast: h => { Snd.play('thunder'); ring(h.x, h.y, 95, '#ffe95a', 0.3, 7); burst(h.x, h.y, '#fff6a0', 20, 260, 2, 0.4); addTrauma(0.2); for (const f of G.foes) if (ALIVE(f) && SKELETAL(f) && !f.heavy && !f.elite && hyp(f.x - h.x, f.y - h.y) < 95 + f.r) killFoe(f, h, { tag: 'knockdown' }); areaHit(h.x, h.y, 95, heroDmg(h, DEV.dmg.zoey.thunderclap), { src: h, knock: 460, stagger: 1.0, hitstop: 0.05, tier: 1 }); } },   // Shock Blast: 14, knockdown destroys skeletons   // Shock Blast: 14, knockdown
     { name: 'Arc Chain', cd: 0.8, cast: h => { Snd.play('zap'); let from = { x: h.x, y: h.y }, used = new Set(), aimA = h.fa;
         for (let j = 0; j < 7; j++) { let best = null, bd = j ? 170 : 280; for (const f of G.foes) { if (!ALIVE(f) || used.has(f) || f.charm > 0 || f.type === 'reaper') continue; const d = hyp(f.x - from.x, f.y - from.y); const pen = j ? 0 : Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), aimA)) * 120; if (d + pen < bd && los(from.x, from.y, f.x, f.y)) { bd = d + pen; best = f; } }
           if (!best) { if (!j) G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(aimA) * 120, y2: h.y + Math.sin(aimA) * 120, col: '#ffe95a', life: 0.12, w: 2, zig: true }); break; }
-          used.add(best); G.beams.push({ x1: from.x, y1: from.y, x2: best.x, y2: best.y, col: '#fff6a0', life: 0.18, w: 3, zig: true }); hitFoe(best, heroDmg(h, DEV.dmg.zoey.arcChain), { x: from.x, y: from.y, knock: 60, stagger: 0.2, src: h }); from = best; } } },
-    { name: 'Static Ward', cd: 10, cast: h => { Snd.play('ward'); G.hazards.push({ kind: 'ward', x: h.x, y: h.y, r: 72, life: 6, t: 0, owner: h }); } },
+          used.add(best); G.beams.push({ x1: from.x, y1: from.y, x2: best.x, y2: best.y, col: '#fff6a0', life: 0.18, w: 3, zig: true }); hitFoe(best, heroDmg(h, DEV.dmg.zoey.arcChain), { x: from.x, y: from.y, knock: 0, stagger: 0, src: h, tier: 2 }); from = best; } } },
+    { name: 'Static Ward', cd: 10, cast: h => { Snd.play('ward'); G.hazards.push({ kind: 'ward', x: h.x, y: h.y, r: 72, life: DEV.dmg.zoey.ward, t: 0, owner: h }); } },
   ],
   void: [
-    { name: 'Undertow', cd: 7, cast: h => { Snd.play('vacuum'); ring(h.x, h.y, 200, '#b07aff', 0.5, 6); for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.charm > 0) continue; const d = hyp(f.x - h.x, f.y - h.y); if (d > 210) continue; const a = Math.atan2(h.y - f.y, h.x - f.x); f.kx += Math.cos(a) * Math.min(600, d * 4); f.ky += Math.sin(a) * Math.min(600, d * 4); f.stag = Math.max(f.stag, 1.4); hitFoe(f, heroDmg(h, 5), { quiet: true, src: h }); } } },
-    { name: 'Gloom Torrent', channel: (h, dt) => { h.gT = (h.gT || 0) - dt; for (let i = 0; i < 3; i++) { const a = h.fa + R(-0.5, 0.5), s = R(220, 340); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.45, max: 0.45, col: '#7a4aff', size: 5, grav: 0 }); } if (h.gT > 0) return; h.gT = 0.12; Snd.play('gloom'); areaHit(h.x, h.y, 170, heroDmg(h, 4), { cone: h.fa, arc: 1.0, src: h, slow: 1, slowM: 0.4, quiet: true, needLos: true }); }, moveMul: 0.4 },
-    { name: 'Veil', cd: 12, cast: h => { Snd.play('smoke'); h.invisT = 5; burst(h.x, h.y, '#b07aff', 26, 160, 4, 0.8); } },
+    { name: 'Undertow', cd: 8, cast: h => { Snd.play('vacuum'); ring(h.x, h.y, 200, '#b07aff', 0.5, 6); for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.charm > 0) continue; const d = hyp(f.x - h.x, f.y - h.y); if (d > 210) continue; const a = Math.atan2(h.y - f.y, h.x - f.x); f.kx += Math.cos(a) * Math.min(600, d * 4); f.ky += Math.sin(a) * Math.min(600, d * 4); f.stag = Math.max(f.stag, 1.4); hitFoe(f, heroDmg(h, 5), { quiet: true, src: h, slow: DEV.dmg.zoey.undertowSlow, slowM: 0.5 }); } } },   // Vacuum: pull + slow 5s
+    { name: 'Gloom Torrent', channel: (h, dt) => { h.gT = (h.gT || 0) - dt; for (let i = 0; i < 3; i++) { const a = h.fa + R(-0.5, 0.5), s = R(220, 340); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.45, max: 0.45, col: '#7a4aff', size: 5, grav: 0 }); } if (h.gT > 0) return; h.gT = 0.12; Snd.play('gloom'); areaHit(h.x, h.y, 170, heroDmg(h, DEV.dmg.zoey.gloomMin * 0.12), { cone: h.fa, arc: 1.0, src: h, slow: 1, slowM: 0.4, quiet: true, needLos: true, tier: 1 }); }, moveMul: 0.4 },   // Dark Torrent: 4 DPS while held (Neoseeker FAQ)
+    { name: 'Veil', cd: 12, cast: h => { Snd.play('smoke'); h.invisT = DEV.dmg.zoey.veil; burst(h.x, h.y, '#b07aff', 26, 160, 4, 0.8); } },
   ],
   infernal: [
-    { name: 'Scorch', cd: 2.2, cast: h => { Snd.play('scorch'); const x = h.x + Math.cos(h.fa) * 50, y = h.y + Math.sin(h.fa) * 50; ring(x, y, 55, '#ff3a5a', 0.3, 7); burst(x, y, '#ff5a3a', 26, 240, 4, 0.5); addTrauma(0.15); areaHit(x, y, 55, heroDmg(h, 34), { src: h, burn: 8, knock: 200, hitstop: 0.05 }); } },
-    { name: 'Hellbreath', channel: (h, dt) => { h.hbT = (h.hbT || 0) - dt; for (let i = 0; i < 3; i++) { const a = h.fa + R(-0.4, 0.4), s = R(160, 260); G.parts.push({ x: h.x + Math.cos(h.fa) * 12, y: h.y + Math.sin(h.fa) * 12, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: pick(['#ff5a1a', '#ffb02a', '#ff2a3a']), size: 6, grav: 0 }); } if (h.hbT > 0) return; h.hbT = 0.12; Snd.play('flame'); areaHit(h.x, h.y, 120, heroDmg(h, 5), { cone: h.fa, arc: 0.9, src: h, burn: 5, quiet: true, needLos: true }); }, moveMul: 0 },
-    { name: 'Pyre Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'fireorb', col: '#ff5a2a', owner: h, pierce: 99, fx: { burn: 4 }, onEnd: s => G.hazards.push({ kind: 'fire', x: s.x, y: s.y, r: 105, life: 6, t: 0, dps: heroDmg(h, 9), owner: h }) }); } },
+    { name: 'Scorch', cd: 5, cast: h => { Snd.play('scorch'); const x = h.x + Math.cos(h.fa) * 50, y = h.y + Math.sin(h.fa) * 50; ring(x, y, 55, '#ff3a5a', 0.3, 7); burst(x, y, '#ff5a3a', 26, 240, 4, 0.5); addTrauma(0.15); areaHit(x, y, 55, heroDmg(h, DEV.dmg.zoey.scorch), { src: h, burn: heroDmg(h, DEV.dmg.zoey.scorchBurn), burnT: 8, knock: 200, hitstop: 0.05, tier: 3 }); } },   // Searing Blast: 70 + 44 burn
+    { name: 'Hellbreath', channel: (h, dt) => { h.hbT = (h.hbT || 0) - dt; for (let i = 0; i < 3; i++) { const a = h.fa + R(-0.4, 0.4), s = R(160, 260); G.parts.push({ x: h.x + Math.cos(h.fa) * 12, y: h.y + Math.sin(h.fa) * 12, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: pick(['#ff5a1a', '#ffb02a', '#ff2a3a']), size: 6, grav: 0 }); } if (h.hbT > 0) return; h.hbT = 0.12; Snd.play('flame'); areaHit(h.x, h.y, 120, heroDmg(h, DEV.dmg.zoey.hellDps * 0.12), { cone: h.fa, arc: 0.9, src: h, quiet: true, needLos: true, tier: 1 }); }, moveMul: 0 },   // Hellfire: ~40 DPS
+    { name: 'Pyre Orb', cd: 20, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'fireorb', col: '#ff5a2a', owner: h, pierce: 99, fx: { burn: 4 }, onEnd: s => G.hazards.push({ kind: 'fire', x: s.x, y: s.y, r: 105, life: DEV.dmg.zoey.pyreLife, t: 0, dps: heroDmg(h, DEV.dmg.zoey.pyreDps), owner: h }) }); } },   // Burning Orb: 72 over 9s (6 x 12)
   ],
 };
 
@@ -659,11 +715,11 @@ function usePotion(h) {
     Snd.play('holy'); let revived = 0;
     for (const o of G.heroes) { if (hyp(o.x - h.x, o.y - h.y) > SPEC.paladin.layR && o !== h) continue; if (o.dead) { if (reviveHero(o, true)) { o.hp = o.maxHp; revived++; } } else { healHero(o, o.maxHp); } ring(o.x, o.y, 40, '#fff2a0', 0.6, 5); }
     h.lastLay = revived; msg('Lay on Hands!', '#fff2a0', 2); repelAll(h.x, h.y, 240); }
-  else if (id === 'kestrel' && tal === 'base') { Snd.play('powershot'); addTrauma(0.3); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1300, vy: Math.sin(h.fa) * 1300, dmg: heroDmg(h, 160), tier: 4, r: 16, life: 1.2, kind: 'heart', owner: h, pierce: 999, ghost: true, big: true, knock: 500, fx: { stagger: 1, hitstop: 0.03 }, col: '#ff6a8a' }); for (const f of G.foes) if (f.type === 'reaper') repelReaper(f); }
+  else if (id === 'kestrel' && tal === 'base') { Snd.play('powershot'); addTrauma(0.3); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1300, vy: Math.sin(h.fa) * 1300, dmg: heroDmg(h, DEV.dmg.isaac.heart), tier: 4, r: 16, life: 1.2, kind: 'heart', owner: h, pierce: 999, ghost: true, big: true, knock: 500, fx: { stagger: 1, hitstop: 0.03 }, col: '#ff6a8a' }); for (const f of G.foes) if (f.type === 'reaper') repelReaper(f); }
   else if (id === 'kestrel') { for (let k = 0; k < 3; k++) { const a = mkAlly('sprite', h.x, h.y, h); a.ang = k * 2.094; } Snd.play('sprites'); repelAll(h.x, h.y, 200); }
   else if (id === 'mirelle' && tal === 'base') { // Arcane Nova: wizard screen blast, T4 damage to everything on screen
     Snd.play('nova'); ring(h.x, h.y, W / 2, '#bfe0ff', 0.5, 10); G.flash = 0.35; G.flashCol = '#cfe8ff'; addTrauma(0.5); hitstop(0.08);
-    h.lastNova = areaHit(h.x, h.y, W, heroDmg(h, DMG.massive), { src: h, knock: 500, stagger: 1, heavy: true, tier: 4 }); repelAll(h.x, h.y, 300); }
+    h.lastNova = areaHit(h.x, h.y, W, heroDmg(h, DEV.dmg.zoey.nova), { src: h, knock: 500, stagger: 1, heavy: true, tier: 4 }); repelAll(h.x, h.y, 300); }   // Arcane Blast: 106
   else if (id === 'mirelle') { Snd.play('ward'); G.hazards.push({ kind: 'bubble', x: h.x, y: h.y, r: 130, life: 7, t: 0, owner: h }); repelAll(h.x, h.y, 260); }
   else if (id === 'vesper' && tal === 'base') { // Dread Mist: 0 burst damage; a mist that makes foes flee and deals low damage over time
     Snd.play('nova'); ring(h.x, h.y, TS.dreadR, '#b07aff', 0.55, 8); G.flash = 0.15; G.flashCol = '#c8a0ff';
@@ -722,7 +778,7 @@ function updateHeroBuffs(h, dt) {
   if (h.slamT > 0) h.slamT -= dt; if (h.heavyT > 0) h.heavyT -= dt; if (h.throwT > 0) h.throwT -= dt;
   if (h.buff.wings > 0 && !h.dead) { h.z = 10; if (Math.random() < 0.6) G.parts.push({ x: h.x + R(-30, 30), y: h.y + R(-40, 0), vx: 0, vy: -50, life: 0.6, max: 0.6, col: '#ffe9a0', size: 2.5, grav: 0 }); }
   else if (h.wingsLand) { h.wingsLand = false; h.z = 0; if (!h.dead) { const r = SPEC.paladin.wingsBurstR; Snd.play('holyslam'); addTrauma(0.5); G.flash = 0.25; G.flashCol = '#fff2c0'; ring(h.x, h.y, r, '#ffe08a', 0.5, 10);
-    h.lastWingsBurst = areaHit(h.x, h.y, r, heroDmg(h, DMG.massive), { src: h, knock: 520, stagger: 1, heavy: true, tier: 4, light: true }); } }
+    h.lastWingsBurst = areaHit(h.x, h.y, r, heroDmg(h, DEV.dmg.paladin.wingsBurst), { src: h, knock: 520, stagger: 1, heavy: true, tier: 4, light: true }); } }
   if (h.absorbT > 0) { h.absorbT -= dt; if (h.absorbT <= 0) h.absorb = 0; }
   if (h.buff.ember > 0) { h.emberTrail = (h.emberTrail || 0) - dt; if (h.emberTrail <= 0) { h.emberTrail = 0.12; G.hazards.push({ kind: 'fire', x: h.x, y: h.y, r: 26, life: 2.5, t: 0, dps: heroDmg(h, 12), owner: h }); } }
 }

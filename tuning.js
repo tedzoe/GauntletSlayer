@@ -30,7 +30,7 @@ const DMG = { light: 10, medium: 18, heavy: 32, massive: 60 };
 // T1 Light: minimal stagger. T2 Disrupt: hard recovery on medium foes. T3 Heavy/Stun: cancels elite casts, resets aggro to the hitter. T4 Execute: kills non-elites or launches.
 const TIER_OF = { light: 1, medium: 2, heavy: 3, massive: 4 };
 const TIER_STAGGER = [0, 0.08, 0.5, 0.9, 1.2];
-function dmgTier(dmg, src) { const base = dmg / ((src && src.mods && src.mods.dmg) || 1); return base >= 50 ? 4 : base >= 28 ? 3 : base >= 15 ? 2 : 1; }
+function dmgTier(dmg, src) { const base = dmg / ((src && src.mods && src.mods.dmg) || 1); return base >= 100 ? 4 : base >= 28 ? 3 : base >= 15 ? 2 : 1; }   // reference scale: only 100+ hits are T4 by size; executes need an explicit tier 4 or 'lethal'
 // speed ratings (frame-data section, overrides the earlier tiers): multiplier on a 140 px/s base
 const SPEED_BASE = 140;
 const SPEC = {
@@ -44,22 +44,25 @@ const SPEC = {
     paladin: { hp: 200, uiHp: 100, speed: 0.95, iframes: 0.15, iframeNote: 'Righteous Advance start-up (armored for the whole dash)' },
   },
   // Warrior -> Sir Theo
-  theo: { combo: 4, comboDmg: ['light', 'light', 'light', 'medium'], comboArc: 1.6, comboR: 58, finisherR: 1.5 * MTR, finisherFrames: 24,
+  theo: { combo: 7, strongHits: [4, 7], comboArc: 1.6, comboR: 58, finisherR: 1.5 * MTR, finisherFrames: 24,
     chargeCd: 5, chargeDmg: 'medium', chargeDist: 230, chargeWidth: 6,
     leapCd: 3, leapDmg: 'heavy', leapR: 90, leapStun: 1.2,
-    spinCd: 12, spinDmg: 'heavy', spinTicksPerSec: 5, spinR: 2.0 * MTR, spinTime: 210 / 60 },
+    spinCd: 12, spinDmg: 'heavy', spinTicksPerSec: 8 / 2.5, spinR: 2.0 * MTR, spinTime: 2.5 },
   // Valkyrie -> Dawnbringer Gela
   gela: { combo: 7, comboDmg: 'light', stunHits: [4, 7], stun: 1.0, comboArc: 1.4, comboR: 56,
-    thrustDmg: 'heavy', thrustCd: 0, thrustWindupFrames: 12, thrustLungeFrames: 4, thrustRecovery: 0.45, perfectWindow: 0.2, chargeCd: 2,
+    thrustDmg: 'heavy', thrustCd: 0, thrustWindupFrames: 12, thrustLungeFrames: 8, thrustRecovery: 0.45, perfectWindow: 0.2, chargeCd: 2,
+    thrustHeavyStun: 1.2, wallStun: 0.6, javelinWindup: 0.1, slashStep: 6, stunLockPad: 0.3,
+    shieldReach: 10, reflectMul: 3.5, bashEvery: 0.2, bashWindow: 0.5, bashR: 110, bashKnock: 320, bashInterruptR: 340,
     blockArc: Math.PI / 2, reflectAfter: 10,
     throwDmg: 'medium', throwChains: 4, execCd: 9, execDmg: 'massive', execR: 90 },
   // Wizard -> Sorceress Zoey. key = first element + second element
   zoey: { pulseDmg: 'light', spells: {
-    'ember+ember': { cd: 0, dmg: 'medium' }, 'ember+rime': { cd: 6, dmg: 'medium' }, 'ember+storm': { cd: 4, dmg: 'heavy' },
-    'rime+rime': { cd: 0, dmg: 'light' }, 'rime+ember': { cd: 5, dmg: 'medium' }, 'rime+storm': { cd: 8, dmg: null },
-    'storm+storm': { cd: 10, dmg: 'medium' }, 'storm+rime': { cd: 3, dmg: 'medium' }, 'storm+ember': { cd: 2, dmg: 'medium' } } },
+    // cooldowns from the Neoseeker FAQ (Oct 2026): Serpents 6, Fireball 2, Freezing Wave 3, Cold Sphere 20, Shock Blast 1/s, Chain Lightning 1/s, Storm Barrier 20
+    'ember+ember': { cd: 0, dmg: 'medium' }, 'ember+rime': { cd: 6, dmg: 'medium' }, 'ember+storm': { cd: 2, dmg: 'heavy' },
+    'rime+rime': { cd: 0, dmg: 'light' }, 'rime+ember': { cd: 3, dmg: null }, 'rime+storm': { cd: 20, dmg: null },
+    'storm+storm': { cd: 20, dmg: 'medium' }, 'storm+rime': { cd: 1, dmg: 'medium' }, 'storm+ember': { cd: 1, dmg: 'medium' } } },
   // Elf -> Ranger Isaac
-  isaac: { rapidDmg: 'light', rapidRate: 0.25, sniperDmg: 'heavy', sniperDraw: 90 / 60, bombR: 95 * 1.4, bombShotR: 95, rollCd: 1.5, rollIframes: 0.4, mortarCd: 6, mortarDmg: 'heavy', mortarR: 3.0 * MTR, rootTime: 2.5 },
+  isaac: { rapidDmg: 14, rapidRate: 0.25, sniperDmg: 'heavy', sniperDraw: 0.75,   /* Neoseeker FAQ: aimed shots ~1.3/s */ bombR: 95 * 1.4, bombShotR: 95, rollCd: 1.5, rollIframes: 0.4, mortarCd: 6, mortarDmg: 'heavy', mortarR: 3.0 * MTR, rootTime: 2.5 },
   // Necromancer -> Vesper Linda
   vesper: { reapDmg: 'medium', reapArc: 140 * Math.PI / 180, reapR: 64, ghostCd: 4, ghostIframes: 2.0, shadesDmg: 'heavy', essenceMax: 100, essenceGrunt: 5, essenceElite: 25, raiseCost: 20, essencePerHit: 2 },
   zoeyTeleport: { iframes: 48 / 60, vulnerable: 6 / 60 },
@@ -89,14 +92,14 @@ const SPEC = {
     axeSpeed: 640, axeLife: 0.8,
     turboR: 3.0 * MTR, turboArc: Math.PI / 2, turboStun: 1.6,
     demonicW: 1.0 * MTR, demonicLen: 6.0 * MTR, demonicFire: 4.0, demonicBurn: 4,
-    execR: 2.5 * MTR, execArc: Math.PI, execKnock: 900, crushStun: 2.0, crushWindow: 0.7,
+    execR: 2.5 * MTR, execArc: 2 * Math.PI, execKnock: 900, crushStun: 2.0, crushWindow: 0.7,
     splitterFan: Math.PI / 4, splitterSpeed: 760,
     deflectR: 70, deflectWidth: 22, deflectMax: 6, deflectWindow: 0.5,
     ricochetTargets: 4, ricochetHop: 4.0 * MTR, ricochetInterrupt: 0.4,
     mortarR: 3.0 * MTR, mortarSpawnerHits: 3,
-    rootLen: 14 * MTR, rootWidth: 10, rootTime: 2.5,
+    rootLen: 14 * MTR, rootWidth: 10, rootTime: 5,
     sparksTrigger: 1.0 * MTR, sparksSnare: 3, sparksR: 2.5 * MTR,
-    smokeR: 2.0 * MTR, smokeInvis: 2.0, smokeLife: 4,
+    smokeR: 2.0 * MTR, smokeInvis: 4.0, smokeLife: 4,
     raiseCost: 20, shadesCost: 100, detonateCost: 10, detonateR: 3.0 * MTR,
   },
   voidCd: 5, pyroCdMul: 1.2, pyroR: 1.8 * MTR, pyroSpawnerHits: 2, voidR: 2.2 * MTR, voidTime: 4, spellQueue: 0.35,
@@ -145,13 +148,28 @@ const DEV = {
     // room activation: a room's foes and spawners stay dormant until a hero steps inside, or one of its foes sees a hero
     // (walls and pillars block sight; sight range in px), or something in it is hit. Then the whole room wakes.
     sightR: 330, sightEvery: 0.2, wakeDelay: [0.25, 0.7] },
+  // 8. DAMAGE (David's Slayer reference, Oct 25 2026: docs/slayer_damage_reference_from_david.md). Hero damage uses the reference
+  //    numbers 1:1 because our enemy HP already sits on the reference scale (small ~30, strong ~48, casters 60-96).
+  //    Rates are tuned so every melee hero out-damages Isaac's Quick Shot (David's rule) while swinging slower than he shoots.
   dmg: {
-    theo: { leap: 32, spinTick: 38, spinTicksPerSec: 3 },          // before: leap 32, spin 10.7/tick x5/s
-    gela: { thrust: 32, execHit: 40 },                              // before: thrust 32, Extreme Prejudice 0 (wall crush T4 unchanged)
-    paladin: { judgmentMin: 24, judgmentMax: 32, slam: 42 },        // before: judgment 24-32, Holy Slam 32
-    isaac: { powerMin: 14, powerMax: 34, mortar: 44, bomb: 44 },    // before: power shot 10-32, mortar 32, bomb/explosive arrow 32
-    zoey: { serpentBurst: 26, serpentPass: 24, thunderclap: 26, arcChain: 24, mortar: 46 },   // before: 18 / 12 / 12 / 13 / 30
-    vesper: { spikes: 30, raiseBurst: 40, raiseBurstR: 64 },        // before: spikes 30, Raise Skeletons had no hit of its own
+    theo: { combo: [14, 14, 14, 42, 14, 14, 42], weakT: 0.30, strongT: 0.45,   // 154 per 2.4s nominal (~2.65s with hitstop) = ~58 DPS (reference ~46)
+      rush: 8, superSlash: [42, 14, 14, 42], superT: 0.16, leap: 50,            // Rush, Super Slash (Rush+attack), Smash / Leap (Lethal)
+      spinTick: 20, spinTicks: 8, spinTime: 2.5,                                 // Destructo Spin 8 x 20 = 160, 2.5s invulnerable
+      axe: 28, turbo: 140, turboAoe: 14, demonic: 140, demonicFire: 8, titanMul: 1.65 },
+    gela: { combo: [8, 8, 8, 42, 8, 8, 42], weakT: 0.22, strongT: 0.32,      // 124 per 1.74s nominal (~2.2s with hitstop) = ~56 DPS (reference ~47)
+      thrust: 42, charge: 8, bash: 8, javelin: 28, execHit: 70, ricochet: 56, ricochetSpawnerMul: 2, splitter: 28, intercept: 14 },
+    paladin: { combo: [18, 18, 48], weakT: 0.38, finT: 0.55,                  // our own: 84 per 1.31s nominal (~1.5s with hitstop) = ~56 DPS, slowest swings
+      judgmentMin: 25, judgmentMax: 50, advance: 8, slam: 70, hammer: 28, lance: 56, pulse: 8, wingsBurst: 106 },
+    isaac: { quick: 14, quickRate: 0.25, quickSpawnerHits: 0.5,              // 4/s x 14 = 56 DPS; 8 vs spawners -> half a hit
+      powerMin: 14, powerMax: 36, sniperSpawnerHits: 1.5, sniperLife: 6,     // Sniper Shot 36 Lethal, unlimited range, half vs spawners
+      bomb: 56, explosiveDirect: 2, mortar: 56, root: 22, rootAfter: 14, smoke: 14, heart: 438, sprite: 14 },
+    zoey: { bolt: 22, boltRate: 0.55,                                         // Firebolts 1.8/s x 22 = 40 DPS
+      mortar: 56, serpentPass: 16, serpentBurn: 8, serpentBurnT: 12,         // Fireball 56; Flaming Serpents 16 + 96 burn over 12s
+      rayDps: 56, freeze: 3, orbLife: 9, thunderclap: 14, arcChain: 22, ward: 6,
+      hellDps: 40, scorch: 70, scorchBurn: 44 / 8, pyreLife: 9, pyreDps: 72 / 9, gloomMin: 4, undertowSlow: 5, veil: 6, nova: 106 },
+    vesper: { reap: 8, reapT: 0.4, spikes: 46, spikesSplash: 2, ghost: 4, ghostSlow: 5,   // Slash 2.5/s x 8 = 20 DPS; Smash 46; Ghostwalk 4 + slow
+      raiseBurst: 48, raiseBurstR: 64, drain: 5,
+      minion: { warrior: 8, spear: 8, archer: 14, wraith: 28 } },
   },
 };
 const PROJ_CAP = () => DEV.proj.capMul * SLOWEST_HERO_SPEED();

@@ -341,7 +341,7 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
    - Applied at the movement step, after every multiplier (Endless ×1.15, totem haste, frenzy, lurker dive, boss rage), in every realm.
    - Charges are capped too. Charger runs last 1.1s and boss charges 1.2s, and the boss charge telegraph is shortened to match.
    - Grave Wisps (wraith), Shiver Sprites and Glimmerwisps keep their speed. Hollowfang (hovering sword) keeps its drift. Death is capped like everyone else.
-6. **Damage order: main < secondary < special, per hit and per activation.** Main attacks are unchanged.
+6. **Damage order** (superseded Oct 25 2026 by the Slayer damage reference, see "Damage rebalance" below: the order now holds per use, and the reference's own per-hit exceptions are kept). Old table for history:
 
    | Hero | Main (per hit) | Secondary before → after | Special before → after |
    |---|---|---|---|
@@ -387,3 +387,56 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
   - Front hits are blocked and missiles are blocked or reflected as before. Hits from the side or back still land.
   - Guess: the Brimstone Fiend's heavy cleave stays unblockable, so that one hit passes the shield while the shield stays up.
   - In the HUD the shield icon never shows a cooldown and lights while held. These checks are in `tests/fixtest.js`.
+
+
+# Damage rebalance to the Slayer reference (Oct 25 2026)
+Sources: `docs/slayer_damage_reference_from_david.md`, `docs/slayer_valkyrie_reference_from_david.md` (Steam guide) and the Neoseeker FAQ (`docs/slayer_neoseeker_faq_from_david.md`).
+Numbers live in `DEV.dmg` (tuning.js). Hero damage uses the reference values 1:1, because our enemy HP already sits on the reference scale (weak ~30, strong ~48, casters 60-96). Enemy HP is unchanged.
+
+**Rules**
+- Melee heroes out-damage Isaac's Quick Shot and swing slower than he shoots (David's rule). Rates are faster than the reference's ~46-47 DPS for this reason.
+- **Lethal**: instantly kills small foes and casters, whatever their HP. It never kills heavies, elites (other than casters) or bosses. It applies to Smash/Leap, Spear Thrust, a full Sniper Shot and a full Judgment.
+- An execute now needs an explicit tier 4 or Lethal. Big hits (50-100) no longer execute just because of their size, and only 100+ counts as T4 by size.
+- Charmed foes take double damage from heroes. Mortars and bombs spare them.
+- Spawners count hits. Quick Shot counts as half a hit, a full Sniper Shot as 1.5, and Shield Ricochet as double.
+
+| Hero | Main per hit (rate, DPS measured with hitstop) | Secondary | Dash | Special |
+|---|---|---|---|---|
+| Theo | 14 ×5, 42 on hits 4 and 7 (2.5/s, 58) | Smash / Leap 50, Lethal | Rush 8, knocks small foes down. Rush + attack = Super Slash 42/14/14/42 | Destructo Spin 8 × 20 = 160, 2.5s invulnerable |
+| Gela | 8 ×5, 42 on hits 4 and 7 (3.3/s, 55) | Spear Thrust 42, Lethal | Shield Charge 8 | Extreme Prejudice 70 |
+| David (our own) | 18 / 18 / 48 (2.0/s, 56) | Judgment 25-50, full charge Lethal | Righteous Advance 8 | Holy Slam 70 |
+| Isaac | Quick Shot 14 (3.7/s, 51) | Sniper 36 at full draw (0.75s), Lethal | Tumble 0, passes through foes | Mortar 56; Magic Bomb 56 on a 2s fuse; Explosive Shot 56 + 2 |
+| Zoey | Firebolt 22 (1.8/s, 40) | Serpents 16 + 96 burn over 12s, Shock Blast 14, Chain Lightning 22, Ice Beam to 56 DPS | Blink | Fireball 56; Arcane Blast 106 |
+| Vesper | Skeleton Slash 8 (2.2/s, 17) | Bone Spikes 46 + 2 splash, draws aggro | Ghostwalk 4 + slow 5s | Raise burst 48 |
+
+Weapon specials: Thrown Axe 28, Turbo-Slam 140 + 14 AoE, Demonic Cleave 140 (invulnerable), Splitter 28 each, Ricochet 56, Intercept 14, Freedom Protector javelin 28, Hammer 28, Lance 56, Sanctuary 8, Root Shot 22 first / 14 after with Root 5, Smoke Bomb 14 + 4s invisibility, Scorch 70 + 44 burn over 8s, Hellbreath 40 DPS, Pyre Orb 72 over 9s, Dark Torrent 4 DPS.
+Talismans: Titan ×1.65, Heartpiercer 438, Sprites 14, Arcane Nova 106, Golden Wings burst 106.
+Minions: warrior 8, spear 8, archer 14, shades 28, valkyries 12.
+Zoey cooldowns (FAQ): Fireball 2, Freezing Wave 3 (freeze 3s, no damage), Cold Sphere 20 (9s), Shock Blast 1, Chain Lightning 1, Storm Barrier 20, Searing Blast 5, Burning Orb 20, Vacuum 8.
+
+**Gela (Valkyrie guide)**
+- Slash chain: 7 hits, with heavies on 4 and 7 (white blur). Each slash steps her forward.
+- A heavy stuns heavies and elites until the next heavy, so the chain can stun-lock one foe.
+- Spear Thrust:
+  - 12-frame start-up, during which she is vulnerable; a hit knocks her out of the thrust (FAQ).
+  - An invincible 8-frame lunge that covers about running pace over the whole move, then 0.45s of end lag.
+  - Lesser foes in the path die (Lethal). Heavies, elites and bosses stop her and are stunned for 1.2s.
+  - Hitting a wall stuns her for 0.6s and she rebounds.
+- Shield cancel: holding block after the lunge removes the end lag.
+- Wall cancel: block held when the thrust starts means no wall stun, and she passes through every foe, mini-bosses included.
+- Extreme Prejudice can also cancel the end lag, to link two thrusts.
+- Shield Charge is on the dash button only; block + secondary is now the wall-cancel thrust.
+- Shield Block:
+  - Covers the front, with no cooldown or limit.
+  - Missiles deflect for ×3.5 damage.
+  - When struck, it bashes every foe in front back with 0 damage (Knockdown Small, Stagger Large) and interrupts casters behind them. This opens a 0.5s window where the next thrust has no start-up.
+  - Small foes (ghosts, skeletons, spiderlings, critters ≤12 HP) die on contact.
+  - She strafes while blocking (keyboard facing is held; mouse or stick aim still turns her).
+  - Slows still land.
+- Extreme Prejudice: a 360° sweep that stuns, then hits for 70. Invulnerable for 0.5s.
+- Freedom Protector (vanguard): the secondary is a javelin throw (0.1s build-up, twice the thrust rate, 28). Intercept moves to the ability button.
+
+**Conflicts (the reference wins)**
+- Destructo Spin ticks (20) are below Smash (50).
+- Shock Blast (14) and Serpents (16) are below the Firebolt (22).
+- The Steam guide calls the whole thrust invincible; the FAQ says she can be hit in the start-up pause. We follow the FAQ.

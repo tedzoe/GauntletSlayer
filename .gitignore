@@ -1,2 +1,5 @@
 # Tezois Studio logo source (1.5 MB); web copies live in assets/brand/
 art/brand/*_source.png
+
+# third-party guide text kept locally for reference only
+docs/slayer_neoseeker_faq_from_david*.md

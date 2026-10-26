@@ -3,7 +3,7 @@
 // floor scaling, and essence / shard / stamina meters. Off by default; no effect on gameplay.
 const DEBUG = {
   on: false, log: [],
-  hit(f, dmg, o) { this.log.push({ t: G.time, who: (FOES[f.type] && FOES[f.type].name) || f.type, dmg, tier: dmgTier(dmg, o && o.src && (o.src.isHero ? o.src : o.src.owner)), by: o && o.src && o.src.def ? o.src.def.name : (o && o.tag) || '' }); if (this.log.length > 10) this.log.shift(); },
+  hit(f, dmg, o) { this.log.push({ t: G.time, who: (FOES[f.type] && FOES[f.type].name) || f.type, dmg, tier: (o && o.tier) || dmgTier(dmg, o && o.src && (o.src.isHero ? o.src : o.src.owner)), by: o && o.src && o.src.def ? o.src.def.name : (o && o.tag) || '' }); if (this.log.length > 10) this.log.shift(); },
   draw() {
     if (!this.on || typeof G === 'undefined' || !G.heroes) return;
     const x = W - 380, w = 366; let y = 12;

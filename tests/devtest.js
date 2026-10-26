@@ -79,10 +79,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const boss = await ev(() => { const out = {}; for (const kind of Object.keys(BOSSES)) { TT.setup(['mirelle']); const h = G.heroes[0]; h.x = 4 * 32; h.inv = 999; const f = spawnBoss(kind, 30 * 32, h.y); let mx = 0; for (let i = 0; i < 600; i++) { const x0 = f.x, y0 = f.y; menuGuard = 0; h.hp = h.maxHp; __game.tick(); if (!f.kx && !f.ky && kind !== 'sovereign') mx = Math.max(mx, hyp(f.x - x0, f.y - y0) * 60); } out[kind] = Math.round(mx); } return out; });
   chk('ground bosses (walk + charge) <= ground cap', boss, g => Object.entries(g).every(([k, v]) => k === 'sovereign' || v <= 122));
   // ---- 6. DAMAGE ORDER: main < secondary < special (numbers)
-  const order = await ev(() => { const D = DEV.dmg, M = DMG.medium, L = DMG.light; return {
-    theo: [M, D.theo.leap, D.theo.spinTick], gela: [L, D.gela.thrust, D.gela.execHit], paladin: [M, D.paladin.judgmentMin, D.paladin.slam], isaac: [L, D.isaac.powerMin, D.isaac.mortar],
-    zoey: [M, Math.min(D.zoey.serpentPass, D.zoey.thunderclap, D.zoey.arcChain), D.zoey.mortar], vesper: [M, D.vesper.spikes, D.vesper.raiseBurst] }; });
-  chk('per hit: special > secondary >= 1.3x main for every hero', order, g => Object.values(g).every(([a, s, sp]) => s >= a * 1.3 && sp > s));
+  // Slayer reference (Oct 2026) wins over the old per-hit rule: main hit < secondary < special PER USE; the reference's own per-hit exceptions are listed
+  const order = await ev(() => { const D = DEV.dmg; return {
+    theo: [Math.max(...D.theo.combo), D.theo.leap, D.theo.spinTick * D.theo.spinTicks], gela: [D.gela.combo[0], D.gela.thrust, D.gela.execHit], paladin: [D.paladin.combo[0], D.paladin.judgmentMax, D.paladin.slam],
+    isaac: [D.isaac.quick, D.isaac.powerMax, D.isaac.mortar], vesper: [D.vesper.reap, D.vesper.spikes, D.vesper.raiseBurst], zoey: [D.zoey.bolt, D.zoey.mortar, D.zoey.nova] }; });
+  chk('per use: main hit < secondary < special for every hero (Slayer reference)', order, g => Object.values(g).every(([a, s, sp]) => a < s && s < sp));
+  const exc = await ev(() => { const D = DEV.dmg; return { theoSpinTick: D.theo.spinTick < D.theo.leap, zoeyLow: [D.zoey.thunderclap, D.zoey.serpentPass].every(v => v < D.zoey.bolt) }; });
+  chk('reference per-hit exceptions kept on purpose: Destructo Spin ticks (20) < Smash (50); Shock Blast 14 and Serpents 16 < Firebolt 22', exc, { theoSpinTick: true, zoeyLow: true });
   console.log(`\n${pass} passed, ${fail} failed`); console.log('ERRORS', JSON.stringify(logs));
   await b.close(); process.exit(fail || logs.length ? 1 : 0);
 })();
