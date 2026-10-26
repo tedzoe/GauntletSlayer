@@ -246,8 +246,14 @@ function drawTitle() {
   const k = Math.min(1, sceneT * 1.5);
   ctx.globalAlpha = k;
   txt(GAME_TITLE, W / 2, 170, 78, '#ffcf7a', 'center'); txt(GAME_SUB, W / 2, 210, 22, '#d8b0ff', 'center');
-  HEROES.forEach((d, i) => drawHeroSprite(d, W / 2 + (i - 2) * 110, 330 + Math.sin(sceneT * 2 + i) * 4, 1.57 + Math.sin(sceneT + i) * 0.4, 2.4, { sprMul: 1.8, pose: { anim: 'idle', dir: 'down', t: sceneT + i }, walk: sceneT * 6 + i, weapon: 'base' }));
-  HEROES.forEach((d, i) => txt(d.name, W / 2 + (i - (HEROES.length - 1) / 2) * 168, 390, 13, d.color, 'center'));
+  // hero line-up: one slot per hero, centred over its name, all feet on one baseline at one shared scale.
+  // (in-game bodyScale / hover / glow are gameplay traits and are deliberately not applied here)
+  const slotX = i => W / 2 + (i - (HEROES.length - 1) / 2) * 168, footY = 362;
+  HEROES.forEach((d, i) => {
+    const x = slotX(i); softShadow(x, footY, 30, 9, 0.45);
+    if (!hasSprite(d) || !drawSpriteFrame(d.sprite, 'idle', 'down', sceneT + i * 0.37, x, footY, sprScale(d) * 1.8)) drawHeroSprite(d, x, footY - 12 * 2.4, 1.57, 2.4, { walk: 0, weapon: 'base', noShadow: true });
+  });
+  HEROES.forEach((d, i) => txt(d.name, slotX(i), 390, 13, d.color, 'center'));
   if (Math.floor(sceneT * 2) % 2 === 0) txt('Press ENTER / CLICK / (A) to begin', W / 2, 460, 20, '#fff', 'center');
   txt('C — controls    ·    up to 4 players: keyboard+mouse, a second keyboard cluster, and gamepads', W / 2, 500, 12, '#bba88a', 'center', 'normal');
   txt(`Banked ${bankTotal()} gold · Worlds ${['w1', 'w2', 'w3'].filter(w => SAVE.progress[w] >= 4).length}/3 · Endless best ${SAVE.endless.best} · Arena best ${SAVE.arena.best}/6`, W / 2, 530, 12, '#998a70', 'center', 'normal');
