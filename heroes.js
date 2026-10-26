@@ -153,11 +153,11 @@ function theoSlash(h, idx) {
   if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, 'rgba(255,220,150,0.95)', 8, 0.4); h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }
   if (strong) { swingFx(h, h.fa, 2.4, S.comboR + 10, 'rgba(255,255,255,0.98)', 8); G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 2.9, r: S.comboR + 20, life: 0.22, max: 0.22, col: 'rgba(255,255,255,0.5)', w: 12, follow: h }); addTrauma(0.08);   // Super Slash: white trail
     const set = new Set(); melee(h, h.fa, 2.4, S.comboR + 6, D.combo[idx], { set, knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3, tag: 'superSlash' });
-    for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun);
+    for (const f of set) if (HIT_FOE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun);
     return; }
   swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = idx % 2 ? -1 : 1;
   const set = new Set(); melee(h, h.fa, S.comboArc, S.comboR, D.combo[idx], { set, knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
-  for (const f of set) if (ALIVE(f) && (f.d.beh === 'caster' || f.conjuring > 0)) { f.conjuring = 0; if (f.state === 'windup') f.state = 'move'; }   // weak slashes interrupt casters
+  for (const f of set) if (HIT_FOE(f) && (f.d.beh === 'caster' || f.conjuring > 0)) { f.conjuring = 0; if (f.state === 'windup') f.state = 'move'; }   // weak slashes interrupt casters
 }
 function theoRushGo(h) {
   const S = SPEC.theo, D = DEV.dmg.theo; Snd.play('rush'); h.rushWin = S.rushWin;
@@ -172,7 +172,7 @@ function theoLeap(h) {   // Leap Attack: jumps OVER enemies (heavies too), exten
   const S = SPEC.theo, D = DEV.dmg.theo; Snd.play('leap');
   startDash(h, h.fa, S.leapDist, S.leapTime, { jump: true, ethereal: true, inv: S.leapTime + 0.15, stopOnWall: false, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7);
     const set = new Set(); areaHit(h.x, h.y, S.leapR, heroDmg(h, D.leap), { src: h, set, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3, lethal: true, tag: 'leap' });
-    for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); } });
+    for (const f of set) if (HIT_FOE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); } });
 }
 // Gela's Shield Charge (dash button): burst forward behind the shield; skeletons shatter, others take 8 and fall over
 function gelaCharge(h) {
@@ -282,7 +282,7 @@ const KITS = {
       if (!sm.hit && sm.t >= S.smashWindup) { sm.hit = true; Snd.play('slam'); addTrauma(0.35); hitstop(0.07); const x = h.x + Math.cos(h.fa) * S.smashFwd, y = h.y + Math.sin(h.fa) * S.smashFwd;
         ring(x, y, S.smashR, '#ffcf7a', 0.3, 7); burst(x, y, '#a08060', 20, 220, 4, 0.5); const set = new Set();
         areaHit(x, y, S.smashR, heroDmg(h, D.leap), { src: h, set, knock: 340, stagger: 1.0, heavy: true, tier: 3, lethal: true, tag: 'smash' });   // Smash: 50, Stagger Large, Lethal
-        for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); }
+        for (const f of set) if (HIT_FOE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); }
       if (sm.t >= S.smashTime / hasteMul(h)) h.smash = null;
       if (!(sm.hit && inp.pressed.defend)) return;
       h.smash = null; }   /* Rush cancels the Smash recovery once the blow has landed */
@@ -356,7 +356,7 @@ const KITS = {
           if (hyp(h.x - ox, h.y - oy) < step * 0.4) { t.done = true; t.wall = true;
             if (!t.wallCancel) { t.stunT = S.wallStun; h.kx -= ca * 220; h.ky -= sa * 220; text(h.x, h.y - 30, 'THUD', '#cfeaff'); addTrauma(0.2); Snd.play('clank'); return; } } }   // rebounds off the wall, stunned
         const n = areaHit(h.x, h.y, 70, heroDmg(h, D.thrust), { src: h, cone: h.fa, arc: 0.9, set: t.set, knock: 260, stagger: 0.8, hitstop: 0.05, heavy: true, tier: 3, lethal: true });   // Spear Thrust: 42, Stagger Large, Lethal
-        for (const f of t.set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.thrustHeavyStun);
+        for (const f of t.set) if (HIT_FOE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.thrustHeavyStun);
         if (t.t >= wu + lu) t.done = true;
         if (t.done) t.doneAt = t.t;
       }

@@ -58,6 +58,7 @@ function mkFoe(type, x, y, o = {}) {
   f.maxhp = f.hp; G.foes.push(f); return f;
 }
 const ALIVE = e => !e.dead && e.hp > 0;
+const HIT_FOE = e => ALIVE(e) && !!e.d && !e.spawner;   // hit sets also hold spawners and props (one hit each per swing); only real foes have .d
 function heroDmg(h, base) { return base * h.mods.dmg * (h.buff.titan > 0 ? DEV.dmg.theo.titanMul : 1) * (h.buff.valk > 0 ? 1.3 : 1) * (G.mods.glass ? 1.5 : 1); }
 function hitFoe(f, dmg, o = {}) {
   if (!ALIVE(f)) return false;
