@@ -50,7 +50,7 @@ function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE));
 function mastery(h, stat, v) {
   if (!h || !h.id || !v) return;
   const st = SAVE.mastery[h.id]; const before = st[stat] || 0; st[stat] = before + v;
-  for (const ms of masteriesFor(h.id)) if (ms.stat === stat) ms.tiers.forEach((t, i) => { if (before < t && st[stat] >= t) { h.mods = heroMods(h.id); msg(`${h.def.name} mastered ${ms.name}${ms.tiers.length > 1 ? ' ' + ['I', 'II', 'III'][i] : ''}: ${ms.text(i)}`, '#ffd27a', 4); Snd.play('mastery'); G.newMasteries.push(`${h.def.name}: ${ms.name} ${['I', 'II', 'III'][i]}`); } });
+  for (const ms of masteriesFor(h.id)) if (ms.stat === stat) ms.tiers.forEach((t, i) => { if (before < t && st[stat] >= t) { h.mods = heroMods(h.id); msg(`${h.def.name} mastered ${ms.name}${masteryTier(ms, i)}: ${ms.text(i)}`, '#ffd27a', 4); Snd.play('mastery'); G.newMasteries.push(`${h.def.name}: ${ms.name}${masteryTier(ms, i)}`); } });
 }
 
 // ---------------------------------------------------------------- party / run

@@ -151,7 +151,7 @@ function bossFinish(f) {
   burst(f.x, f.y, '#ffd27a', 80, 400, 5, 1.4); ring(f.x, f.y, 200, '#fff', 0.8, 10); addTrauma(1);
   for (let k = 0; k < 24; k++) dropGold(f.x + R(-90, 90), f.y + R(-90, 90), RI(40, 90));
   G.pickups.push({ kind: 'feast', x: f.x - 40, y: f.y + 30 }, { kind: 'potion', x: f.x + 40, y: f.y + 30 });
-  for (const h of G.heroes) { mastery(h, 'bosses', 1); mastery(h, 'boss_' + f.type, 1); }
+  for (const h of G.heroes) { mastery(h, 'bosses', 1); mastery(h, 'boss_' + f.kind, 1); }   // per boss kind (f.type is always 'boss')
   // open the way out where the boss fell
   let tx = Math.floor(f.x / T), ty = Math.floor(f.y / T);
   if (blocksWalk(tileAt(tx, ty))) { tx = Math.floor(G.map.w / 2); ty = Math.floor(G.map.h / 2); }

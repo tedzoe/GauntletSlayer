@@ -252,7 +252,7 @@ function openStation(st, h) {
       const v = Math.floor((SAVE.mastery[h.id] || {})[ms.stat] || 0); let tier = -1; ms.tiers.forEach((t, i) => { if (v >= t) tier = i; });
       const nextT = ms.tiers[tier + 1];
       return { label: `[${ms.group}] ${ms.name} ${tier >= 0 && ms.tiers.length > 1 ? ['I', 'II', 'III'][tier] : ''}`, right: nextT ? `${v} / ${nextT}` : 'MASTERED', rightCol: tier >= 0 ? '#9fffe0' : '#ffd27a',
-        desc: `Track: ${MASTERY_TRACK[ms.stat] || ms.stat}. ${tier >= 0 ? 'Current bonus: ' + ms.text(tier) + '. ' : ''}${nextT ? 'Next: ' + ms.text(tier + 1) : ''}`, act: () => { } };
+        desc: `Track: ${masteryTrack(ms, h.id)}. ${tier >= 0 ? 'Current bonus: ' + ms.text(tier) + '. ' : ''}${nextT ? 'Next: ' + ms.text(tier + 1) : ''}`, act: () => { } };
     }) });
   } else if (st.id === 'H') {
     openMenu({ dev, title: 'Hero Shrine', sub: 'Change who you play. Each hero keeps their own gear and masteries.', col: '#a05a8a', build: () => HEROES.map(d => {

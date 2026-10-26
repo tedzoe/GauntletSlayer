@@ -185,6 +185,13 @@ const MASTERY_TRACK = { chargeThrough: 'foes charged through', spinKills: 'Whirl
   death_barrel: 'die holding a blasting barrel', crownDrops: 'times the crown was knocked off', death_blade: 'die to a blade trap', endlessFloors: 'Endless floors cleared', arenaWaves: 'Colosseum waves cleared' };
 const masteriesFor = id => MASTERIES.filter(ms => !ms.hero || ms.hero === id);
 const SIGNATURE = { brannoc: 'foes struck by your weapon ability', sela: 'attacks blocked', kestrel: 'power-shot kills', mirelle: 'spells cast', vesper: 'dead raised', paladin: 'foes struck by your weapon ability' };
+Object.assign(MASTERY_TRACK, { fam_bones: 'skeletons slain', fam_shrouds: 'shamblers, bloaters and wraiths slain', fam_lich: 'hexcallers and liches slain',
+  fam_gobs: 'goblins and spiders slain', fam_brutes: 'brutes slain', fam_queen: 'Broodmothers slain', fam_cult: 'cultists slain', fam_fiends: 'imps and fiends slain',
+  boss_ossuary: 'defeat the Ossuary King', boss_rootmaw: 'defeat Rootmaw, the Deep Hunger', boss_forgemaster: 'defeat Forgemaster Vael', boss_sovereign: 'defeat Hollowfang, the Sovereign Blade',
+  flawless_w1: 'clear a Necropolis floor on Unfair with no deaths', flawless_w2: 'clear a Caverns floor on Unfair with no deaths', flawless_w3: 'clear a Foundry floor on Unfair with no deaths' });
+// display text for a mastery's tracked feat: never the internal stat key
+const masteryTrack = (ms, heroId) => ms.stat === 'signature' && SIGNATURE[heroId] ? SIGNATURE[heroId] : MASTERY_TRACK[ms.stat] || ms.stat.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+const masteryTier = (ms, i) => ms.tiers.length > 1 ? ' ' + ['I', 'II', 'III'][i] : '';   // single-tier feats have no numeral
 
 // ---------------------------------------------------------------- foes (original archetypes)
 // beh: melee | ranged | lobber | caster | charger | exploder | swarm | wraith | shield | brood | reaper
