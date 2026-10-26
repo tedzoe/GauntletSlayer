@@ -138,6 +138,13 @@ function vesperHunger(h) {   // Hungering Heart: the drain ring follows her for 
   G.hazards.push({ kind: 'darkHunger', x: h.x, y: h.y, r: S.hungerR, life: S.hungerTime, t: 0, owner: h, follow: h, dps: heroDmg(h, S.hungerDps), team: 'hero' });
 }
 // Sir Theo helpers (Slayer Warrior guide)
+function theoCleaveHit(h) {   // Demonic Cleave strike, ~0.45s after the press (anim_17): swirl + damage + heavy stun
+  const W = SPEC.wpn, D = DEV.dmg.theo; h.cleavePend = null; Snd.play('heavyswing');
+  const fa = h.fa, R = W.cleaveR;   // white swirl: several streaks, the full one wraps all but mid-back, inner ones weighted forward
+  swingFx(h, fa, W.cleaveArc, R, 'rgba(255,255,255,0.95)', 7, 0.45); swingFx(h, fa, W.cleaveArc - 1.4, R * 0.86, 'rgba(255,250,240,0.8)', 5, 0.4); swingFx(h, fa, 2.2, R * 1.02, 'rgba(255,255,255,0.7)', 9, 0.35);
+  G.swings.push({ x: h.x + Math.cos(fa) * R * 1.05, y: h.y + Math.sin(fa) * R * 1.05, a: fa, arc: 1.6, r: 16, life: 0.4, max: 0.4, col: 'rgba(255,240,200,0.85)', w: 4 });   // small wisp flying off
+  h.lastCleave = areaHit(h.x, h.y, W.cleaveR, heroDmg(h, D.demonic * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.cleaveArc, knock: 300, stagger: 1.0, heavy: true, sigKill: true, tier: 3 });
+}
 function breakSmoke(h) { if (h.smokeInv) { h.smokeInv = false; h.smokeOff = true; if (h.invisT > 0.05) h.invisT = 0.05; } }   // Shadowstrike smoke (FAQ): attacking or dashing ends the invisibility (the shot that breaks it still gets the shadow bonus)
 function rayFirst(h, len) { return beamTargets(h.x, h.y, h.fa, len, 8)[0] || null; }   // the first foe body or spawner the beam line touches (heads count)
 function theoSlash(h, idx) {
@@ -259,7 +266,7 @@ const KITS = {
     const S = SPEC.theo;
     const D = DEV.dmg.theo;
     if (h.titanRoot > 0) { h.titanRoot -= dt; if (inp.down.dash) h.titanRoot = 0; else { h.moveMul = 0; return; } }   // More of Thor: rooted while transforming unless Rush is held
-    if (h.cleaveT > 0) { h.cleaveT -= dt; h.moveMul = 0; return; }   // Demonic Cleave: rooted, invincible
+    if (h.cleaveT > 0) { h.cleaveT -= dt; h.moveMul = 0; const p = h.cleavePend; if (p && (p.t -= dt) <= 0) { if (!h.dead && p.map === G.map) theoCleaveHit(h); else h.cleavePend = null; } return; }   // Demonic Cleave: rooted, invincible
     // Destructo Spin: 2.5s of full i-frames, 8 ticks of 20 (8 x 20 = 160), a large circle that follows Theo; he SLIDES while it runs
     if (h.spin > 0) {
       h.spin -= dt; h.spinTick -= dt; h.moveMul = 0; h.fa += dt * 18;
@@ -325,10 +332,7 @@ const KITS = {
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.12); hitstop(0.06); h.cleaveT = W.cleaveRoot; h.moveMul = 0; h.inv = Math.max(h.inv, W.cleaveRoot + 0.1); h.slamT = 0.35;
         for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < W.cleaveStunR) f.stag = Math.max(f.stag, 0.6);
         ring(h.x, h.y, 30, 'rgba(255,255,255,0.95)', 0.18, 10); ring(h.x, h.y, W.cleaveStunR, 'rgba(255,235,220,0.6)', 0.2, 3);   // white radial flash + touch-stun ring
-        const fa = h.fa, R = W.cleaveR;   // white swirl: several streaks, the full one wraps all but mid-back, inner ones weighted forward
-        swingFx(h, fa, W.cleaveArc, R, 'rgba(255,255,255,0.95)', 7, 0.45); swingFx(h, fa, W.cleaveArc - 1.4, R * 0.86, 'rgba(255,250,240,0.8)', 5, 0.4); swingFx(h, fa, 2.2, R * 1.02, 'rgba(255,255,255,0.7)', 9, 0.35);
-        G.swings.push({ x: h.x + Math.cos(fa) * R * 1.05, y: h.y + Math.sin(fa) * R * 1.05, a: fa, arc: 1.6, r: 16, life: 0.4, max: 0.4, col: 'rgba(255,240,200,0.85)', w: 4 });   // small wisp flying off
-        h.lastCleave = areaHit(h.x, h.y, W.cleaveR, heroDmg(h, D.demonic * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.cleaveArc, knock: 300, stagger: 1.0, heavy: true, sigKill: true, tier: 3 });
+        h.lastCleave = 0; h.cleavePend = { t: W.cleaveDelay, map: G.map };   // the swirl + damage land after the wind-up (theoCleaveHit)
       } else { h.spin = S.spinTime; h.spinTick = 0; Snd.play('spinstart'); }   // Destructo-Spin (cooldown starts when the spin ends)
     }
   },

@@ -105,7 +105,7 @@ const SPEC = {
     spinR: 2.0 * MTR, spinFrames: 210,
     axeSpeed: 640, axeLife: 0.8,
     turboR: 3.0 * MTR, turboArc: Math.PI / 2, turboStun: 1.6,
-    cleaveR: 2.3 * MTR, cleaveArc: 5.0, cleaveStunR: 1.2 * MTR, cleaveRoot: 0.6,   // Demonic Cleave (anim_17): swirl ~2.3 hero widths round him, open only mid-back; planted + invincible 0.6s
+    cleaveR: 2.3 * MTR, cleaveArc: 5.0, cleaveStunR: 1.2 * MTR, cleaveRoot: 0.6, cleaveDelay: 0.45,   // Demonic Cleave (anim_17): swirl ~2.3 hero widths round him, open only mid-back; planted + invincible 0.6s
     execR: 2.5 * MTR, execArc: 2 * Math.PI, execKnock: 900, crushStun: 2.0, crushWindow: 0.7,
     splitterFan: Math.PI / 4, splitterSpeed: 760,
     deflectR: 70, deflectWidth: 22, deflectMax: 6, deflectWindow: 0.5,

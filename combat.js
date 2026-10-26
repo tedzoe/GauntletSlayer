@@ -299,7 +299,7 @@ function resetHeroTimers(h) {
   h.rollPause = 0; h.rolling = false;
   h.cd = {}; h.spellCd = {}; h._cdm = {}; h._rdy = {};
   for (const k of ['atkT', 'slamT', 'throwT', 'comboT', 'heavyT', 'hbT', 'gT', 'runeT', 'rayT', 'finT', 'drainT', 'absorbT', 'spikeT', 'lock', 'blockBroken', 'stamT', 'dashMsg', 'gateMsg']) if (h[k]) h[k] = 0;
-  h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.rushPrep = 0; h.ghostEnd = 0; h.vRoot = 0; h.hungerCast = 0; h.smash = null; h.cleaveT = 0; h.titanRoot = 0; h.spinVx = h.spinVy = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
+  h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.rushPrep = 0; h.ghostEnd = 0; h.vRoot = 0; h.hungerCast = 0; h.smash = null; h.cleaveT = 0; h.cleavePend = null; h.titanRoot = 0; h.spinVx = h.spinVy = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
   if (h.relicState) h.relicState = null;
 }
 function reviveCost() { return 0; }   // revives cost rez coins, not gold

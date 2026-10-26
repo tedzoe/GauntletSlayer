@@ -53,8 +53,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       h.combo = 5; h.comboT = 0.5; h.atkT = 0; hold.add('primary'); run(1 / 60); hold.delete('primary'); out.slash = { interrupt, weakHeavyStag: +weakHeavy.toFixed(2), finRecovery: +(h.atkT * hasteMul(h)).toFixed(2) }; run(1); }
     // 9. Demonic Cleave: ~6s, rooted, invincible, reaches the sides but not mid-back, tiny stun ring all round
     { const h = setup(); h.weapon = 'demonic'; h.cd = {}; const fr = foe('shambler', 50, 0), side = foe('shambler', 0, 50), back = foe('shambler', -30, 0), backFar = foe('shambler', -70, 0); for (const f of [fr, side, back, backFar]) f.hp = f.maxhp = 999;
-      mv = [1, 0]; hold.add('ability'); run(1 / 60); hold.delete('ability'); const x0 = h.x, inv = h.inv > 0.4; run(0.3); const rooted = Math.abs(h.x - x0) < 1;
-      out.cleave = { cd: SPEC.weapons.brannoc.demonic, rooted, inv, front: fr.hp < 999, side: side.hp < 999, backNoDmg: back.hp === 999 && backFar.hp === 999, backStun: back.stag > 0.3 }; mv = [0, 0]; run(0.5); }
+      mv = [1, 0]; hold.add('ability'); run(1 / 60); hold.delete('ability'); const x0 = h.x, inv = h.inv > 0.4, backStun = back.stag > 0.3; run(0.3); const rooted = Math.abs(h.x - x0) < 1, waits = fr.hp === 999 && h.inv > 0; run(0.25);
+      out.cleave = { cd: SPEC.weapons.brannoc.demonic, rooted, inv, waits, front: fr.hp < 999, side: side.hp < 999, backNoDmg: back.hp === 999 && backFar.hp === 999, backStun }; mv = [0, 0]; run(0.5);
+      h.cd = {}; fr.hp = 999; hold.add('ability'); run(1 / 60); hold.delete('ability'); h.dead = true; run(0.6); h.dead = false; out.cleave.deadNoHit = fr.hp === 999; run(0.3); }
     // 10. Destructo Spin: ~10s cooldown, Theo slides (keeps drifting when the stick is let go)
     { const h = setup(); hold.add('ability'); run(1 / 60); hold.delete('ability'); mv = [1, 0]; run(0.6); mv = [0, 0]; const x1 = h.x; run(0.15); out.spin = { cd: SPEC.theo.spinCd, slides: h.x - x1 > 4 }; run(3); }
     // 11. More of Thor: invincible from the start, rooted while transforming unless Rush is held
@@ -72,7 +73,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Rush cancels into the weapon ability', R.rushCancel, { spin: true, dashGone: true });
   chk('Smash: instant wide stun before damage, interrupts casters, destroys missiles; 50 Lethal stuns heavies; ~60 DPS', R.smash, g => g.farStun && g.farHp && g.caster && g.missile && g.heavyHit && g.heavyStun && g.dps >= 55 && g.dps <= 65);
   chk('Slash: weak hits interrupt casters, heavies ignore them; hit 7 long recovery 0.6s', [R.slash.interrupt, R.slash.weakHeavyStag === 0, R.slash.finRecovery], [true, true, 0.6]);
-  chk('Demonic Cleave: 6s, rooted, invincible, sides yes, mid-back no damage but stun ring', R.cleave, { cd: 6, rooted: true, inv: true, front: true, side: true, backNoDmg: true, backStun: true });
+  chk('Demonic Cleave: 6s, rooted, invincible, hits after the ~0.45s wind-up (not if he dies first), sides yes, mid-back no damage but stun ring', R.cleave, { cd: 6, rooted: true, inv: true, waits: true, front: true, side: true, backNoDmg: true, backStun: true, deadNoHit: true });
   chk('Destructo Spin: 10s cooldown, slides', R.spin, { cd: 10, slides: true });
   chk('More of Thor: rooted while transforming, invincible, holding Rush skips the root', R.titan, { rooted: true, invuln: true, rushSkips: true });
   console.log('ERRORS', JSON.stringify(logs));

@@ -54,7 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     { const { h } = fire('brannoc', 'base'); const sp = h.spin; for (let i = 0; i < 215; i++) KITS.brannoc(h, WT.N(), 1 / 60); out.theo_base = { spin: +sp.toFixed(2), cd: WT.cd(h), r: SPEC.theo.spinR }; }
     { const { h, before } = fire('brannoc', 'axe'); out.theo_axe = { cd: WT.cd(h), shot: G.shots.length - before.shots, tier: G.shots[G.shots.length - 1].tier }; }
     { const { h } = fire('brannoc', 'turbo', h => { const f = WT.foe('hexcaller', 60); f.state = 'windup'; }); out.theo_turbo = { cd: WT.cd(h), hit: h.lastTurbo, windupReset: G.foes[0].state !== 'windup', stun: G.foes[0].stag >= 1 }; }
-    { const { h } = fire('brannoc', 'demonic', h => { WT.foe('barrow', -50); WT.foe('barrow', 0, 50); }); const cd0 = WT.cd(h); const x0 = h.x; out.theo_demonic = { cd: cd0, inv: h.inv > 0.4, rooted: h.cleaveT > 0, hit: h.lastCleave }; }
+    { const { h } = fire('brannoc', 'demonic', h => { WT.foe('barrow', -50); WT.foe('barrow', 0, 50); }); const cd0 = WT.cd(h); const x0 = h.x, inv = h.inv > 0.4, rooted = h.cleaveT > 0; for (let i = 0; i < 30; i++) KITS.brannoc(h, WT.N(), 1 / 60); out.theo_demonic = { cd: cd0, inv, rooted, hit: h.lastCleave }; }   // the hit lands after the ~0.45s wind-up
     // Gela
     { const { h } = fire('sela', 'base'); out.gela_base = { cd: WT.cd(h) }; }
     { const { h, before } = fire('sela', 'splitter'); const ss = G.shots.slice(before.shots); out.gela_splitter = { cd: WT.cd(h), shields: ss.length, fanDeg: Math.round((Math.atan2(ss[2].vy, ss[2].vx) - Math.atan2(ss[0].vy, ss[0].vx)) * 180 / Math.PI), pierce: ss[0].pierce }; }
