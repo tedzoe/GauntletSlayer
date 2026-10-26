@@ -209,35 +209,100 @@ function paintTile(x2, x, y) {
   if (m.arenaSet && m.arenaSet.has(y * m.w + x) && hv > 0.6) { x2.fillStyle = 'rgba(160,30,20,0.12)'; x2.fillRect(px + 6, py + 6, 20, 20); }
 }
 
-// ---------------------------------------------------------------- pathing (flow field toward heroes & allies)
+// ---------------------------------------------------------------- pathing (flow fields toward heroes & allies)
+// Two shared flow fields, rebuilt every 0.2s (and at once when a gate or wall changes): one over tile centres for foes that fit a
+// one-tile gap, one over tile corners for big foes (a corner is open when the four tiles around it are), so big bodies are routed
+// only through gaps they fit. Foes steer with navDir: straight at the target when their whole body has a clear line to it, otherwise
+// toward the farthest point down the field they can reach in a straight line (smooth paths around pillars, blocks, pits and gates).
+let flowBig = null, flowBigQ = null;
+const NAV = { look: 9, repath: 0.25, lineEvery: 0.1, stuckWin: 1.0, stuckMove: 8, sideT: 0.55 };
 function computeFlow() {
-  const m = G.map, N = m.w * m.h;
+  const m = G.map, N = m.w * m.h, w = m.w;
   if (!flowDist || flowDist.length !== N) { flowDist = new Int16Array(N); flowQ = new Int32Array(N); }
   flowDist.fill(-1); let h = 0, tl = 0;
-  const seed = e => { const i = Math.floor(e.y / T) * m.w + Math.floor(e.x / T); if (i >= 0 && i < N && flowDist[i] < 0) { flowDist[i] = 0; flowQ[tl++] = i; } };
-  for (const e of G.heroes) if (!e.dead && !e.invis) seed(e);
-  for (const a of G.allies) if (a.hp > 0 && !a.orbit) seed(a);
-  const w = m.w;
+  const targets = []; for (const e of G.heroes) if (!e.dead && !e.invis) targets.push(e); for (const a of G.allies) if (a.hp > 0 && !a.orbit) targets.push(a);
+  const seed = e => { const i = Math.floor(e.y / T) * w + Math.floor(e.x / T); if (i >= 0 && i < N && flowDist[i] < 0) { flowDist[i] = 0; flowQ[tl++] = i; } };
+  for (const e of targets) seed(e);
   while (h < tl) {
-    const i = flowQ[h++], d = flowDist[i]; if (d > 90) continue;
+    const i = flowQ[h++], d = flowDist[i]; if (d > 400) continue;
     const x = i % w, y = (i / w) | 0;
-    const nb = [[1, 0, i + 1], [-1, 0, i - 1], [0, 1, i + w], [0, -1, i - w]];
-    for (const [dx, dy, j] of nb) { if (blocksWalk(tileAt(x + dx, y + dy), false)) continue; if (flowDist[j] < 0) { flowDist[j] = d + 1; flowQ[tl++] = j; } }
+    if (x + 1 < w && !blocksWalk(m.t[i + 1], false) && flowDist[i + 1] < 0) { flowDist[i + 1] = d + 1; flowQ[tl++] = i + 1; }
+    if (x > 0 && !blocksWalk(m.t[i - 1], false) && flowDist[i - 1] < 0) { flowDist[i - 1] = d + 1; flowQ[tl++] = i - 1; }
+    if (y + 1 < m.h && !blocksWalk(m.t[i + w], false) && flowDist[i + w] < 0) { flowDist[i + w] = d + 1; flowQ[tl++] = i + w; }
+    if (y > 0 && !blocksWalk(m.t[i - w], false) && flowDist[i - w] < 0) { flowDist[i - w] = d + 1; flowQ[tl++] = i - w; }
+  }
+  // corner field for big bodies
+  const vw = w + 1, VN = vw * (m.h + 1);
+  if (!flowBig || flowBig.length !== VN) { flowBig = new Int16Array(VN); flowBigQ = new Int32Array(VN); }
+  flowBig.fill(-1); h = 0; tl = 0;
+  for (const e of targets) { const cx = Math.round(e.x / T), cy = Math.round(e.y / T);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const vx = cx + dx, vy = cy + dy; if (!cornerOpen(vx, vy)) continue; const j = vy * vw + vx; if (flowBig[j] < 0 && hyp(vx * T - e.x, vy * T - e.y) < T * 1.6) { flowBig[j] = 0; flowBigQ[tl++] = j; } } }
+  while (h < tl) {
+    const j = flowBigQ[h++], d = flowBig[j]; if (d > 400) continue;
+    const vx = j % vw, vy = (j / vw) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = vx + dx, ny = vy + dy, k = ny * vw + nx; if (nx < 0 || ny < 0 || nx > w || ny > m.h || flowBig[k] >= 0 || !cornerOpen(nx, ny)) continue; flowBig[k] = d + 1; flowBigQ[tl++] = k; }
   }
 }
-function flowDir(e) {
-  const m = G.map, tx = Math.floor(e.x / T), ty = Math.floor(e.y / T);
-  let best = flowDist[ty * m.w + tx]; if (best === undefined || best < 0) return null;
-  let bx = 0, by = 0;
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-    if (!dx && !dy) continue;
-    if (blocksWalk(tileAt(tx + dx, ty + dy))) continue;
-    if (dx && dy && (blocksWalk(tileAt(tx + dx, ty)) || blocksWalk(tileAt(tx, ty + dy)))) continue;
-    const v = flowDist[(ty + dy) * m.w + tx + dx]; if (v >= 0 && v < best) { best = v; bx = dx; by = dy; }
+function cornerOpen(vx, vy) { return !blocksWalk(tileAt(vx - 1, vy - 1), false) && !blocksWalk(tileAt(vx, vy - 1), false) && !blocksWalk(tileAt(vx - 1, vy), false) && !blocksWalk(tileAt(vx, vy), false); }
+const isBig = e => e.r > T / 2 - 1;
+// field value at a node, and the node grid an entity uses: tiles (centre at (x+0.5)T) or corners (at xT)
+function navNode(e) {
+  const m = G.map;
+  if (!isBig(e)) { const tx = Math.floor(e.x / T), ty = Math.floor(e.y / T), v = flowDist ? flowDist[ty * m.w + tx] : -1; if (v >= 0) return { x: tx, y: ty, v, big: false };
+    let best = null; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = tx + dx, y = ty + dy, u = x >= 0 && y >= 0 && x < m.w && y < m.h ? flowDist[y * m.w + x] : -1; if (u >= 0 && (!best || u < best.v)) best = { x, y, v: u, big: false }; } return best; }
+  const vw = m.w + 1, cx = Math.round(e.x / T), cy = Math.round(e.y / T); let best = null;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x > m.w || y > m.h) continue; const u = flowBig ? flowBig[y * vw + x] : -1; if (u < 0) continue; const dd = hyp(x * T - e.x, y * T - e.y); if (!best || u + dd / T * 0.5 < best.s) best = { x, y, v: u, big: true, s: u + dd / T * 0.5 }; }
+  return best;
+}
+const nodePt = n => n.big ? { x: n.x * T, y: n.y * T } : { x: (n.x + 0.5) * T, y: (n.y + 0.5) * T };
+function nodeNext(n) {   // one step downhill (8 directions, no corner cutting)
+  const m = G.map, F = n.big ? flowBig : flowDist, W2 = n.big ? m.w + 1 : m.w, H2 = n.big ? m.h + 1 : m.h, ok = (x, y) => x >= 0 && y >= 0 && x < W2 && y < H2 && F[y * W2 + x] >= 0;
+  let best = null;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { if (!dx && !dy) continue; const x = n.x + dx, y = n.y + dy; if (!ok(x, y)) continue;
+    if (dx && dy && (!ok(n.x + dx, n.y) || !ok(n.x, n.y + dy))) continue;
+    const v = F[y * W2 + x]; if (v < n.v && (!best || v < best.v || (v === best.v && !(dx && dy)))) best = { x, y, v, big: n.big }; }
+  return best;
+}
+// does a body of radius r fit along the whole straight line from (x1, y1) to (x2, y2)?
+function sweepClear(x1, y1, x2, y2, r, fly) {
+  const d = hyp(x2 - x1, y2 - y1), n = Math.ceil(d / 8), rr = Math.max(2, r - 1);
+  for (let i = 1; i <= n; i++) { const k = i / n; if (collide(x1 + (x2 - x1) * k, y1 + (y2 - y1) * k, rr, fly)) return false; }
+  return true;
+}
+// the steering direction for a foe chasing t: [dx, dy] unit vector, or null when it has nowhere to go
+function navDir(f, t) {
+  const now = G.time, seeded = t.isHero || G.allies.includes(t);
+  if (f.side && f.side.until > now) return f.side.dir;   // sidestepping after getting stuck
+  if ((f.lineT || 0) <= now) { f.lineT = now + NAV.lineEvery * R(0.8, 1.2); f.lineOk = sweepClear(f.x, f.y, t.x, t.y, f.r, f.fly); }
+  if (f.lineOk || !seeded) { const a = Math.atan2(t.y - f.y, t.x - f.x); f.wp = null; return [Math.cos(a), Math.sin(a)]; }
+  if (!f.wp || (f.navT || 0) <= now || hyp(f.wp.x - f.x, f.wp.y - f.y) < 6) {
+    f.navT = now + NAV.repath * R(0.8, 1.2); f.wp = null;
+    let n = navNode(f), far = null; const path = [];
+    for (let k = 0; n && k < NAV.look; k++) { path.push(nodePt(n)); if (n.v === 0) break; n = nodeNext(n); }
+    for (let k = path.length - 1; k >= 0; k--) if (sweepClear(f.x, f.y, path[k].x, path[k].y, f.r, f.fly)) { far = path[k]; break; }
+    f.wp = far || path[1] || path[0] || null;
   }
-  if (!bx && !by) return null;
-  const vx = (tx + bx + 0.5) * T - e.x, vy = (ty + by + 0.5) * T - e.y, d = hyp(vx, vy) || 1;
-  return [vx / d, vy / d];
+  if (!f.wp) { const a = Math.atan2(t.y - f.y, t.x - f.x); return [Math.cos(a), Math.sin(a)]; }
+  const dx = f.wp.x - f.x, dy = f.wp.y - f.y, d = hyp(dx, dy) || 1; return [dx / d, dy / d];
+}
+// stuck watch: a foe that wanted to move for a whole second but barely moved repaths and sidesteps (the side that is free)
+function navStuck(f, dir, dt) {
+  const now = G.time, gap = now - (f.navSeen ?? -9); f.navSeen = now;
+  if (!dir) { f.stuckRef = null; f.stuckFor = 0; return; }
+  if (!f.stuckRef || gap > 0.1) { f.stuckRef = { x: f.x, y: f.y, t: now }; f.stuckFor = 0; return; }   // only an unbroken stretch of trying to walk counts
+  const moved = hyp(f.x - f.stuckRef.x, f.y - f.stuckRef.y);
+  if (moved >= NAV.stuckMove) { f.stuckRef = { x: f.x, y: f.y, t: now }; f.stuckFor = 0; f.stuckN = 0; return; }
+  f.stuckFor = now - f.stuckRef.t;
+  if (f.stuckFor < NAV.stuckWin) return;
+  f.stuckRef = { x: f.x, y: f.y, t: now }; f.stuckN = (f.stuckN || 0) + 1; f.wp = null; f.navT = 0; f.lineT = 0; G.navUnstuck = (G.navUnstuck || 0) + 1;
+  if (collide(f.x, f.y, f.r, f.fly)) { unstick(f); return; }
+  const a = Math.atan2(dir[1], dir[0]), opts = [a + Math.PI / 2, a - Math.PI / 2, a + Math.PI * 0.75, a - Math.PI * 0.75, a + Math.PI];
+  if (f.stuckN % 2 === 0) opts.reverse();
+  for (const b of opts) { const c = Math.cos(b), s = Math.sin(b); if (!collide(f.x + c * 14, f.y + s * 14, f.r, f.fly)) { f.side = { dir: [c, s], until: now + NAV.sideT }; return; } }
+}
+function flowDir(e) {   // legacy helper (the Reaper and allies): one step down the field
+  const n = navNode(e); if (!n) return null; const nx = n.v === 0 ? n : nodeNext(n); if (!nx) return null;
+  const p = nodePt(nx), vx = p.x - e.x, vy = p.y - e.y, d = hyp(vx, vy) || 1; return d < 1 ? null : [vx / d, vy / d];
 }
 
 // ---------------------------------------------------------------- effects

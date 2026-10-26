@@ -415,7 +415,7 @@ function updateFoes(dt) {
         const reach = f.d.reach + f.r + t.r;
         f.fa = beh === 'shield' ? f.fa + clamp(angDiff(ang, f.fa), -3 * dt, 3 * dt) : ang;
         if (d < reach && f.atkT <= 0 && f.state === 'move') { f.state = 'windup'; f.st = f.d.windup; f.fa = ang; Snd.play('windup'); }
-        else if (d > reach * 0.8) dir = sees ? [Math.cos(ang), Math.sin(ang)] : flowDir(f);
+        else if (d > reach * 0.8) dir = navDir(f, t);
         if (beh === 'shield') spd *= 0.85;
         break;
       }
@@ -423,19 +423,19 @@ function updateFoes(dt) {
         f.fa = ang;
         if (sees && d < 300 && d > 60 && f.atkT <= 0) { f.state = 'windup'; f.st = f.d.windup; f.atkT = 3; Snd.play('windup'); continue; }
         if (d < f.r + t.r + f.d.reach && f.atkT <= 0) { f.state = 'windup'; f.st = 0.5; f.melee = true; }
-        dir = sees ? [Math.cos(ang), Math.sin(ang)] : flowDir(f);
+        dir = navDir(f, t);
         break;
       }
       case 'exploder': {
         f.fa = ang;
         if (d < f.r + t.r + 18) { f.state = 'windup'; f.st = 0.45; Snd.play('fuse'); continue; }
-        dir = sees ? [Math.cos(ang), Math.sin(ang)] : flowDir(f);
+        dir = navDir(f, t);
         break;
       }
       case 'ranged': case 'lobber': case 'caster': case 'brood': {
         f.fa = ang;
         if (sees && d < f.d.keep * 0.7) dir = [-Math.cos(ang), -Math.sin(ang)];
-        else if (!sees || d > f.d.range) dir = sees ? [Math.cos(ang), Math.sin(ang)] : flowDir(f);
+        else if (!sees || d > f.d.range) dir = navDir(f, t);
         else { const s = Math.sin(G.time * 0.7 + f.seed) > 0 ? 1 : -1; dir = [-Math.sin(ang) * s, Math.cos(ang) * s]; spd *= 0.45; }
         if (sees && d < f.d.range + 40 && f.atkT <= 0) {   // shooters stop to shoot: rooted wind-up (red ring), release, rooted recovery (DEV.shooter)
           f.atkT = f.d.rate * R(0.85, 1.2); f.state = 'windup'; f.aim = true; f.st = f.windT = DEV.shooter.windup; dir = null; break;
@@ -454,7 +454,7 @@ function updateFoes(dt) {
       }
       case 'lurker': {   // submerged: untouchable and fast; surfaces near a hero, spits a 3-shot fan, then dives again
         const L = f.d.lurk; f.subT = (f.subT ?? R(L.under[0], L.under[1])) - dt; if (f.sub === undefined) f.sub = true;
-        if (f.sub) { dir = !sees ? flowDir(f) : d > L.keep ? [Math.cos(ang), Math.sin(ang)] : [-Math.sin(ang), Math.cos(ang)]; spd *= 1.25; if (f.subT <= 0 && d < L.rise) { f.sub = false; f.subT = L.up; f.atkT = 0.45; burst(f.x, f.y, '#7ad0e0', 14, 140, 3, 0.5); Snd.play('splash'); } }
+        if (f.sub) { dir = !sees ? navDir(f, t) : d > L.keep ? [Math.cos(ang), Math.sin(ang)] : [-Math.sin(ang), Math.cos(ang)]; spd *= 1.25; if (f.subT <= 0 && d < L.rise) { f.sub = false; f.subT = L.up; f.atkT = 0.45; burst(f.x, f.y, '#7ad0e0', 14, 140, 3, 0.5); Snd.play('splash'); } }
         else { dir = null; f.fa = ang; if (sees && f.atkT <= 0) { f.atkT = L.rate; for (let k = -1; k <= 1; k++) foeShoot(f, ang + k * L.spread, { kind: 'orb', col: '#6ad0c0', slow: 1.2, r: 6 }); Snd.play('spit'); } if (f.subT <= 0) { f.sub = true; f.subT = R(L.under[0], L.under[1]); burst(f.x, f.y, '#7ad0e0', 10, 100, 3, 0.4); } }
         break;
       }
@@ -466,6 +466,7 @@ function updateFoes(dt) {
       }
     }
     if (dir) { spd = capFoeStep(f, spd, dt); moveEnt(f, dir[0] * spd, dir[1] * spd, f.fly); f.walk += dt * 8; }
+    if (beh !== 'wraith') navStuck(f, dir && spd > 0 ? dir : null, dt);   // no progress for 1s: repath and sidestep
     // spikes hurt foes too
   }
   // separation
@@ -518,9 +519,8 @@ function updateReaper(f, dt) {
   let ang = Math.atan2(t.y - f.y, t.x - f.x);
   if (f.repel > 0) { f.repel -= dt; ang += Math.PI; }
   const spd = capFoeStep(f, f.spd * dt * (f.slowM || 1) * (G.heroes.length > 1 ? 1 : 0.95), dt);
-  const sees = los(f.x, f.y, t.x, t.y);
-  const dir = (f.repel > 0 || sees) ? [Math.cos(ang), Math.sin(ang)] : (flowDir(f) || [Math.cos(ang), Math.sin(ang)]);
-  moveEnt(f, dir[0] * spd, dir[1] * spd, false); f.fa = ang; f.walk += dt * 6;
+  const dir = f.repel > 0 ? [Math.cos(ang), Math.sin(ang)] : navDir(f, t);
+  moveEnt(f, dir[0] * spd, dir[1] * spd, false); f.fa = ang; f.walk += dt * 6; navStuck(f, f.repel > 0 ? null : dir, dt);
   if (f.repel <= 0) for (const h of G.heroes) {
     if (h.dead || h.inv > 0 || h.invis) continue;
     if (hyp(h.x - f.x, h.y - f.y) < f.r + h.r + 4) {
