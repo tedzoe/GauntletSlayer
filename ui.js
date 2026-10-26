@@ -63,7 +63,7 @@ function movePip(h, m, x, y, r) {
 // Slayer shows Potion, Relic and Weapon Ability as square icons beside the health bar, each with a clockwise dark sweep.
 // David's deviation: the dash, secondary and hero extras get squares too, with the sweep plus a seconds number.
 function panelMoves(h) {
-  const ms = heroMoves(h).filter(m => !m.main), pot = ms.find(m => m.lab === 'POT');
+  const ms = heroMoves(h).filter(m => !m.main && m.lab !== 'POT'), pot = null;   // potions are flask icons beside the keys now, not a square
   const rel = ms.find(m => m.lab === 'REL') || { lab: 'REL', col: '#d8a0ff', cd: () => 0, ok: () => false, empty: true };
   const abl = ms.find(m => m.soul) || ms.find(m => /^(SPIN|SPC|SLAM|MRT)$/.test(m.lab));
   const core = [pot, rel, abl].filter(Boolean).map(m => Object.assign({ slayer: true }, m));
@@ -98,7 +98,16 @@ function sqPip(h, m, x, y, s) {
   if (act) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2.5, y - 2.5, s + 5, s + 5); }
   if (fl > 0) { const g = (1 - fl) * 5; ctx.strokeStyle = `rgba(255,255,220,${fl})`; ctx.lineWidth = 2; ctx.strokeRect(x - 2 - g, y - 2 - g, s + 4 + 2 * g, s + 4 + 2 * g); }
 }
-function playerPanelW(h) { const S = DEV.hud; return Math.max(S.minW, 56 + panelMoves(h).length * (S.sq + S.sqGap) + 6); }
+// a potion flask, drawn like the key icons (David, Oct 2026: "the potion box isn't very clear ... potion icons, like the key")
+const POT_ICON = { step: 12, pad: 8 };   // flask spacing and the gap after the move squares
+function potionIcon(x, y, empty) {   // a ~11 x 16 flask centred on (x, y)
+  if (empty) ctx.globalAlpha = 0.4;
+  ctx.fillStyle = empty ? '#666' : '#e8e8e8'; ctx.fillRect(x - 2, y - 7, 4, 4); ctx.fillStyle = '#8a5a2a'; ctx.fillRect(x - 2.5, y - 9, 5, 2.5);
+  circ(x, y + 2, 5.5, empty ? null : '#4a8cff', empty ? '#8aa8d8' : '#e0ecff', 1.4); if (!empty) circ(x - 1.8, y + 0.4, 1.6, '#e0f0ff');
+  ctx.globalAlpha = 1;
+}
+function potionArea(h) { return POT_ICON.pad + POTION_CAP * POT_ICON.step; }
+function playerPanelW(h) { const S = DEV.hud; return Math.max(S.minW, 56 + panelMoves(h).length * (S.sq + S.sqGap) + potionArea(h) + 6); }
 function drawPlayerPanel(h, x, y, pw, n) {
   const S = DEV.hud, ph = S.panelH;
   panel(x, y, pw, ph, 0.82, PCOL[h.pi]);
@@ -112,9 +121,16 @@ function drawPlayerPanel(h, x, y, pw, n) {
   txt(h.def.name, bx, y + 15, 10, h.def.accent);
   for (let k = 0; k < h.keys && k < 4; k++) { const kx = bx + bw - 6 - k * 11, ky = y + 11; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(kx - 2, ky - 1, 2.5, 0, 6.28); ctx.moveTo(kx + 0.5, ky - 1); ctx.lineTo(kx + 6, ky - 1); ctx.stroke(); }
   if (h.id === 'mirelle') for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k], rx = bx + bw - 40 - k * 12; circ(rx, y + 11, 4, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); }
+
   bar(bx, y + 19, bw, 8, h.hp / h.maxHp, h.hp < h.maxHp * 0.25 ? '#ff3a2a' : '#d43a2a', '#3a0806');
   const ms = panelMoves(h), sq = S.sq;
   ms.forEach((m, i) => sqPip(h, m, bx + i * (sq + S.sqGap), y + 33, sq));
+  { // potions: one flask per potion after the move squares, like the keys (a dim empty flask at 0; xN only if they ever outgrow the room)
+    const n = Math.max(0, h.potions || 0), x0 = bx + ms.length * (sq + S.sqGap) + POT_ICON.pad + 5, cy = y + 33 + sq / 2, room = Math.max(1, Math.floor((x + pw - 8 - x0) / POT_ICON.step) + 1), icons = [];
+    if (n === 0) { potionIcon(x0, cy, true); icons.push(x0); }
+    else if (n <= room) for (let k = 0; k < n; k++) { potionIcon(x0 + k * POT_ICON.step, cy); icons.push(x0 + k * POT_ICON.step); }
+    else { potionIcon(x0, cy); icons.push(x0); txt('\u00d7' + n, x0 + 8, cy + 5, 12, '#cfe0ff'); }
+    h._pots = { n, icons: icons.length, count: n > room ? n : null, empty: n === 0, x: icons, y: cy }; }
   h._lastMoves = ms.map(m => m.lab);
   h._panel = { x, y, w: pw, h: ph, sq: ms.map((m, i) => ({ lab: m.lab, x: bx + i * (sq + S.sqGap), y: y + 33, s: sq, soul: !!m.soul, slayer: !!m.slayer })) };
   // little captions above the panel

@@ -44,8 +44,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const hud = await ev(() => HEROES.map(d => { TT.setup([d.id]); const h = G.heroes[0]; h.relic = { id: 'mirror', rank: 1 }; const labs = heroMoves(h).map(m => m.lab); return [d.id, labs]; }));
   chk('HUD lists main, secondary, special, dash, relic, potion for every hero', hud, g => g.every(([id, l]) => l.length >= 6 && l.includes('DSH') && l.includes('REL') && l.includes('POT')));
   console.log('      ', JSON.stringify(hud));
-  const coop = await ev(() => { TT.setup(['brannoc', 'sela', 'paladin', 'vesper'], ['kb1', 'kb2', 'kb2', 'kb2']); G.heroes.forEach(h => { h.cd.secondary = 2.4; }); __game.draw(); return G.heroes.map(h => (h._lastMoves || []).length); });
-  chk('4-player co-op: each player panel draws its own move bar', coop, g => g.length === 4 && g.every(n => n >= 5));
+  const coop = await ev(() => { TT.setup(['brannoc', 'sela', 'paladin', 'vesper'], ['kb1', 'kb2', 'kb2', 'kb2']); G.heroes.forEach(h => { h.cd.secondary = 2.4; }); __game.draw(); return G.heroes.map(h => (h._lastMoves || []).length + (h._pots ? 1 : 0)); });   // move squares + the potion flasks (no longer a square)
+  chk('4-player co-op: each player panel draws its own move bar and potion flasks', coop, g => g.length === 4 && g.every(n => n >= 5));
   // ---- 3. PETS hit spawners (no foes around)
   const pets = await ev(() => { const out = {}; for (const kind of ['warrior', 'spear', 'archer', 'guard', 'mage', 'wraith', 'golem', 'illusion', 'gargoyle', 'sprite', 'shade']) {
       TT.setup(['vesper']); const h = G.heroes[0]; h.x = 4 * 32; const s = mkSpawner(h.x + 160, h.y, 3, ['shambler'], 'crypt'); s.hp = s.maxHp = 999; s.spawnT = 999;
