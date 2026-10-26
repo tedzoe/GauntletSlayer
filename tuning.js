@@ -152,7 +152,11 @@ const DEV = {
   // 4. ENEMY PROJECTILES: every foe missile (bosses too) is slowed, then capped. Range is kept (life is stretched to match).
   //    Dodge budget at the cap: reaction 0.35s + sidestep (hero r 13 + missile r 7 + 4 px margin) / 133 px/s = 0.53s,
   //    and a missile at the cap needs 0.80s to cross even the closest firing distance (160 px). Shockwave rings use the same cap.
-  proj: { mul: 0.65, capMul: 1.5, react: 0.35, sidestepPx: 24, minRange: 160 },   // cap = 1.5 x slowest hero = 200 px/s
+  // Enemy missiles (David, Oct 26 2026: "still too fast"). Every foe and boss missile is its listed speed x mul, capped at capMul x the
+  // slowest hero (133 px/s): cap 86 px/s (65%). Arrows and fire bolts sit at the cap; skulls 66, webs 78, Sovereign blades 51-60.
+  // A shot from 260px away takes 3s to arrive; sidestepping it (shot radius + hero radius + margin ~ 24px) takes 0.35s reaction + 0.18s at 133 px/s.
+  // Lobbed rocks fly long enough that their ground speed obeys the same cap; their landing circle is still telegraphed for the whole flight.
+  proj: { mul: 0.3, capMul: 0.65, react: 0.35, sidestepPx: 24, minRange: 160 },   // was mul 0.65, cap 1.5 x slowest hero (200 px/s)
   // 5. ENEMY WALK SPEED: ground foes never move faster than 90% of the slowest hero (= 120 px/s), after every multiplier
   //    (Endless x1.15, totem haste, frenzy, lurker dive, boss rage) and for charges/dashes too.
   //    Exempt: grave wisps and wraith-type phantoms (beh 'wraith': wraith, shiver sprite) keep their speed.

@@ -61,7 +61,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (const [type, d] of Object.entries(FOES)) { if (!['ranged', 'caster', 'brood', 'lurker'].includes(d.beh) && !d.shot) continue; G.shots = []; const f = mkFoe(type, h.x + 300, h.y, { awake: true }); foeShoot(f, Math.PI, d.shot ? Object.assign({}, d.shot) : {}); const s = G.shots[0]; out.push([type, Math.round(hyp(s.vx, s.vy))]); }
     G.shots = []; const fb = { x: h.x + 300, y: h.y, r: 30, dmg: 10 }; bossProj(fb, Math.PI, 260); out.push(['bossVolley', Math.round(hyp(G.shots[0].vx, G.shots[0].vy))]);
     return { cap: Math.round(cap), max: Math.max(...out.map(o => o[1])), out }; });
-  chk('every enemy missile (bosses included) <= PROJ_CAP (200 px/s)', proj, g => g.max <= g.cap + 0.5 && g.cap <= 200);
+  chk('every enemy missile (bosses included) <= PROJ_CAP (86 px/s = 65% of the slowest hero)', proj, g => g.max <= g.cap + 0.5 && g.cap <= 93);   // 0.7 x 133
   console.log('      ', JSON.stringify(proj.out));
   const dodge = await ev(() => { const v = PROJ_CAP(), s = SLOWEST_HERO_SPEED(); const need = DEV.proj.react + DEV.proj.sidestepPx / s, have = DEV.proj.minRange / v; return { need: +need.toFixed(2), have: +have.toFixed(2) }; });
   chk('slowest hero can sidestep a capped missile from 160 px (time to impact > reaction + sidestep)', dodge, g => g.have > g.need * 1.3);

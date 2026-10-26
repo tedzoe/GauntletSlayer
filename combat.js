@@ -626,7 +626,7 @@ function slowFoeShot(s) {
 }
 function lob(o) { // arcing missile to a point; passes over walls & pits
   // enemy lobs: flight time is never shorter than reaction + the time to walk out of the target circle at the slowest hero's speed
-  if (o.team === 'foe') o = Object.assign({}, o, { time: Math.max(o.time || 0.7, DEV.proj.react + ((o.tele || 42) + DEV.proj.sidestepPx) / SLOWEST_HERO_SPEED()) });
+  if (o.team === 'foe') o = Object.assign({}, o, { time: Math.max(o.time || 0.7, DEV.proj.react + ((o.tele || 42) + DEV.proj.sidestepPx) / SLOWEST_HERO_SPEED(), hyp(o.tx - o.x, o.ty - o.y) / PROJ_CAP()) });   // ...and its ground speed never beats the missile cap
   const s = shoot(Object.assign({ lob: true, sx: o.x, sy: o.y, T: o.time || 0.7, life: 99 }, o));
   if (o.tele) G.hazards.push({ kind: 'tele', x: o.tx, y: o.ty, r: o.tele, delay: s.T, t: 0, col: o.team === 'foe' ? '#ff5040' : '#80d0ff', visualOnly: true });
   return s;

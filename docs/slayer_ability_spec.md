@@ -404,3 +404,7 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
   - Submerged foes and Rootmaw while underground keep only the circle (nothing visible to hit).
   - Debug: **H** in a run draws the hurtboxes (green), ground circles (yellow) and hero shots (cyan).
   - `tests/hitboxtest.js`: for every foe type and boss, arrows at the head, chest and feet hit (also at 3000 px/s), a short melee arc from above and a small blast on the head both land. Death (cannot be harmed) is left out.
+- **Slower enemy missiles (Oct 26 2026).** David: still too fast. `DEV.proj` is now `mul 0.3`, `capMul 0.65` (was 0.65 and 1.5), so the fastest enemy missile is 86 px/s (65% of the slowest hero, 133).
+  - Arrows and fire bolts sit at the cap (86), totem orbs and lurker spit 84, webs and Rootmaw acid 78, skulls and boss orbs 66, Hollowfang's blades 51-60. Before: 143-200.
+  - Why that dodges easily: from 260px a missile takes 3s to arrive; stepping out of its path (shot radius + hero radius + margin, about 24px) takes 0.35s reaction + 0.18s of walking at 133 px/s. Even point-blank at 160px it is 1.9s.
+  - Lobbed rocks fly long enough that their ground speed also obeys the cap (a 260px lob is in the air 3s); the landing circle is telegraphed the whole time. Boss shockwave rings share the cap. Homing turn radius and missile range are unchanged.
