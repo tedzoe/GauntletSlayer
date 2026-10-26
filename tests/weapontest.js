@@ -54,7 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     { const { h } = fire('brannoc', 'base'); const sp = h.spin; for (let i = 0; i < 215; i++) KITS.brannoc(h, WT.N(), 1 / 60); out.theo_base = { spin: +sp.toFixed(2), cd: WT.cd(h), r: SPEC.theo.spinR }; }
     { const { h, before } = fire('brannoc', 'axe'); out.theo_axe = { cd: WT.cd(h), shot: G.shots.length - before.shots, tier: G.shots[G.shots.length - 1].tier }; }
     { const { h } = fire('brannoc', 'turbo', h => { const f = WT.foe('hexcaller', 60); f.state = 'windup'; }); out.theo_turbo = { cd: WT.cd(h), hit: h.lastTurbo, windupReset: G.foes[0].state !== 'windup', stun: G.foes[0].stag >= 1 }; }
-    { const { h } = fire('brannoc', 'demonic'); const cd0 = WT.cd(h); TT.run(0.5); const fires = G.hazards.filter(z => z.kind === 'fire' && z.demonic); out.theo_demonic = { cd: cd0, fireTiles: fires.length, fireLife: fires[0] && fires[0].life, len: Math.round(Math.max(...fires.map(z => z.x - h.x)) / MTR) }; }
+    { const { h } = fire('brannoc', 'demonic', h => { WT.foe('barrow', -50); WT.foe('barrow', 0, 50); }); const cd0 = WT.cd(h); const x0 = h.x; out.theo_demonic = { cd: cd0, inv: h.inv > 0.4, rooted: h.cleaveT > 0, hit: h.lastCleave }; }
     // Gela
     { const { h } = fire('sela', 'base'); out.gela_base = { cd: WT.cd(h) }; }
     { const { h, before } = fire('sela', 'splitter'); const ss = G.shots.slice(before.shots); out.gela_splitter = { cd: WT.cd(h), shields: ss.length, fanDeg: Math.round((Math.atan2(ss[2].vy, ss[2].vx) - Math.atan2(ss[0].vy, ss[0].vx)) * 180 / Math.PI), pierce: ss[0].pierce }; }
@@ -75,10 +75,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (const w of ['base', 'hollow', 'ashen']) { const h = WT.equip('mirelle', w); const cds = []; for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) { h.spell = [a, b]; cds.push(+spellCdOf(h).toFixed(2)); } out['zoey_' + w] = cds; }
     return out;
   });
-  chk('Theo Destructo-Spin: 2.5s spin (Slayer reference), 12s cd, 2m radius', wres.theo_base, { spin: 2.5, cd: 12, r: 64 });
+  chk('Theo Destructo-Spin: 2.5s spin (Slayer reference), 10s cd, 2m radius', wres.theo_base, { spin: 2.5, cd: 10, r: 64 });
   chk('Theo Thrown Axe: 5s, one T2 projectile', wres.theo_axe, { cd: 5, shot: 1, tier: 2 });
   chk('Theo Turbo-Slam: 7s, hits, resets elite wind-up, stuns', wres.theo_turbo, { cd: 7, hit: 1, windupReset: true, stun: true });
-  chk('Theo Demonic Cleave: 8s, 6m line of 4s fire', wres.theo_demonic, g => g.cd === 8 && g.fireTiles >= 5 && g.fireLife === 4 && g.len === 6);
+  chk('Theo Demonic Cleave: 6s, invincible, rooted, reaches the sides (not mid-back)', wres.theo_demonic, g => g.cd === 6 && g.inv && g.rooted && g.hit === 1);
   chk('Gela Extreme Prejudice: 9s', wres.gela_base, { cd: 9 });
   chk('Gela Shield Splitter: 6s, 3 piercing shields, 45-degree fan', wres.gela_splitter, { cd: 6, shields: 3, fanDeg: 45, pierce: 99 });
   chk('Gela Deflecting Thrust: no cd, 6 missiles max per 30 frames, no stamina', wres.gela_vanguard, g => g.cd === 0 && g.broken === 6 && g.capped === 0 && !g.stamina);   // shields have no stamina at all (David's rule)

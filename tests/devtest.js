@@ -32,8 +32,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   });
 
   // ---- 1. DASH: same button for all six, cooldown from DEV.dash
-  const dash = await ev(() => HEROES.map(d => { TT.setup([d.id]); const h = G.heroes[0]; const x0 = h.x; TT.hold.add('dash'); TT.run(1 / 60); TT.hold.clear(); const started = !!h.dash; const cd = +(h.cd[DEV.dash[d.id].cdKey] || 0).toFixed(2); TT.run(0.5); return [d.id, started, Math.round(h.x - x0) > 60, cd]; }));
-  chk('every hero dashes on the dash button (moves > 60 px) with its cooldown', dash, g => g.every(r => r[1] && r[2] && r[3] > 0));
+  const dash = await ev(() => HEROES.map(d => { TT.setup([d.id]); const h = G.heroes[0]; const x0 = h.x; TT.hold.add('dash'); TT.run(1 / 60); TT.hold.clear(); const started = !!h.dash || h.rushPrep > 0; const cd = +(h.cd[DEV.dash[d.id].cdKey] || 0).toFixed(2); TT.run(0.5); return [d.id, started, Math.round(h.x - x0) > 60, cd]; }));
+  chk('every hero dashes on the dash button (moves > 60 px) with its cooldown (the Theo Rush may be in its 0.1s start-up)', dash, g => g.every(r => r[1] && r[2] && r[3] > 0));
   console.log('      dash cooldowns', JSON.stringify(dash.map(r => [r[0], r[3]])));
   const again = await ev(() => { TT.setup(['mirelle']); const h = G.heroes[0]; TT.hold.add('dash'); TT.run(1 / 60); TT.hold.clear(); TT.run(0.4); const x1 = h.x; TT.hold.add('dash'); TT.run(1 / 60); TT.hold.clear(); TT.run(0.3); return Math.round(h.x - x1); });
   chk('dash is blocked while on cooldown', again, 0);

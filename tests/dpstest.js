@@ -30,7 +30,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     for (const id of ['brannoc', 'sela', 'paladin', 'kestrel', 'vesper']) {
       const far = id === 'kestrel' ? 120 : 50;
       out.main[id] = sustain(id, far);
-      out.sec[id] = meas(id, () => press('secondary', id === 'kestrel' ? 1.6 : id === 'paladin' ? 1.0 : id === 'vesper' ? 0.3 : 0.05, 1.0), id === 'brannoc' ? 130 : far);
+      out.sec[id] = meas(id, () => press('secondary', id === 'kestrel' ? 1.6 : id === 'paladin' ? 1.0 : id === 'vesper' ? 0.3 : 0.05, 1.0), id === 'brannoc' ? 50 : far);
       out.dash[id] = meas(id, () => press('dash', 0.05, 0.8), 60);
       out.spec[id] = meas(id, () => press('ability', 0.05, id === 'brannoc' ? 4.0 : 1.5), id === 'kestrel' ? 200 : 50);
     }
@@ -40,11 +40,12 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     { const h = setup('mirelle'); h.spell = [0, 1]; h.spellCd = {}; const f = dummy(h, 60); hold.add('primary'); run(0.05); hold.clear(); run(1.0); out.zoey.burn = { dps: f.burn, t: Math.round(f.burnT) }; }
     // Theo: spin 8 x 20 over 2.5s, invulnerable; Super Slash after Rush
     { const h = setup('brannoc'); dummy(h, 50); log = []; hold.add('ability'); run(0.05); hold.clear(); let safe = true; for (let i = 0; i < 140; i++) { run(1 / 60); if (h.spin > 0 && i % 20 === 5) { h.inv = 0; const hp = h.hp; hurtHero(h, 20, { x: h.x + 30, y: h.y }); if (h.hp < hp) safe = false; h.inv = 1e9; } } run(1); out.spin = { n: log.length, vals: [...new Set(log)], spinTime: SPEC.theo.spinTime, safe }; }
-    { const h = setup('brannoc'); dummy(h, SPEC.theo.chargeDist + 50); log = []; hold.add('dash'); run(0.05); hold.clear(); let k = 0; while (h.dash && k++ < 60) run(1 / 60); const win = h.rushWin; hold.add('primary'); run(1 / 60); hold.clear(); run(1.2); out.superSlash = log.slice(); out.superWin = +win.toFixed(2); }
+    { const h = setup('brannoc'); const f = dummy(h, SPEC.theo.chargeDist + 80); log = []; hold.add('dash'); run(0.05); hold.clear(); let k = 0; while (!h.dash && k++ < 30) run(1 / 60); run(3 / 60); const during = !!(h.dash && h.dash.rush);
+      f.x = f.px = h.x + 44; f.y = f.py = h.y; hold.add('primary'); run(1 / 60); const stopped = !h.dash; hold.add('primary'); run(2.5); hold.clear(); run(0.5); out.superSlash = log.slice(0, 4); out.superWin = during && stopped; }
     // Lethal: a big non-elite, non-heavy foe dies to Theo's leap, Gela's thrust and a full sniper shot, but not to a 56 fireball or a 42 combo hit
     const lethal = (id, fn, dx, prep) => { const h = setup(id); prep && prep(h); const f = dummy(h, dx, { hp: 5000, heavy: false, type: 'shambler' }); fn(h); run(0.6); return f.hp <= 0; };
     out.lethal = {
-      leap: lethal('brannoc', () => press('secondary', 0.05, 1.0), 130),
+      leap: lethal('brannoc', () => press('secondary', 0.05, 1.0), 50),
       thrust: lethal('sela', () => press('secondary', 0.05, 1.0), 50),
       sniper: lethal('kestrel', () => press('secondary', 1.6, 0.6), 160),
       sniperHalf: lethal('kestrel', () => press('secondary', 0.6, 0.6), 160),
@@ -75,8 +76,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Zoey: Fireball 56, Serpents 16, Chain Lightning 22, Shock Blast 14', [R.zoey.fireball.max, R.zoey.serpents.max, R.zoey.arc.max, R.zoey.clap.max], [56, 16, 22, 14]);
   chk('Flaming Serpents burn 8/s for 12s (96 total)', R.zoey.burn, g => g.dps === 8 && g.t >= 11);
   chk('Destructo Spin lasts 2.5s and Theo is invulnerable while spinning', [R.spin.spinTime, R.spin.safe], [2.5, true]);
-  chk('Super Slash after Rush: 42, 14, 14, 42', [R.superWin > 0, R.superSlash.filter(v => v !== 8)], [true, [42, 14, 14, 42]]);
-  chk('Lethal: Leap, Spear Thrust and a full Sniper Shot execute a big non-elite foe', [R.lethal.leap, R.lethal.thrust, R.lethal.sniper], [true, true, true]);
+  chk('Super Slash during Rush stops it; chain continues from hit 5: 42, 14, 14, 42', [R.superWin, R.superSlash], [true, [42, 14, 14, 42]]);
+  chk('Lethal: Smash, Spear Thrust and a full Sniper Shot execute a big non-elite foe', [R.lethal.leap, R.lethal.thrust, R.lethal.sniper], [true, true, true]);
   chk('not Lethal: half-drawn shot, 56 Fireball, combo hits', [R.lethal.sniperHalf, R.lethal.fireball, R.lethal.combo], [false, false, false]);
   chk('spawners: Quick Shot half a hit, full Sniper Shot 1.5 hits', R.spawner, g => g.quick === 0.5 && g.sniper === 1.5);
   chk('main < secondary < special per hit for every hero', ['sela', 'paladin', 'kestrel', 'vesper'].map(id => [Math.min(...R.main[id].perHit), R.sec[id].max, R.spec[id].max]), g => g.every(r => r[0] < r[1] && r[1] < r[2]));

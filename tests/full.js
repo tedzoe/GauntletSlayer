@@ -53,7 +53,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   await p.keyboard.down('ShiftLeft'); await ev(() => TT.run(0.03)); const dashing = await ev(() => !!G.heroes[0].dash); await p.keyboard.up('ShiftLeft'); await ev(() => TT.run(0.1));
   ok('theo furious charge', { dashing, cd: await ev(() => +G.heroes[0].cd.defend.toFixed(2)), armor: await ev(() => true) });
   await ev(() => { G.heroes[0].x = 8 * 32; G.heroes[0].cd = {}; }); await ev(() => TT.run(0.2));
-  await p.keyboard.down('ShiftLeft'); await ev(() => TT.run(0.1)); await p.keyboard.up('ShiftLeft'); d0 = await ev(() => TT.dmg()); await ev(() => TT.run(0.8)); ok('theo leap cleave cd', await ev(() => SPEC.theo.leapCd));
+  await p.keyboard.down('ShiftLeft'); await ev(() => TT.run(0.1)); await p.keyboard.up('ShiftLeft'); d0 = await ev(() => TT.dmg()); await ev(() => TT.run(0.8)); ok('theo smash time', await ev(() => SPEC.theo.smashTime));
   await ev(() => { G.heroes[0].x = 8 * 32; G.heroes[0].y = 11 * 32; G.heroes[0].cd = {}; });
   await p.keyboard.down('Space'); await ev(() => TT.run(0.05)); const chg = 0; await mouseAim(); await p.keyboard.up('Space'); await ev(() => TT.run(0.1));
   const spin = await ev(() => G.heroes[0].spin); d0 = await ev(() => TT.dmg()); await p.keyboard.down('KeyD'); await ev(() => TT.run(0.8)); await shot('03-theo-whirlwind.png'); await ev(() => TT.run(1.5)); await p.keyboard.up('KeyD');

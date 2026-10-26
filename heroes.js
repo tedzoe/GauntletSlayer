@@ -66,7 +66,7 @@ function updateHero(h, inp, dt) {
   if (h.dash) { updateDash(h, dt); }
   else {
     let spd = h.baseSpeed * (h.lowT > 0 ? 1 + LOW_HP.speed : 1) * (h.crown || h.crownSlowT > 0 ? 1 - SPEC.crown.slow : 1) * (1 + h.mods.speed) * hasteMul(h) * (h.slowT > 0 ? 0.6 : 1) * (h.buff.ember > 0 ? 1.5 : 1) * (h.buff.titan > 0 ? 1.1 : 1);
-    spd *= h.moveMul || 1; h.moveMul = 1;
+    spd *= h.moveMul ?? 1; h.moveMul = 1;   /* 0 = rooted */
     if (h.lock > 0) spd *= 0.15;
     if (G.mode !== 'hub' && G.mode !== 'arenaLobby' && G.heroes.length > 1) {} // shared screen clamp below
     const mx = inp.mx * spd * dt, my = inp.my * spd * dt;
@@ -100,6 +100,38 @@ function heroDash(h, inp) {
   else KITS[h.id](h, fake({ defend: true }, { defend: true }), 0);
   if (h.id === 'sela' || h.id === 'paladin') h.blocking = false;
   return !cdReady(h, D.cdKey);
+}
+// Sir Theo helpers (Slayer Warrior guide)
+function theoSlash(h, idx) {
+  const S = SPEC.theo, D = DEV.dmg.theo;
+  h.combo = idx; h.comboT = 0.75;
+  const fin = idx === S.combo - 1, strong = S.strongHits.includes(idx + 1);
+  h.atkT = (fin ? D.finRec : strong ? D.strongT : D.weakT) / hasteMul(h); h.lock = 0.1;
+  moveEnt(h, Math.cos(h.fa) * 8, Math.sin(h.fa) * 8, false, g => tryGate(h, g));
+  Snd.play(strong ? 'heavyswing' : 'swing');
+  if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, 'rgba(255,220,150,0.95)', 8, 0.4); h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }
+  if (strong) { swingFx(h, h.fa, 2.4, S.comboR + 10, 'rgba(255,255,255,0.98)', 8); G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 2.9, r: S.comboR + 20, life: 0.22, max: 0.22, col: 'rgba(255,255,255,0.5)', w: 12, follow: h }); addTrauma(0.08);   // Super Slash: white trail
+    const set = new Set(); melee(h, h.fa, 2.4, S.comboR + 6, D.combo[idx], { set, knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3, tag: 'superSlash' });
+    for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun);
+    return; }
+  swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = idx % 2 ? -1 : 1;
+  const set = new Set(); melee(h, h.fa, S.comboArc, S.comboR, D.combo[idx], { set, knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
+  for (const f of set) if (ALIVE(f) && (f.d.beh === 'caster' || f.conjuring > 0)) { f.conjuring = 0; if (f.state === 'windup') f.state = 'move'; }   // weak slashes interrupt casters
+}
+function theoRushGo(h) {
+  const S = SPEC.theo, D = DEV.dmg.theo; Snd.play('rush'); h.rushWin = S.rushWin;
+  const thru = f => { mastery(h, 'chargeThrough', 1);
+    if (SMALL_FOE(f)) { killFoe(f, h, { tag: 'charge' }); return; }   // the weakest foes (skeletons, ghosts) die on contact
+    if (f.heavy || f.elite || f.boss) { hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 120, stagger: 0.8, src: h, tag: 'charge', tier: 1 }); if (!f.boss) f.stag = Math.max(f.stag, 0.8); h.dash = null; h.z = 0; h.lock = S.rushBump; h.atkT = Math.max(h.atkT, S.rushBump); h.rushWin = 0; text(h.x, h.y - 30, 'BLOCKED', '#ffcf7a'); Snd.play('clank'); return; }   // can't pass a heavy
+    hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 340, stagger: 1.0, src: h, tag: 'charge', tier: 1 }); };   // tackles lesser foes aside (Knockdown Small)
+  if (h.mods.leap) startDash(h, h.rushAng, S.chargeDist + 20, 0.32, { rush: true, jump: true, armor: true, inv: true, onHitFoe: thru, hitR: S.chargeWidth, onEnd: () => { Snd.play('slam'); addTrauma(0.3); ring(h.x, h.y, 70, '#ffcf7a', 0.3, 6); areaHit(h.x, h.y, 70, heroDmg(h, D.rush), { src: h, knock: 300, stagger: 0.8, tag: 'charge', tier: 1 }); } });   // Bull Rush mastery: leap smash
+  else startDash(h, h.rushAng, S.chargeDist, S.chargeDist / (h.baseSpeed * S.rushSpeedMul), { rush: true, trail: 'rgba(255,200,140,0.5)', hitR: S.chargeWidth, armor: true, inv: true, onHitFoe: thru });
+}
+function theoLeap(h) {   // Leap Attack: jumps OVER enemies (heavies too), extends the invincibility, lands a Smash
+  const S = SPEC.theo, D = DEV.dmg.theo; Snd.play('leap');
+  startDash(h, h.fa, S.leapDist, S.leapTime, { jump: true, ethereal: true, inv: S.leapTime + 0.15, stopOnWall: false, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7);
+    const set = new Set(); areaHit(h.x, h.y, S.leapR, heroDmg(h, D.leap), { src: h, set, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3, lethal: true, tag: 'leap' });
+    for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); } });
 }
 // Gela's Shield Charge (dash button): burst forward behind the shield; skeletons shatter, others take 8 and fall over
 function gelaCharge(h) {
@@ -186,56 +218,55 @@ const KITS = {
   brannoc(h, inp, dt) {
     const S = SPEC.theo;
     const D = DEV.dmg.theo;
-    // Whirlwind (Destructo-Spin): 2.5s of full i-frames, 8 ticks of 20 (reference 8 x 20 = 160), large circle that follows Theo, 12s cooldown
+    if (h.titanRoot > 0) { h.titanRoot -= dt; if (inp.down.dash) h.titanRoot = 0; else { h.moveMul = 0; return; } }   // More of Thor: rooted while transforming unless Rush is held
+    if (h.cleaveT > 0) { h.cleaveT -= dt; h.moveMul = 0; return; }   // Demonic Cleave: rooted, invincible
+    // Destructo Spin: 2.5s of full i-frames, 8 ticks of 20 (8 x 20 = 160), a large circle that follows Theo; he SLIDES while it runs
     if (h.spin > 0) {
-      h.spin -= dt; h.spinTick -= dt; h.moveMul = 0.85; h.fa += dt * 18;
+      h.spin -= dt; h.spinTick -= dt; h.moveMul = 0; h.fa += dt * 18;
+      const sp = h.baseSpeed * S.spinSlideSpeed, k = Math.min(1, dt * S.spinSlideGrip); h.spinVx = lerp(h.spinVx || 0, inp.mx * sp, k); h.spinVy = lerp(h.spinVy || 0, inp.my * sp, k);
+      moveEnt(h, h.spinVx * dt, h.spinVy * dt, false, g => tryGate(h, g));
       if (h.spinTick <= 0) {
         h.spinTick = D.spinTime / D.spinTicks; Snd.play('spin');
         const n = areaHit(h.x, h.y, S.spinR, heroDmg(h, D.spinTick * (1 + h.mods.ability)), { src: h, knock: 200, stagger: 0.2, sigKill: true, tag: 'spin', tier: 2 });
         if (n) { hitstop(0.02); mastery(h, 'signature', n); }
         G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 6.28, r: S.spinR, life: 0.16, max: 0.16, col: 'rgba(255,220,160,0.55)', w: 6, follow: h });
       }
-      if (h.spin <= 0) setCd(h, 'ability', abilityCd(h, S.spinCd));
+      if (h.spin <= 0) { h.spinVx = h.spinVy = 0; setCd(h, 'ability', abilityCd(h, S.spinCd)); }
       return;
     }
     // 7th-swing finisher: 1.5m circle, active for 24 frames, strong hit (42, Stagger Large)
     if (h.finT > 0) { h.finT -= dt; areaHit(h.x, h.y, S.finisherR, heroDmg(h, D.combo[S.combo - 1]), { src: h, knock: 300, stagger: 0.8, set: h.finSet, tier: 3 }); }
-    // Super Slash (Rush + attack): a fast 4-hit chain 42 / 14 / 14 / 42
-    if (h.superSlash) { const ss = h.superSlash; ss.t -= dt; h.moveMul = 0.3;
-      if (ss.t <= 0) { const v = D.superSlash[ss.i], strong = v >= 40; ss.t = D.superT / hasteMul(h); ss.i++;
-        Snd.play(strong ? 'heavyswing' : 'swing'); swingFx(h, h.fa, strong ? 2.4 : S.comboArc, S.comboR + 10, 'rgba(255,220,150,0.95)', strong ? 8 : 5); G.swings[G.swings.length - 1].dir = ss.i % 2 ? 1 : -1;
-        melee(h, h.fa, strong ? 2.4 : S.comboArc, S.comboR + 6, v, { knock: strong ? 260 : 110, stagger: strong ? 0.8 : 0.15, hitstop: strong ? 0.05 : 0.03, tier: strong ? 3 : 1, tag: 'superSlash' });
-        if (ss.i >= D.superSlash.length) { h.superSlash = null; h.atkT = 0.3 / hasteMul(h); h.combo = 0; h.comboT = 0; } }
-      return; }
-    if (h.rushWin > 0 && !h.dash && inp.pressed.primary && h.atkT <= 0) { h.rushWin = 0; h.superSlash = { i: 0, t: 0 }; text(h.x, h.y - 34, 'SUPER SLASH', '#ffcf7a'); return; }
-    // Rush / Furious Charge (defend): 5s cooldown, 8 damage (reference), knocks small foes down, armor vs T1/T2, kills skeletons outright
-    if (inp.pressed.defend && cdReady(h, 'defend')) {
-      setCd(h, 'defend', S.chargeCd); Snd.play('rush'); h.rushWin = 0.55;
-      const thru = f => { mastery(h, 'chargeThrough', 1); if (SKELETAL(f)) killFoe(f, h, { tag: 'charge' }); else hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 320, stagger: f.heavy || f.elite ? 0.4 : 1.0, src: h, tag: 'charge', tier: 1 }); };
-      if (h.mods.leap) startDash(h, h.fa, S.chargeDist + 20, 0.32, { jump: true, armor: true, inv: 0.12, onHitFoe: thru, hitR: S.chargeWidth, onEnd: () => { Snd.play('slam'); addTrauma(0.3); ring(h.x, h.y, 70, '#ffcf7a', 0.3, 6); areaHit(h.x, h.y, 70, heroDmg(h, D.rush), { src: h, knock: 300, stagger: 0.8, tag: 'charge', tier: 1 }); } });   // Bull Rush mastery: leap smash
-      else startDash(h, h.fa, S.chargeDist, 0.22, { trail: 'rgba(255,200,140,0.5)', hitR: S.chargeWidth, armor: true, inv: 0.12, onHitFoe: thru });
-      return;
+    // Smash (secondary): an instant wide stun that also destroys missiles, then a focused 50 Lethal blow
+    if (h.smash) { const sm = h.smash; sm.t += dt; h.moveMul = 0.2;
+      if (!sm.hit && sm.t >= S.smashWindup) { sm.hit = true; Snd.play('slam'); addTrauma(0.35); hitstop(0.07); const x = h.x + Math.cos(h.fa) * S.smashFwd, y = h.y + Math.sin(h.fa) * S.smashFwd;
+        ring(x, y, S.smashR, '#ffcf7a', 0.3, 7); burst(x, y, '#a08060', 20, 220, 4, 0.5); const set = new Set();
+        areaHit(x, y, S.smashR, heroDmg(h, D.leap), { src: h, set, knock: 340, stagger: 1.0, heavy: true, tier: 3, lethal: true, tag: 'smash' });   // Smash: 50, Stagger Large, Lethal
+        for (const f of set) if (ALIVE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun); }
+      if (sm.t >= S.smashTime / hasteMul(h)) h.smash = null;
+      if (!(sm.hit && inp.pressed.defend)) return;
+      h.smash = null; }   /* Rush cancels the Smash recovery once the blow has landed */
+    // Rush start-up pause (short; he can be hit here)
+    if (h.rushPrep > 0) { h.rushPrep -= dt; h.moveMul = 0; if (h.rushPrep <= 0) theoRushGo(h); return; }
+    // during the Rush: attack = Super Slash (hit 4, the chain continues from hit 5), smash = Leap Attack over enemies, ability = cancel into the weapon ability
+    if (h.dash && h.dash.rush) {
+      if (inp.pressed.primary) { h.dash = null; h.z = 0; h.lock = S.superRoot; text(h.x, h.y - 34, 'SUPER SLASH', '#ffcf7a'); theoSlash(h, 3); return; }
+      if (inp.pressed.secondary) { h.dash = null; h.z = 0; theoLeap(h); return; }
+      if (!inp.pressed.ability) return;
+      h.dash = null; h.z = 0;
     }
-    // 7-swing axe combo (reference): weak 14s in a narrow front arc, swing 4 a strong 42 wide cleave, swing 7 a strong 42 360 finisher
-    if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
-      h.combo = h.comboT > 0 ? (h.combo + 1) % S.combo : 0; h.comboT = 0.75;
-      const fin = h.combo === S.combo - 1, strong = S.strongHits.includes(h.combo + 1);
-      h.atkT = (strong ? D.strongT : D.weakT) / hasteMul(h); h.lock = 0.1;
-      moveEnt(h, Math.cos(h.fa) * 8, Math.sin(h.fa) * 8);
-      Snd.play(fin ? 'heavyswing' : 'swing');
-      if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, 'rgba(255,220,150,0.95)', 8, 0.4); h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }
-      if (strong) { Snd.play('heavyswing'); swingFx(h, h.fa, 2.4, S.comboR + 10, 'rgba(255,226,160,0.95)', 8); addTrauma(0.08);
-        melee(h, h.fa, 2.4, S.comboR + 6, D.combo[h.combo], { knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3 }); return; }
-      swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = h.combo % 2 ? -1 : 1;
-      melee(h, h.fa, S.comboArc, S.comboR, D.combo[h.combo], { knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
-      return;
-    }
-    // Leap Cleave (secondary): 3s cooldown, heavy, medium circle, hard hit-stun. Alternate weapon: straight shockwave with a fire trail.
+    if (h.rushWin > 0 && !h.dash && inp.pressed.primary && h.atkT <= 0) { h.rushWin = 0; text(h.x, h.y - 34, 'SUPER SLASH', '#ffcf7a'); theoSlash(h, 3); return; }
+    if (h.rushWin > 0 && !h.dash && inp.pressed.secondary) { h.rushWin = 0; theoLeap(h); return; }
+    // Rush (defend / dash button): faster than running, invincible for the whole dash, can't steer
+    if (inp.pressed.defend && cdReady(h, 'defend')) { setCd(h, 'defend', S.chargeCd); h.rushPrep = S.rushStartup; h.rushAng = h.fa; return; }
+    // 7-swing axe combo: weak 14s in a front arc (stagger small foes, interrupt casters); hit 4 = Super Slash (white trail, stuns heavies); hit 7 = 360 with long recovery
+    if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) { theoSlash(h, h.comboT > 0 ? (h.combo + 1) % S.combo : 0); return; }
+    // Smash (secondary)
     if (inp.pressed.secondary && cdReady(h, 'secondary')) {
-      setCd(h, 'secondary', S.leapCd);
-      const p = aimPoint(h, 190, 60), d = hyp(p.x - h.x, p.y - h.y);
-      Snd.play('leap');
-      startDash(h, Math.atan2(p.y - h.y, p.x - h.x), d, 0.38, { jump: true, inv: 0.3, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7); areaHit(h.x, h.y, S.leapR, heroDmg(h, D.leap), { src: h, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3, lethal: true }); } });   // Smash / Leap Attack: 50, Stagger Large, Lethal
+      setCd(h, 'secondary', S.smashCd); h.smash = { t: 0 }; Snd.play('heavyswing');
+      const R0 = S.smashStunR; ring(h.x, h.y, R0, 'rgba(255,220,150,0.8)', 0.2, 4);
+      for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hyp(f.x - h.x, f.y - h.y) < R0 + f.r) { f.stag = Math.max(f.stag, 0.45); if (f.state === 'windup') f.state = 'move'; if (f.conjuring > 0) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; } }   // the stun is instant and wider than the hit
+      let killed = 0; for (const sh of G.shots) if (sh.team === 'foe' && !sh.dead && hyp(sh.x - h.x, sh.y - h.y) < R0 + sh.r) { sh.dead = true; killed++; burst(sh.x, sh.y, '#ffcf7a', 5, 100, 2, 0.3); }   // destroys missiles
+      h.lastSmashShots = killed;
       return;
     }
     // weapon signature (ability button); every weapon swaps it
@@ -250,11 +281,11 @@ const KITS = {
         for (const f of G.foes) if (ALIVE(f) && hyp(f.x - h.x, f.y - h.y) < W.turboR + f.r && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < W.turboArc / 2) { if (f.state === 'windup') f.state = 'move'; if (f.conjuring > 0) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; } f.atkT = Math.max(f.atkT, 0.8); }
         h.lastTurbo = areaHit(h.x, h.y, W.turboR, heroDmg(h, D.turbo * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.turboArc, stagger: W.turboStun, knock: 300, heavy: true, sigKill: true, tier: 3 });
         areaHit(h.x, h.y, W.turboR * 1.4, heroDmg(h, D.turboAoe), { src: h, stagger: 0.3, knock: 160, tier: 1 });   // Turbo-Slam 140 + 14 AoE
-      } else if (h.weapon === 'demonic') { // Demonic Cleave: T2 impact along a 1m x 6m line, 4s fire surface (T1 ticks + burn)
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.35); h.slamT = 0.35; h.inv = Math.max(h.inv, 0.5); h.demonicSet = new Set(); const a = h.fa, step = W.demonicW;   // Demonic Cleave: 140 once per foe, invulnerable
-        for (let k = 1; k * step <= W.demonicLen; k++) { const x = h.x + Math.cos(a) * k * step, y = h.y + Math.sin(a) * k * step; if (shotSolid(x, y)) break;
-          G.hazards.push({ kind: 'tele', x, y, r: step / 2, delay: 0.03 * k, t: 0, col: '#ff5a2a', silent: true, onFire: hz => { burst(hz.x, hz.y, '#ff6a2a', 8, 160, 4, 0.5); areaHit(hz.x, hz.y, step / 2 + 4, heroDmg(h, D.demonic), { src: h, stagger: 0.5, knock: 160, tier: 3, burn: W.demonicBurn, set: h.demonicSet });
-            G.hazards.push({ kind: 'fire', x: hz.x, y: hz.y, r: step / 2, life: W.demonicFire, t: 0, dps: heroDmg(h, D.demonicFire), team: 'hero', owner: h, demonic: true }); } }); }
+      } else if (h.weapon === 'demonic') { // Demonic Cleave: rooted and invincible; a strong forward cleave whose sides reach almost all the way round (not mid-back), tiny stun ring on every side
+        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.35); hitstop(0.06); h.cleaveT = W.cleaveRoot; h.moveMul = 0; h.inv = Math.max(h.inv, W.cleaveRoot + 0.1); h.slamT = 0.35;
+        for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hyp(f.x - h.x, f.y - h.y) < W.cleaveStunR + f.r) f.stag = Math.max(f.stag, 0.6);
+        swingFx(h, h.fa, W.cleaveArc, W.cleaveR, 'rgba(255,90,40,0.95)', 12, 0.3); ring(h.x, h.y, W.cleaveStunR, 'rgba(255,120,60,0.7)', 0.25, 4);
+        h.lastCleave = areaHit(h.x, h.y, W.cleaveR, heroDmg(h, D.demonic * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.cleaveArc, knock: 300, stagger: 1.0, heavy: true, sigKill: true, tier: 3, burn: W.demonicBurn });
       } else { h.spin = S.spinTime; h.spinTick = 0; Snd.play('spinstart'); }   // Destructo-Spin (cooldown starts when the spin ends)
     }
   },
@@ -700,7 +731,7 @@ function usePotion(h) {
     for (const o of G.heroes) if (!o.dead) for (let k = 0; k < TS.feastFood + TS.feastFeast; k++) { const a = R(0, 6.28), d = R(30, 60); let x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d; if (collide(x, y, 6)) { x = o.x; y = o.y + 20; }
       G.pickups.push({ kind: k < TS.feastFood ? 'ration' : 'feast', x, y, talisman: true, invT: 0.5 }); n++; burst(x, y, '#ffcf7a', 6, 80, 2, 0.4); }
     h.lastFeast = n; msg('A feast for the party!', '#ffcf7a', 1.5); repelAll(h.x, h.y, 200); }
-  else if (id === 'brannoc') { h.buff.titan = 7; msg('TITAN!', '#ffcf7a', 1.5); Snd.play('titan'); ring(h.x, h.y, 120, '#ffcf7a', 0.5, 8); repelAll(h.x, h.y, 260); }
+  else if (id === 'brannoc') { h.buff.titan = 7; h.titanRoot = SPEC.theo.titanRoot; h.moveMul = 0; msg('TITAN!', '#ffcf7a', 1.5); Snd.play('titan'); ring(h.x, h.y, 120, '#ffcf7a', 0.5, 8); repelAll(h.x, h.y, 260); }
   else if (id === 'sela' && tal === 'base') { // Valkyrie's Call: summon spectral valkyries; raven wings also lift the fallen and heal
     Snd.play('horn'); h.buff.ravens = 1.4; addTrauma(0.3); ring(h.x, h.y, 200, '#bfe6ff', 0.6, 6);
     for (let k = 0; k < 26; k++) { const a = R(0, 6.28); G.parts.push({ x: h.x + Math.cos(a) * R(10, 60), y: h.y + Math.sin(a) * R(10, 40) - 20, vx: Math.cos(a) * R(40, 140), vy: R(-140, -40), life: 1.1, max: 1.1, col: k % 3 ? '#2a3040' : '#bfe6ff', size: 4, grav: -20 }); }

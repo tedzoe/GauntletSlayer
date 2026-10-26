@@ -45,9 +45,12 @@ const SPEC = {
   },
   // Warrior -> Sir Theo
   theo: { combo: 7, strongHits: [4, 7], comboArc: 1.6, comboR: 58, finisherR: 1.5 * MTR, finisherFrames: 24,
-    chargeCd: 5, chargeDmg: 'medium', chargeDist: 230, chargeWidth: 6,
-    leapCd: 3, leapDmg: 'heavy', leapR: 90, leapStun: 1.2,
-    spinCd: 12, spinDmg: 'heavy', spinTicksPerSec: 8 / 2.5, spinR: 2.0 * MTR, spinTime: 2.5 },
+    chargeCd: 0.6, chargeDmg: 'medium', chargeDist: 230, chargeWidth: 6,   // Rush: Slayer dashes have no real cooldown (0.6s is our spam guard)
+    rushStartup: 0.1, rushSpeedMul: 1.5, rushBump: 0.4, rushWin: 0.15, superRoot: 0.15, heavyStun: 1.0,   // short start-up, faster than running, heavy bump recovery
+    smashCd: 0, smashWindup: 0.2, smashTime: 0.83, smashFwd: 34, smashR: 64, smashStunR: 110,   // Smash: 50 per 0.83s = ~60 DPS (reference ~60)
+    leapDist: 120, leapTime: 0.36, leapCd: 0, leapDmg: 'heavy', leapR: 90, leapStun: 1.2,
+    titanRoot: 0.8, spinSlideSpeed: 0.9, spinSlideGrip: 2.5,
+    spinCd: 10, spinDmg: 'heavy', spinTicksPerSec: 8 / 2.5, spinR: 2.0 * MTR, spinTime: 2.5 },
   // Valkyrie -> Dawnbringer Gela
   gela: { combo: 7, comboDmg: 'light', stunHits: [4, 7], stun: 1.0, comboArc: 1.4, comboR: 56,
     thrustDmg: 'heavy', thrustCd: 0, thrustWindupFrames: 12, thrustLungeFrames: 8, thrustRecovery: 0.45, perfectWindow: 0.2, chargeCd: 2,
@@ -80,7 +83,7 @@ const SPEC = {
     wingsTime: 4, wingsBurstR: 7 * MTR, layR: 6 * MTR },
   // Weapon signature cooldowns for the shop lineup (seconds)
   weapons: {
-    brannoc: { base: 12, axe: 5, turbo: 7, demonic: 8 },
+    brannoc: { base: 10, axe: 5, turbo: 7, demonic: 6 },
     sela: { base: 9, splitter: 6, vanguard: 0, ricochet: 8 },
     kestrel: { base: 6, thorn: 5, sparks: 8, dusk: 7 },
     vesper: { base: 0, lantern: 0, marrow: 0 },
@@ -91,7 +94,7 @@ const SPEC = {
     spinR: 2.0 * MTR, spinFrames: 210,
     axeSpeed: 640, axeLife: 0.8,
     turboR: 3.0 * MTR, turboArc: Math.PI / 2, turboStun: 1.6,
-    demonicW: 1.0 * MTR, demonicLen: 6.0 * MTR, demonicFire: 4.0, demonicBurn: 4,
+    cleaveR: 2.6 * MTR, cleaveArc: 5.0, cleaveStunR: 1.2 * MTR, cleaveRoot: 0.5, demonicBurn: 4,
     execR: 2.5 * MTR, execArc: 2 * Math.PI, execKnock: 900, crushStun: 2.0, crushWindow: 0.7,
     splitterFan: Math.PI / 4, splitterSpeed: 760,
     deflectR: 70, deflectWidth: 22, deflectMax: 6, deflectWindow: 0.5,
@@ -124,7 +127,7 @@ const DEV = {
   // 1. DASH: one dedicated button for every hero (KB1 F / middle mouse, KB2 Numpad6 / Comma, gamepad LT or L3).
   //    cdKey = the cooldown it shares with the hero's existing mobility move, so both inputs stay in sync.
   dash: {
-    brannoc: { move: 'Furious Charge', cdKey: 'defend', cd: 5 },        // SPEC.theo.chargeCd
+    brannoc: { move: 'Rush', cdKey: 'defend', cd: 0.6 },        // SPEC.theo.chargeCd
     sela: { move: 'Shield Charge', cdKey: 'scharge', cd: 2 },            // SPEC.gela.chargeCd (no longer needs the shield raised)
     kestrel: { move: 'Combat Roll', cdKey: 'defend', cd: 1.5 },          // SPEC.isaac.rollCd
     mirelle: { move: 'Blink', cdKey: 'dash', cd: 3, dist: 150, dur: 0.16, iframes: 0.22 },   // new short blink for Zoey
@@ -152,10 +155,10 @@ const DEV = {
   //    numbers 1:1 because our enemy HP already sits on the reference scale (small ~30, strong ~48, casters 60-96).
   //    Rates are tuned so every melee hero out-damages Isaac's Quick Shot (David's rule) while swinging slower than he shoots.
   dmg: {
-    theo: { combo: [14, 14, 14, 42, 14, 14, 42], weakT: 0.30, strongT: 0.45,   // 154 per 2.4s nominal (~2.65s with hitstop) = ~58 DPS (reference ~46)
-      rush: 8, superSlash: [42, 14, 14, 42], superT: 0.16, leap: 50,            // Rush, Super Slash (Rush+attack), Smash / Leap (Lethal)
+    theo: { combo: [14, 14, 14, 42, 14, 14, 42], weakT: 0.28, strongT: 0.45, finRec: 0.6,   // hit 7 has a long recovery; 154 per 2.45s nominal (~2.8s with hitstop) = ~54 DPS (reference ~46)
+      rush: 8, superSlash: [42, 14, 14, 42], leap: 50,   // Rush; Super Slash = hit 4 during Rush, chain continues 5-7; Smash and Leap 50 Lethal
       spinTick: 20, spinTicks: 8, spinTime: 2.5,                                 // Destructo Spin 8 x 20 = 160, 2.5s invulnerable
-      axe: 28, turbo: 140, turboAoe: 14, demonic: 140, demonicFire: 8, titanMul: 1.65 },
+      axe: 28, turbo: 140, turboAoe: 14, demonic: 140, titanMul: 1.65 },
     gela: { combo: [8, 8, 8, 42, 8, 8, 42], weakT: 0.22, strongT: 0.32,      // 124 per 1.74s nominal (~2.2s with hitstop) = ~56 DPS (reference ~47)
       thrust: 42, charge: 8, bash: 8, javelin: 28, execHit: 70, ricochet: 56, ricochetSpawnerMul: 2, splitter: 28, intercept: 14 },
     paladin: { combo: [18, 18, 48], weakT: 0.38, finT: 0.55,                  // our own: 84 per 1.31s nominal (~1.5s with hitstop) = ~56 DPS, slowest swings

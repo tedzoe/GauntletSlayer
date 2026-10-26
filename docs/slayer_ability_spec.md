@@ -440,3 +440,19 @@ Zoey cooldowns (FAQ): Fireball 2, Freezing Wave 3 (freeze 3s, no damage), Cold S
 - Destructo Spin ticks (20) are below Smash (50).
 - Shock Blast (14) and Serpents (16) are below the Firebolt (22).
 - The Steam guide calls the whole thrust invincible; the FAQ says she can be hit in the start-up pause. We follow the FAQ.
+
+## Sir Theo to the Slayer Warrior guide (Oct 25 2026)
+Sources: `docs/slayer_warrior_reference_from_david.md` (Steam guide) and the Neoseeker FAQ Thor section.
+- **Slash** (7 hits 14/14/14/42/14/14/42): weak hits stagger small foes only and interrupt casters. Hit 4 is the white-trail Super Slash and stuns heavies and elites (1.0s). Hit 7 is the 360 with a long 0.6s recovery.
+- **Smash** (secondary, no cooldown): pressing it stuns everything within 110 px (interrupting windups and casters) and destroys enemy missiles in that ring. After 0.2s the blow lands for 50 Lethal, Stagger Large, and stuns heavies. It repeats every 0.83s (~60 DPS, reference ~60). Rush can cancel the recovery once the blow lands (our guess).
+- **Rush** (dash button, 0.6s spam guard; Slayer dashes have no cooldown):
+  - 0.1s vulnerable start-up, then invincible for the whole dash at 1.5x run speed; it can't steer and flows into running.
+  - Skeletons and ghosts die on contact. Lesser foes take 8 and are knocked down and aside.
+  - A heavy, elite or boss stops the Rush: the foe staggers and Theo recovers for 0.4s.
+- **Rush + attack = Super Slash**: the Rush stops with a 0.15s root, hit 4 lands, and the chain continues from hit 5 (42, 14, 14, 42).
+- **Rush + smash = Leap Attack**: a jump over enemies (heavies included) with invincibility through the landing. Lands a 50 Lethal smash that stuns heavies.
+- **Rush + ability**: cancels straight into the weapon ability.
+- **Destructo Spin**: 10s cooldown. Theo slides while spinning (momentum, not direct steering). 8 x 20 over 2.5s, invulnerable.
+- **Demonic Cleave**: 6s cooldown. Rooted and invincible for 0.5s. A 140 cleave over about 290 degrees (everything except mid-back), radius 2.6m, plus a 1.2m stun ring on every side. This replaces the old 6m fire line.
+- **More of Thor (Titan)**: invincible from the start; rooted for 0.8s while transforming unless Rush is held.
+- **Guesses and differences**: the spin slide grip, Rush speed 1.5x, smash timing split (0.2s windup, 0.83s total), the 0.6s Rush spam guard, and Rush cancelling the Smash recovery. We have no egg-sac spawners, so "one-shots egg sacs" has nothing to apply to. Slash start-up is not slowed (it would cut DPS below Quick Shot).
