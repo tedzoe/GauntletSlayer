@@ -47,13 +47,13 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
   Beat all three to unlock **The Hollow Throne**.
 - **Rooms wake up:** monsters in a room stay still until you walk in, until one of them spots you (walls block their view), or until you hit something in the room. Then the whole room comes for you.
 - **Keys, gates and secrets:** keys open locked gates. Cracked walls hide side rooms with treasure. Look out for legendary chests, food and potions.
-- **Gold banks at the exit:** gold you pick up is only safe once the party crosses the floor's exit. If you retreat, quit or fall before that, you lose that floor's gold. Each potion you still hold at the exit is worth +500 gold.
+- **Gold banks at gates and exits:** gold you pick up is only safe once the party opens or walks through a gate, or crosses the floor's exit. Each hero banks their own share and sees a "+N banked" popup. If you retreat, quit or fall, you lose only the gold picked up since the last gate. Each potion you still hold at the exit is worth +500 gold.
 - **The crown:** each floor has one crown hidden somewhere.
   - Whoever wears it gets **double gold**, but moves 10% slower and nearby enemies go after them first.
   - Any hit knocks it loose, and it vanishes if nobody grabs it within 5 seconds.
-  - Still wearing it at the exit? That's **+500 gold**.
+  - Still wearing it at the floor exit? That's **+500 gold**.
 - **Death is coming:** the Pale Collector can't be killed. It hunts you through the Collector's Labyrinth and turns up on every 6th floor of Endless. Don't let it touch you. Run for the exit.
-- **Falling in battle:** a fallen hero can be revived with the party's gold. Each death raises the price.
+- **Falling in battle:** a fallen hero drops some of the unbanked gold. Press confirm to bring them back with a rez coin. Coins are unlimited on Easy and Normal, 3 on Hard and 1 on Unfair.
 - **Camp, shop and relics:** between runs you rest at **Wayfarer's Rest**.
   - Spend your banked gold at the **Peddler** on alternate weapons, talismans (potion powers) and relics.
   - A relic is an extra active power on its own cooldown, with three ranks to buy.

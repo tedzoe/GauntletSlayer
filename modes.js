@@ -23,9 +23,27 @@ function bankOf(id) { return SAVE.banks[id] || 0; }
 function bankTotal() { return HEROES.reduce((a, h) => a + bankOf(h.id), 0); }
 // bank the party's secured gold: each hero keeps a share in proportion to the gold they picked up this run
 function bankSecured(amount) {
-  amount = Math.floor(amount || 0); if (amount <= 0 || !G.heroes.length) return;
+  const shares = [];
+  amount = Math.floor(amount || 0); if (amount <= 0 || !G.heroes.length) return [];
   const tot = G.heroes.reduce((a, h) => a + (h.goldRun || 0), 0); let left = amount;
-  G.heroes.forEach((h, i) => { const share = i === G.heroes.length - 1 ? left : Math.floor(amount * (tot > 0 ? (h.goldRun || 0) / tot : 1 / G.heroes.length)); SAVE.banks[h.id] = bankOf(h.id) + share; left -= share; h.goldRun = 0; });
+  G.heroes.forEach((h, i) => { const share = i === G.heroes.length - 1 ? left : Math.floor(amount * (tot > 0 ? (h.goldRun || 0) / tot : 1 / G.heroes.length)); SAVE.banks[h.id] = bankOf(h.id) + share; left -= share; h.goldRun = 0; shares.push(share); });
+  return shares;
+}
+// gate crossing (spec: 'gold banks only when you cross an exit or gate'): opening a gate or walking through an opened one banks
+// the not-yet-banked part of the party purse, split per hero exactly like the exit. The crown's +500 stays exit-only (spec ties it to the floor exit).
+function bankAtGate(h, how) {
+  if (G.mode !== 'campaign' && G.mode !== 'endless') return 0;
+  const unb = Math.floor((G.purse || 0) - (G.bankedRun || 0)); if (unb < SPEC.gateBank.min) return 0;
+  G.secured = G.purse; const shares = bankSecured(unb); G.bankedRun = G.purse; persist();
+  G.gateBanks = (G.gateBanks || 0) + 1; G.lastGateBank = { amount: unb, how, shares, t: G.time };
+  G.heroes.forEach((o, i) => { if (shares[i] > 0) text(o.x, o.y - 44, `+${shares[i]} banked`, '#9fffe0', true); });
+  G.bankFlash = SPEC.gateBank.flash; Snd.play('coin'); msg(`Gate crossed: ${unb} gold banked`, '#9fffe0', 2);
+  return unb;
+}
+function checkGateCrossing() {
+  const m = G.map; if (!m || !m.gateTiles) return;
+  for (const h of G.heroes) { if (h.dead) continue; const i = Math.floor(h.y / T) * m.w + Math.floor(h.x / T);
+    if (m.gateTiles.has(i) && m.t[i] !== TL.GATE) bankAtGate(h, 'cross'); }   // standing in an opened gateway banks whatever is not banked yet
 }
 function persist() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(SAVE)); } catch (e) { } }
 function mastery(h, stat, v) {
@@ -189,6 +207,7 @@ function hubInteract(h, inp) {
 function updateMode(dt) {
   if (G.mode === 'hub') return;
   if (G.pendingComplete > 0) { G.pendingComplete -= dt; if (G.pendingComplete <= 0) { floorComplete(); return; } }
+  checkGateCrossing(); if (G.bankFlash > 0) G.bankFlash -= dt;
   // gimmicks
   if (G.gimmick === 'reaper') { G.gimmickT -= dt; if (G.gimmickT <= 0 && !G.foes.some(f => f.type === 'reaper')) { const h = pick(G.heroes.filter(x => !x.dead)); if (h) { const s = G.map.starts[0] || h; const f = mkFoe('reaper', s.x, s.y, { awake: true }); Snd.play('reaper'); msg('The Reaper enters the labyrinth!', '#9ff', 3); } } }
   if (G.gimmick === 'meteors') { G.gimmickT -= dt; if (G.gimmickT <= 0) { G.gimmickT = R(0.7, 1.3) / G.heroes.length; const h = pick(G.heroes.filter(x => !x.dead)); if (h) { const x = h.x + R(-220, 220) + (h.vx || 0) * 0.8, y = h.y + R(-180, 180) + (h.vy || 0) * 0.8; if (!blocksShot(tileAt(Math.floor(x / T), Math.floor(y / T)))) tele(x, y, 48, 1.1, 20 * G.scale.dmg, '#ff7a2a', hz => G.hazards.push({ kind: 'fire', x: hz.x, y: hz.y, r: 28, life: 2.2, t: 0, team: 'foe', dps: 10 })); } } }

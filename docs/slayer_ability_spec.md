@@ -276,7 +276,13 @@ HP 200 (bar shows 100), speed 0.95, all attacks light-element, same button layou
 - Relics: 4000 + 12000 + 32000 = 48000 per relic. This confirms the existing numbers.
 - Cosmetic armor, headgear, and capes cost about 5000 to 100000 gold each in the original. Those are reserved for later, since we use our own art; implement them only if David asks.
 - Crown bonus: holding the crown when you cross a floor exit grants +500 gold.
-- Gold is banked only when you cross a gate or exit. Gold picked up on a floor is lost if you quit or die before the exit. (Confirm this matches the current implementation.)
+- Gold is banked only when you cross a gate or exit. Gold picked up since the last gate or exit is lost if you quit or die first. (David confirmed: gates bank too, just like the exit.)
+  - **Implemented (Oct 2026):** a gate crossing banks the party's not-yet-banked gold. That means opening a locked gate, or any hero standing in an opened gateway.
+  - The gold is split per hero exactly like the exit: each hero gets a share in proportion to the gold they picked up since the last bank. Each hero sees a "+N banked" popup, and the HUD "banked" counter flashes.
+  - Only the difference since the last bank is ever banked, so there is no double-banking.
+  - Dying, being defeated or retreating keeps everything banked at gates. A dying hero drops 20% of the *unbanked* gold only.
+  - The crown's +500 stays exit-only, because the crown rule above ties it to crossing a floor exit. Potion gold (+500 per potion) and end-of-floor loot are also paid only at the exit.
+  - Numbers are in `SPEC.gateBank` (tuning.js). The checks are in `tests/gatebanktest.js`.
 
 # Enemy art reference (David, inspiration only; art/enemy-reference/)
 - Sheets: skeleton (sword/spear/archer/shield guard/robed/elite, plus rise-from-ground summon), goblin (grunt/spearman/archer/shaman/brute/scout), mummy, a 9-boss sheet, and an 8-biome roster.

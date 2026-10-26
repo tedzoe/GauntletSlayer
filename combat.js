@@ -196,7 +196,7 @@ function killHero(h) {
   if (h.crown) dropCrown(h);
   h.dead = true; h.hp = 0; h.deadAt = G.time; h.blocking = false; h.spin = 0; h.channel = null;
   Snd.play('herodeath'); burst(h.x, h.y, h.def.color, 40, 260, 4, 1); burst(h.x, h.y, '#fff', 15, 160, 2, 0.8); addTrauma(0.6); hitstop(0.12);
-  const lost = Math.floor(G.gold * 0.2); if (lost > 0) { G.gold -= lost; dropGold(h.x, h.y, lost, 'hero'); text(h.x, h.y - 30, `-${lost} gold dropped`, '#ffd27a', true); }
+  const lost = Math.floor(Math.max(0, G.gold - (G.bankedRun || 0)) * 0.2); if (lost > 0) { G.gold -= lost; dropGold(h.x, h.y, lost, 'hero'); text(h.x, h.y - 30, `-${lost} gold dropped`, '#ffd27a', true); }   // only unbanked gold can drop (gate/exit banking keeps the rest safe)
   for (let k = 0; k < h.keys; k++) G.pickups.push({ kind: 'key', x: h.x + R(-16, 16), y: h.y + R(-16, 16) });
   h.keys = 0; G.deathsRun++; h.deathsRun = (h.deathsRun || 0) + 1; mastery(h, 'deaths', 1);
   G.deathsFloor = (G.deathsFloor || 0) + 1; if (G.deathsFloor === 8) mastery(h, 'deaths8', 1);

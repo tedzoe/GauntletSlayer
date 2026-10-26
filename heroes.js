@@ -113,8 +113,8 @@ function autoAim(h, fa) { // soft aim assist for keyboard players
 }
 function tryGate(h, g) {
   if (!g || !g.gate) return;
-  if (h.keys > 0) { h.keys--; openGate(g.tx, g.ty); text(h.x, h.y - 26, 'UNLOCKED', '#fd5'); return; }
-  if (!G.heroes.some(o => o.keys > 0) && !reachableKey(h)) { openGate(g.tx, g.ty); msg('The rusted lock gives way.', '#fd5', 2); return; }
+  if (h.keys > 0) { h.keys--; openGate(g.tx, g.ty, h); text(h.x, h.y - 26, 'UNLOCKED', '#fd5'); return; }
+  if (!G.heroes.some(o => o.keys > 0) && !reachableKey(h)) { openGate(g.tx, g.ty, h); msg('The rusted lock gives way.', '#fd5', 2); return; }
   if ((h.gateMsg || 0) < G.time) { h.gateMsg = G.time + 2.5; msg('Locked. Find a key.', '#fd5', 1.6); Snd.play('error'); }
 }
 function startDash(h, ang, dist, dur, o = {}) {

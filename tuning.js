@@ -103,6 +103,7 @@ const SPEC = {
   // utility talismans
   talisman: { feastFood: 2, feastFeast: 1, aegisR: 3 * MTR, aegisTime: 6, aegisHeal: 4, dreadR: 3.5 * MTR, dreadTime: 6, dreadFear: 1.0, dreadDps: 6, valkCount: 3, valkTime: 10 },
   potion: { shockR: 12 * MTR, shockStagger: 0.6, foodInv: 0.5, aiFreeze: 1.5, exitGold: 500, spawnerStop: 4 },
+  gateBank: { min: 1, flash: 1.6 },   // gate crossings bank carried gold (min amount to trigger, HUD flash seconds)
   crown: { goldMul: 2, floatTime: 5, endBonus: 500, slow: 0.1, aggroR: 10 * MTR },
   coins: { capPerPlayer: 5 },
   bubble: { after: 20 },

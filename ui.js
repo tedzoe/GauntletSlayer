@@ -93,7 +93,7 @@ function drawHUD() {
   txt(top, W / 2, 28, 14, '#f2e6c8', 'center');
   panel(W - 200, 6, 190, 34, 0.7); circ(W - 182, 23, 7, '#ffd84a', '#a07a10', 2);
   txt(G.mode === 'hub' ? `Banked ${G.heroes.reduce((a, h) => a + bankOf(h.id), 0)}` : `${Math.floor(G.purse)}`, W - 166, 29, 15, '#ffd84a');
-  if (G.mode !== 'hub' && G.secured) txt(`secured ${Math.floor(Math.min(G.secured, G.purse))}`, W - 70, 29, 10, '#bba', 'left', 'normal');
+  if (G.mode !== 'hub' && G.secured) txt(`banked ${Math.floor(Math.min(G.secured, G.purse))}`, W - 70, 29, 10, G.bankFlash > 0 && (G.bankFlash * 6 | 0) % 2 === 0 ? '#9fffe0' : '#bba', 'left', 'normal');
   if (G.arena) { const A = G.arena; panel(14, 6, 230, 34, 0.7); txt(A.state === 'done' ? 'Arena cleared' : A.wave ? `Wave ${A.wave}/${A.waves} · foes ${G.foes.filter(f => ALIVE(f) && f.type !== 'reaper').length}` : 'Step into the arena', 26, 28, 13, '#ff9a7a'); }
   else if (G.mode === 'endless') { panel(14, 6, 230, 34, 0.7); txt(`Depth ${G.endless} · best ${SAVE.endless.best}`, 26, 28, 13, '#9fffe0'); }
   // boss bar
@@ -273,7 +273,7 @@ function openOptions(dev) {
 function openPause(dev) {
   openMenu({ dev, title: 'Paused', sub: G.mode === 'hub' ? "Wayfarer's Rest" : `${G.worldName} — ${G.floorName}`, col: '#8a7a5a', build: () => {
     const it = [{ label: 'Resume', act: () => 'close' }, { label: 'Controls', act: () => { closeMenu(); scene = 'controls'; sceneT = 0; CONTROLS_BACK = 'game'; return 'close'; } }, { label: 'Options', act: () => { openOptions(dev); } }];
-    if (G.mode !== 'hub') it.push({ label: 'Retreat to camp', desc: `Gold from cleared floors (${Math.floor(G.secured || 0)}) is already banked. Gold picked up on this floor is lost.`, act: () => { closeMenu(); G.purse = G.secured || 0; bankAndReturn(); return 'close'; } });
+    if (G.mode !== 'hub') it.push({ label: 'Retreat to camp', desc: `Gold banked at exits and gates (${Math.floor(G.secured || 0)}) is safe. Gold picked up since the last gate is lost.`, act: () => { closeMenu(); G.purse = G.secured || 0; bankAndReturn(); return 'close'; } });
     it.push({ label: 'Quit to title', desc: G.mode === 'hub' ? '' : 'Unbanked gold is lost.', act: () => { closeMenu(); scene = 'title'; sceneT = 0; return 'close'; } });
     return it;
   } });
@@ -390,7 +390,7 @@ function drawControls() {
     `${HERO_NAMES.paladin}: slow greatsword combo; Secondary = heavy overhead; hold Defend for a golden barrier that reflects missiles; Ability = Holy Slam; Potion = Golden Wings.`,
     `${HERO_NAMES.isaac}: hold Secondary to charge a Power Shot; shoot your own bomb for an Explosive Shot; press Ability while charging to load an explosive arrow.`,
     `${HERO_NAMES.vesper}: Soul Bolt; hold Secondary to aim Bone Spikes; Ghostwalk (Shift) harvests souls; tap Ability to Raise Dead, hold with 10 souls for a Bone Golem.`,
-    'Revive a fallen hero with shared gold (press confirm while dead). M toggles sound. F toggles fullscreen on menus (in a run F is Dash).',
+    'Revive a fallen hero with a rez coin (press confirm while dead). M toggles sound. F toggles fullscreen on menus (in a run F is Dash).',
   ];
   notes.forEach((n2, i) => wrapText(n2, 60, 404 + i * 27, W - 120, 14, 12, '#cfc2a8'));
   txt('Esc / B / Enter: back', W / 2, H - 14, 11, '#887a66', 'center', 'normal');

@@ -32,7 +32,7 @@ function parseMap(rows, theme, opts = {}) {
     switch (c) {
       case '#': t = TL.WALL; break; case ' ': t = TL.VOID; break;
       case 't': t = TL.WALL; m.torches.push({ x: px, y: y * T + 26 }); break;
-      case '=': t = TL.GATE; break; case '%': t = TL.CRACK; break; case '~': t = TL.PIT; break; case '^': t = TL.SPIKE; break;
+      case '=': t = TL.GATE; (m.gateTiles || (m.gateTiles = new Set())).add(i); break; case '%': t = TL.CRACK; break; case '~': t = TL.PIT; break; case '^': t = TL.SPIKE; break;
       case '_': t = TL.FLOOR; m.agates.push(i); break;
       case 'X': t = TL.EXIT; m.exit = { x: px, y: py, i }; break;
       case 'S': m.starts.push({ x: px, y: py }); break;
@@ -99,7 +99,7 @@ function rayWall(x, y, a, maxD) { // distance until a wall along direction
   for (let d = 0; d < maxD; d += 6) if (shotSolid(x + cx * d, y + cy * d)) return d;
   return maxD;
 }
-function openGate(tx, ty) {
+function openGate(tx, ty, by) {
   const st = [[tx, ty]], m = G.map;
   while (st.length) {
     const [x, y] = st.pop(); if (tileAt(x, y) !== TL.GATE) continue;
@@ -108,6 +108,7 @@ function openGate(tx, ty) {
     st.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
   }
   Snd.play('gate'); addTrauma(0.25); flowT = 0;
+  if (typeof bankAtGate === 'function') bankAtGate(by, 'open');   // opening a gate banks the party's carried gold, like the exit
 }
 function breakWall(tx, ty) {
   if (tileAt(tx, ty) !== TL.CRACK) return;
