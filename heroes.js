@@ -111,7 +111,7 @@ function vesperSummon(h) {
   if (h.weapon === 'scepter') {   // Dominate: everything around her but bosses / mini-bosses
     const T = S.dominateT[bars - 1]; let n = 0; ring(h.x, h.y, S.dominateR, '#d04070', 0.4, 6);
     for (const f of G.foes) if (ALIVE(f) && !f.boss && !f.miniBoss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < S.dominateR) {
-      f.charm = Math.max(f.charm, T); f.aiFreeze = 0; n++; if (!f.heavy && !f.elite) f.stag = Math.max(f.stag, 0.4);
+      f.charm = Math.max(f.charm, T); f.charmBy = h; f.aiFreeze = 0; n++; if (!f.heavy && !f.elite) f.stag = Math.max(f.stag, 0.4);
       if (full && !f.charmHaste) { f.charmHaste = true; f.spd0 = f.spd; f.spd *= S.dominateHaste; } burst(f.x, f.y, '#d04070', 8, 90, 2, 0.4); }
     h.lastDominate = { n, t: T }; return true;
   }
@@ -818,7 +818,7 @@ function useRelic(h, viaPotion) {
       G.hazards.push({ kind: 'tele', x: tgt.x, y: tgt.y, r: P.splashR, delay: P.delay, t: 0, col: '#c08aff', follow: tgt, onFire: hz => { if (h.dead) return; h.x = hz.x; h.y = hz.y; if (collide(h.x, h.y, h.r)) { h.x = hz.x; }
         explode(h.x, h.y, P.splashR, heroDmg(h, P.splash), { src: h, col: '#c08aff' }); if (ALIVE(tgt)) hitFoe(tgt, heroDmg(h, P.dmg - P.splash), { src: h, x: h.x, y: h.y, tier: 3 }); } }); break; }   // 154 to the target, 14 around it
     case 'shade': for (const o of G.heroes) if (!o.dead && hyp(o.x - h.x, o.y - h.y) < P.r) { o.invisT = P.time[i]; burst(o.x, o.y, '#9aa', 20, 120, 4, 0.7); } Snd.play('smoke'); break;
-    case 'lyre': { Snd.play('lyre'); ring(h.x, h.y, P.r, '#ff9ae0', 0.5, 5); for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < P.r) { f.charm = P.time[i]; f.state = 'move'; } break; }
+    case 'lyre': { Snd.play('lyre'); ring(h.x, h.y, P.r, '#ff9ae0', 0.5, 5); for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < P.r) { f.charm = P.time[i]; f.charmBy = h; f.state = 'move'; } break; }
   }
 }
 function updateHeroBuffs(h, dt) {

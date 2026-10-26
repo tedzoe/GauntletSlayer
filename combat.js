@@ -58,6 +58,10 @@ function mkFoe(type, x, y, o = {}) {
   f.maxhp = f.hp; G.foes.push(f); return f;
 }
 const ALIVE = e => !e.dead && e.hp > 0;
+// who gets the kill: the hero behind a source (shots, hazards, minions and pets carry .owner, charmed foes .charmBy)
+function creditHero(src) { for (let s = src, k = 0; s && k < 4; k++) { if (s.isHero) return s; s = s.owner || s.charmBy; } return null; }
+const KILL_CREDIT_WINDOW = 8;   // a foe that dies to burn, a trap or its own update soon after a hero hurt it is that hero's kill
+function killCredit(f, src) { return creditHero(src) || (G.blastCredit && G.blastCredit.isHero ? G.blastCredit : null) || (f.lastHitBy && G.time - (f.lastHitT || 0) < KILL_CREDIT_WINDOW && G.heroes.includes(f.lastHitBy) ? f.lastHitBy : null); }
 const HIT_FOE = e => ALIVE(e) && !!e.d && !e.spawner;   // hit sets also hold spawners and props (one hit each per swing); only real foes have .d
 function heroDmg(h, base) { return base * h.mods.dmg * (h.buff.titan > 0 ? DEV.dmg.theo.titanMul : 1) * (h.buff.valk > 0 ? 1.3 : 1) * (G.mods.glass ? 1.5 : 1); }
 function hitFoe(f, dmg, o = {}) {
@@ -96,6 +100,7 @@ function hitFoe(f, dmg, o = {}) {
   }
   if (o.src && o.src.isHero && o.src.mods.vsSpawner && f.spawner) dmg *= 1 + o.src.mods.vsSpawner;
   f.hp -= dmg; f.flash = 0.09; if (DEBUG.on) DEBUG.hit(f, dmg, o);
+  { const ch = creditHero(o.src); if (ch) { f.lastHitBy = ch; f.lastHitT = G.time; if (o.burn) f.burnBy = ch; } }
   const kr = f.boss ? 0 : f.heavy ? 0.35 : 1;
   if (o.kx || o.ky) { f.kx += o.kx * kr; f.ky += o.ky * kr; }
   else if (o.knock && o.x !== undefined) { const a = Math.atan2(f.y - o.y, f.x - o.x); f.kx += Math.cos(a) * o.knock * kr; f.ky += Math.sin(a) * o.knock * kr; }
@@ -116,15 +121,15 @@ function bloodOf(f) { return { undead: '#d8d0b0', beast: '#7a2a1a', cult: '#a018
 function foeKind(f) { const s = f.d.style; return ['skeleton', 'skelarcher', 'shambler', 'bloater', 'robed', 'wraith'].includes(s) ? 'undead' : ['goblin', 'spider', 'hulk', 'shieldbrute', 'troll', 'bigspider'].includes(s) ? 'beast' : 'cult'; }
 function killFoe(f, src, o = {}) {
   if (f.dead) return; f.dead = true; f.hp = 0;
+  const hero = killCredit(f, src);
+  if (hero) { const hk = G.stats.hk || (G.stats.hk = {}); hk[hero.pi] = (hk[hero.pi] || 0) + 1; }   // per-player kills for the floor tally (bosses too)
   if (f.boss) return bossDefeated(f);
   G.stats.kills++;
   burst(f.x, f.y, bloodOf(f), f.heavy ? 26 : 14, 200, 4, 0.7, 200);
   if (f.heavy) { addTrauma(0.25); hitstop(0.05); }
   Snd.play(f.heavy ? 'bigdeath' : 'death');
   decal(f.x, f.y, f.r * 0.9, 'rgba(0,0,0,0.25)', 25);
-  const hero = src && (src.isHero ? src : src.owner);
-  if (hero && hero.isHero) {
-    const hk = G.stats.hk || (G.stats.hk = {}); hk[hero.pi] = (hk[hero.pi] || 0) + 1;   // per-player kills for the floor tally
+  if (hero) {
     mastery(hero, 'kills', 1); if (o.sigKill) mastery(hero, 'signature', 1);
     const fam = FOE_FAMILY[f.type]; if (fam) mastery(hero, 'fam_' + fam, 1);
     const tag = o.tag || o.shot;
@@ -132,7 +137,7 @@ function killFoe(f, src, o = {}) {
     if (hero.id === 'sela' && tag === 'shield') mastery(hero, 'throwKills', 1);
     if (hero.id === 'kestrel' && (tag === 'bomb' || tag === 'power')) { mastery(hero, 'precisionKills', 1); if (tag === 'bomb') mastery(hero, 'bombKills', 1); }
     if (hero.id === 'mirelle' && hero.lastElem) mastery(hero, 'elem_' + hero.lastElem, 1);
-    if (hero.id === 'vesper' && src !== hero) mastery(hero, 'minionKills', 1);
+    if (hero.id === 'vesper' && src && src !== hero && src.owner === hero) mastery(hero, 'minionKills', 1);
   }
   { const cred = hero || G.blastCredit; for (const h of G.heroes) if (h.id === 'vesper' && !h.dead && cred === h && !(src && src.charm > 0)) { const S = SPEC.vesper; addEssence(h, f.boss ? S.soulBoss : f.elite ? S.essenceElite : f.heavy ? S.soulHeavy : S.essenceGrunt, true); } }   /* Soul Power: bigger foes give more; last hit only */
   if (Math.random() < (f.elite ? 1 : 0.18)) dropGold(f.x, f.y, Math.round(f.d.gold * (f.elite ? 3 : 1) * R(0.8, 1.3)));
@@ -140,7 +145,7 @@ function killFoe(f, src, o = {}) {
   if (f.elite && Math.random() < 0.35) G.pickups.push({ kind: Math.random() < 0.6 ? 'ration' : 'potion', x: f.x + 8, y: f.y });
   if (f.d.deathFreeze) { const Z = f.d.deathFreeze; ring(f.x, f.y, Z.r, '#dff8ff', 0.5, 8); Snd.play('freeze'); for (const h of G.heroes) if (!h.dead && hyp(h.x - f.x, h.y - f.y) < Z.r + h.r && !(h.inv > 0)) h.frz = Math.max(h.frz || 0, Z.t); }
   if (f.d.deathPool) { const P = f.d.deathPool; G.hazards.push({ kind: 'miasma', x: f.x, y: f.y, r: P.r, life: P.time, t: 0, dps: P.dps * (G.scale.dmg || 1), team: 'foe' }); }
-  if (f.d.deathBlast) { const pc = G.blastCredit; if (hero && hero.id === 'vesper') G.blastCredit = hero; explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch' }); G.blastCredit = pc; }   /* her Bloated-Mummy kills: the blast's kills count for Vesper */
+  if (f.d.deathBlast) { const pc = G.blastCredit; if (hero) G.blastCredit = hero; explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch' }); G.blastCredit = pc; }   /* her Bloated-Mummy kills: the blast's kills count for Vesper */
   if (f.d.beh === 'exploder') explode(f.x, f.y, 60, 12, { team: 'all', col: '#ff7a2a', src: null });
   if (G.mods.volatile) G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 55, delay: 0.9, t: 0, col: '#ff6a3a', onFire: hz => explode(hz.x, hz.y, 55, 14, { team: 'hero', col: '#ff6a3a' }) });
 }
@@ -288,7 +293,7 @@ function pickTarget(f) {
 }
 function damageTarget(f, t, dmg, o = {}) {
   if (t.isHero) return hurtHero(t, dmg, Object.assign({ x: f.x, y: f.y, foe: f, breakBlock: f.type === 'ravager' }, o));
-  if (t.d) return hitFoe(t, dmg, { x: f.x, y: f.y, knock: 120, quiet: false });
+  if (t.d) return hitFoe(t, dmg, { x: f.x, y: f.y, knock: 120, quiet: false, src: f });   // a charmed foe's kills go to whoever charmed it
   return hurtAlly(t, dmg);
 }
 function foeShoot(f, ang, o = {}) {
@@ -334,7 +339,7 @@ function updateFoes(dt) {
         if (f.conjuring <= 0 && tg && !tg.dead) { Snd.play('raise'); for (let k = 0; k < 6; k++) { const a = k * 1.047, x = tg.x + Math.cos(a) * 60, y = tg.y + Math.sin(a) * 60; if (!collide(x, y, 11)) { const s = mkFoe('bonesoldier', x, y, { spawned: true }); s.d = Object.assign({}, s.d, { beh: 'shield' }); s.hp *= 1.5; } }
           G.hazards.push({ kind: 'tele', x: tg.x, y: tg.y, r: 60, delay: 1.0, t: 0, col: '#ff5a3a', follow: tg, onFire: hz => explode(hz.x, hz.y, 60, f.dmg * 1.5, { team: 'foe', col: '#ff5a3a' }) }); } }
       else { f.conjT = (f.conjT ?? 8) - dt; if (f.conjT <= 0) { f.conjT = 20; f.conjuring = SPEC.elites.meteorWindup; f.conjTgt = pick(G.heroes.filter(h => !h.dead)) || null; text(f.x, f.y - 30, 'CONJURING', '#ff5a8a'); } } }
-    if (f.burnT > 0) { f.burnT -= dt; if (Math.random() < dt * 10) burst(f.x, f.y - 6, '#ff8a2a', 1, 40, 3, 0.4); f.hp -= f.burn * dt; if (f.hp <= 0) { killFoe(f, null); continue; } }
+    if (f.burnT > 0) { f.burnT -= dt; if (Math.random() < dt * 10) burst(f.x, f.y - 6, '#ff8a2a', 1, 40, 3, 0.4); f.hp -= f.burn * dt; if (f.hp <= 0) { killFoe(f, f.burnBy || null); continue; } }
     if (f.slowT > 0) { f.slowT -= dt; if (f.slowT <= 0) f.slowM = 1; }
     if (f.charm > 0) { f.charm -= dt; if (f.charmHaste) f.atkT -= dt * (SPEC.vesper.dominateHaste - 1); }
     if (f.charmHaste && f.charm <= 0) { f.spd = f.spd0 ?? f.spd; f.charmHaste = false; }
