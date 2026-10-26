@@ -1,4 +1,4 @@
-# Hollowcrown: Slayers of the Deep
+# Gauntlet Slayer
 
 An original browser action-dungeon crawler that plays like a modern twin-stick "slayer" dungeon game:
 six distinct heroes, combo/charge abilities, potion abilities, relics, weapon swaps, masteries,
@@ -197,7 +197,8 @@ Five extra areas that go beyond the faithful game. Turn them on in **Options →
 | Aim | Mouse | Right stick (also fires primary; casts for Zoey) | Movement direction + soft auto-aim |
 | Primary | Left click / J | X | Numpad1 / . |
 | Secondary | Right click / K | Y | Numpad2 / / |
-| Defend / mobility | Shift / L | RT, LT or R3 | Numpad3 / Right Shift |
+| Defend / mobility | Shift / L | RT or R3 | Numpad3 / Right Shift |
+| Dash (every hero) | F / Middle click | LT or L3 | Numpad6 / Comma |
 | Weapon ability | Space / I | B | Numpad0 / Right Ctrl |
 | Potion | Q | LB | Numpad4 / ; |
 | Relic | E | RB | Numpad5 / ' |

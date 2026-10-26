@@ -111,6 +111,46 @@ const SPEC = {
 const heroSpeed = id => SPEED_BASE * SPEC.hero[id].speed;
 const dmgOf = tier => DMG[tier] || 0;
 
+// ================================================================ David's deliberate deviations (Oct 2026 batch)
+// Every number for the six changes below lives here; docs/slayer_ability_spec.md "David's deliberate deviations" explains them.
+const SLOWEST_HERO_SPEED = () => Math.min(...Object.keys(SPEC.hero).map(heroSpeed));   // 133 px/s (Zoey and Highlord David, 0.95)
+const DEV = {
+  // 1. DASH: one dedicated button for every hero (KB1 F / middle mouse, KB2 Numpad6 / Comma, gamepad LT or L3).
+  //    cdKey = the cooldown it shares with the hero's existing mobility move, so both inputs stay in sync.
+  dash: {
+    brannoc: { move: 'Furious Charge', cdKey: 'defend', cd: 5 },        // SPEC.theo.chargeCd
+    sela: { move: 'Shield Charge', cdKey: 'scharge', cd: 2 },            // SPEC.gela.chargeCd (no longer needs the shield raised)
+    kestrel: { move: 'Combat Roll', cdKey: 'defend', cd: 1.5 },          // SPEC.isaac.rollCd
+    mirelle: { move: 'Blink', cdKey: 'dash', cd: 3, dist: 150, dur: 0.16, iframes: 0.22 },   // new short blink for Zoey
+    vesper: { move: 'Ghostwalk', cdKey: 'defend', cd: 4 },               // SPEC.vesper.ghostCd
+    paladin: { move: 'Righteous Advance', cdKey: 'advance', cd: 5 },     // SPEC.paladin.advanceCd (no longer needs the shield raised)
+  },
+  // 2. COOLDOWN HUD: ready flash length (s) and pip size (px)
+  hud: { readyFlash: 0.45, pipR: 12, pipGap: 29 },
+  // 4. ENEMY PROJECTILES: every foe missile (bosses too) is slowed, then capped. Range is kept (life is stretched to match).
+  //    Dodge budget at the cap: reaction 0.35s + sidestep (hero r 13 + missile r 7 + 4 px margin) / 133 px/s = 0.53s,
+  //    and a missile at the cap needs 0.80s to cross even the closest firing distance (160 px). Shockwave rings use the same cap.
+  proj: { mul: 0.65, capMul: 1.5, react: 0.35, sidestepPx: 24, minRange: 160 },   // cap = 1.5 x slowest hero = 200 px/s
+  // 5. ENEMY WALK SPEED: ground foes never move faster than 90% of the slowest hero (= 120 px/s), after every multiplier
+  //    (Endless x1.15, totem haste, frenzy, lurker dive, boss rage) and for charges/dashes too.
+  //    Exempt: grave wisps and wraith-type phantoms (beh 'wraith': wraith, shiver sprite) keep their speed.
+  ground: { capMul: 0.9, exemptTypes: ['wisp'], exemptBeh: ['wraith'], chargeTime: 1.1, bossChargeTime: 1.2 },
+  // 6. DAMAGE ORDER (main < secondary < special, per hit and per use). Main attacks are unchanged; only these changed.
+  dmg: {
+    theo: { leap: 32, spinTick: 38, spinTicksPerSec: 3 },          // before: leap 32, spin 10.7/tick x5/s
+    gela: { thrust: 32, execHit: 40 },                              // before: thrust 32, Extreme Prejudice 0 (wall crush T4 unchanged)
+    paladin: { judgmentMin: 24, judgmentMax: 32, slam: 42 },        // before: judgment 24-32, Holy Slam 32
+    isaac: { powerMin: 14, powerMax: 34, mortar: 44, bomb: 44 },    // before: power shot 10-32, mortar 32, bomb/explosive arrow 32
+    zoey: { serpentBurst: 26, serpentPass: 24, thunderclap: 26, arcChain: 24, mortar: 46 },   // before: 18 / 12 / 12 / 13 / 30
+    vesper: { spikes: 30, raiseBurst: 40, raiseBurstR: 64 },        // before: spikes 30, Raise Skeletons had no hit of its own
+  },
+};
+const PROJ_CAP = () => DEV.proj.capMul * SLOWEST_HERO_SPEED();
+const GROUND_CAP = () => DEV.ground.capMul * SLOWEST_HERO_SPEED();
+const foeSpeedExempt = f => !!(f && f.d && (DEV.ground.exemptBeh.includes(f.d.beh) || DEV.ground.exemptTypes.includes(f.type)));
+// scale a foe step (px this tick) down to the ground cap; exempt foes pass through unchanged
+const capFoeStep = (f, step, dt) => foeSpeedExempt(f) ? step : Math.min(step, GROUND_CAP() * dt);
+
 // ---- Endless Mode scaling. David's FINAL ruling: 'formula'. The table is kept behind the switch.
 const ENDLESS_SCALING = 'formula';   // 'formula' | 'table'
 const ENDLESS_TABLE = [   // floors from, hp, dmg, elite rate, modifier

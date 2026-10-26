@@ -76,11 +76,29 @@ function updateHero(h, inp, dt) {
   }
   if (G.heroes.length > 1 && G.mode !== 'hub') { h.x = clamp(h.x, G.cam.x + 16, G.cam.x + W - 16); h.y = clamp(h.y, G.cam.y + 70, G.cam.y + H - 16); }
   if (G.mode === 'hub') return hubInteract(h, inp);
-  KITS[h.id](h, inp, dt);
+  if (inp.pressed.dash && !h.dash && heroDash(h, inp)) { /* dashed this tick */ }
+  else KITS[h.id](h, inp, dt);
   if (inp.pressed.potion) usePotion(h);
   if (inp.pressed.relic) useRelic(h);
   // legendary chest / exit
   for (const p of G.props) if (p.kind === 'legend' && p.hp > 0 && hyp(p.x - h.x, p.y - h.y) < p.r + h.r + 6) openLegend(h, p);
+}
+// David's deviation 1: every hero dashes on the same button (KB1 F / middle mouse, KB2 Numpad6, pad LT / L3).
+// Each hero's dash is their existing mobility move (same cooldown key, so both inputs share it); Zoey gets a short Blink.
+function heroDash(h, inp) {
+  const D = DEV.dash[h.id]; if (!D || h.spin > 0 || h.charging || h.thrust || h.channel || h.frz > 0) return false;
+  if (!cdReady(h, D.cdKey)) { if ((h.dashMsg || 0) < G.time) { h.dashMsg = G.time + 0.6; Snd.play('error'); } return false; }
+  const moving = inp.mx || inp.my; if (moving) h.fa = Math.atan2(inp.my, inp.mx);   // dash where you are steering, else where you face
+  const fake = (pressed, down) => Object.assign({}, inp, { pressed: Object.assign({}, pressed), down: Object.assign({}, down) });
+  if (h.id === 'mirelle') {
+    setCd(h, D.cdKey, D.cd); Snd.play('blink'); burst(h.x, h.y, '#bfe0ff', 12, 140, 3, 0.4);
+    startDash(h, h.fa, D.dist, D.dur, { inv: D.iframes, trail: 'rgba(190,224,255,0.6)', trailSize: 7, stopOnWall: true });
+    return true;
+  }
+  if (h.id === 'sela' || h.id === 'paladin') KITS[h.id](h, fake({ secondary: true }, { defend: true, secondary: true }), 0);
+  else KITS[h.id](h, fake({ defend: true }, { defend: true }), 0);
+  if (h.id === 'sela' || h.id === 'paladin') h.blocking = false;
+  return !cdReady(h, D.cdKey);
 }
 function autoAim(h, fa) { // soft aim assist for keyboard players
   let best = null, bs = 0.55;
@@ -144,8 +162,8 @@ const KITS = {
     if (h.spin > 0) {
       h.spin -= dt; h.spinTick -= dt; h.moveMul = 0.85; h.fa += dt * 18;
       if (h.spinTick <= 0) {
-        h.spinTick = 1 / S.spinTicksPerSec; Snd.play('spin');
-        const n = areaHit(h.x, h.y, S.spinR, heroDmg(h, DMG.heavy / 3 * (1 + h.mods.ability)), { src: h, knock: 200, stagger: 0.2, sigKill: true, tag: 'spin', tier: 2 });
+        h.spinTick = 1 / DEV.dmg.theo.spinTicksPerSec; Snd.play('spin');
+        const n = areaHit(h.x, h.y, S.spinR, heroDmg(h, DEV.dmg.theo.spinTick * (1 + h.mods.ability)), { src: h, knock: 200, stagger: 0.2, sigKill: true, tag: 'spin', tier: 2 });
         if (n) { hitstop(0.02); mastery(h, 'signature', n); }
         G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 6.28, r: S.spinR, life: 0.16, max: 0.16, col: 'rgba(255,220,160,0.55)', w: 6, follow: h });
       }
@@ -179,7 +197,7 @@ const KITS = {
       setCd(h, 'secondary', S.leapCd);
       const p = aimPoint(h, 190, 60), d = hyp(p.x - h.x, p.y - h.y);
       Snd.play('leap');
-      startDash(h, Math.atan2(p.y - h.y, p.x - h.x), d, 0.38, { jump: true, inv: 0.3, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7); areaHit(h.x, h.y, S.leapR, heroDmg(h, DMG.heavy), { src: h, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3 }); } });
+      startDash(h, Math.atan2(p.y - h.y, p.x - h.x), d, 0.38, { jump: true, inv: 0.3, onEnd: () => { Snd.play('slam'); addTrauma(0.45); hitstop(0.09); ring(h.x, h.y, S.leapR, '#ffcf7a', 0.4, 8); burst(h.x, h.y, '#a08060', 30, 260, 4, 0.7); areaHit(h.x, h.y, S.leapR, heroDmg(h, DEV.dmg.theo.leap), { src: h, knock: 380, stagger: S.leapStun, walls: true, heavy: true, tier: 3 }); } });
       return;
     }
     // weapon signature (ability button); every weapon swaps it
@@ -213,7 +231,7 @@ const KITS = {
       const t = h.thrust; t.t += dt; h.moveMul = 0.15;
       const wu = S.thrustWindupFrames / 60, lu = S.thrustLungeFrames / 60;
       if (t.t >= wu && t.t < wu + lu + dt) { moveEnt(h, Math.cos(h.fa) * 160 * dt * 3, Math.sin(h.fa) * 160 * dt * 3);
-        const n = areaHit(h.x, h.y, 96, heroDmg(h, DMG.heavy), { src: h, cone: h.fa, arc: 0.45, set: t.set, knock: 260, hitstop: 0.05, heavy: true, tier: 3 });
+        const n = areaHit(h.x, h.y, 96, heroDmg(h, DEV.dmg.gela.thrust), { src: h, cone: h.fa, arc: 0.45, set: t.set, knock: 260, hitstop: 0.05, heavy: true, tier: 3 });
         if (!t.fx) { t.fx = true; Snd.play('lunge'); swingFx(h, h.fa, 0.45, 100, 'rgba(240,230,160,0.95)', 6, 0.12); } }
       if (t.t >= wu + lu && inp.pressed.defend) { h.thrust = null; text(h.x, h.y - 28, 'CANCEL', '#cfeaff'); return; }
       if (t.t >= wu + lu + S.thrustRecovery) h.thrust = null;
@@ -260,6 +278,8 @@ const KITS = {
         let n = 0;
         for (const f of G.foes) { if (!ALIVE(f) || f.type === 'reaper') continue; const d = hyp(f.x - h.x, f.y - h.y); if (d > W.execR + f.r || Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) > W.execArc / 2) continue;
           const a = Math.atan2(f.y - h.y, f.x - h.x), k = f.boss ? 0.25 : f.heavy || f.elite ? 0.6 : 1;
+          hitFoe(f, heroDmg(h, DEV.dmg.gela.execHit * (1 + h.mods.ability)), { x: h.x, y: h.y, src: h, tier: 3, sigKill: true });   // David's deviation 6: the special now hits hardest
+          if (!ALIVE(f)) { n++; continue; }
           f.kx = Math.cos(a) * W.execKnock * k; f.ky = Math.sin(a) * W.execKnock * k; f.stag = Math.max(f.stag, 0.4); f.crushT = W.crushWindow; f.crushBy = h; n++; }
         for (const it of G.pickups) if (!it.dead && ['ration', 'feast', 'potion'].includes(it.kind) && hyp(it.x - h.x, it.y - h.y) < W.execR && Math.abs(angDiff(Math.atan2(it.y - h.y, it.x - h.x), h.fa)) < W.execArc / 2) smashFood(it, h);
         if (n) mastery(h, 'signature', n);
@@ -280,7 +300,7 @@ const KITS = {
         const x = h.x + Math.cos(h.fa) * 46, y = h.y + Math.sin(h.fa) * 46, r = S.judgmentR * (0.7 + 0.3 * c);
         Snd.play('slam'); addTrauma(0.38); hitstop(0.1); ring(x, y, r, '#ffe08a', 0.3, 7); burst(x, y, '#fff2c0', 22, 220, 4, 0.6); decal(x, y, 32, 'rgba(0,0,0,0.3)', 12);
         G.beams.push({ x1: x, y1: y - 260, x2: x, y2: y, col: '#fff2c0', life: 0.25, w: 12 });
-        h.lastJudgment = areaHit(x, y, r, heroDmg(h, DMG.heavy * (0.75 + 0.25 * c)), { src: h, knock: 320, stagger: S.judgmentStun * c, heavy: true, tier: 3, light: true });
+        h.lastJudgment = areaHit(x, y, r, heroDmg(h, DEV.dmg.paladin.judgmentMin + (DEV.dmg.paladin.judgmentMax - DEV.dmg.paladin.judgmentMin) * c), { src: h, knock: 320, stagger: S.judgmentStun * c, heavy: true, tier: 3, light: true });
       }
       return;
     }
@@ -332,10 +352,10 @@ const KITS = {
         const full = c >= 0.98, expl = h.explosiveArrow; h.explosiveArrow = false;
         Snd.play(full ? 'powershot' : 'bow'); if (full) { addTrauma(0.15); moveEnt(h, -Math.cos(h.fa) * 0.2 * MTR, -Math.sin(h.fa) * 0.2 * MTR); }   // 0.2m recoil
         const shadow = h.weapon === 'dusk' && h.invis ? 2 : 1;
-        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 980, vy: Math.sin(h.fa) * 980, dmg: heroDmg(h, (DMG.light + (DMG.heavy - DMG.light) * c) * shadow), tier: full ? 3 : c > 0.5 ? 2 : 1, r: full ? 8 : 6, life: full ? 3 : 0.7, kind: 'power', owner: h, pierce: full ? 9999 : Math.floor(c * 3), knock: 120 + 320 * c, sig: true, big: full, col: '#ffef9a',
+        shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 980, vy: Math.sin(h.fa) * 980, dmg: heroDmg(h, (DEV.dmg.isaac.powerMin + (DEV.dmg.isaac.powerMax - DEV.dmg.isaac.powerMin) * c) * shadow), tier: full ? 3 : c > 0.5 ? 2 : 1, r: full ? 8 : 6, life: full ? 3 : 0.7, kind: 'power', owner: h, pierce: full ? 9999 : Math.floor(c * 3), knock: 120 + 320 * c, sig: true, big: full, col: '#ffef9a',
           fx: { stagger: 0.2 + 0.6 * c, hitstop: full ? 0.05 : 0 },
-          onEnd: expl ? s => explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DMG.heavy), { src: h, col: '#ffcf5a', tag: 'bomb' }) : null,
-          onHit: expl ? (s, f) => { if (!s.boomed) { s.boomed = true; explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DMG.heavy), { src: h, col: '#ffcf5a', tag: 'bomb' }); s.dead = true; } } : null });
+          onEnd: expl ? s => explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DEV.dmg.isaac.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }) : null,
+          onHit: expl ? (s, f) => { if (!s.boomed) { s.boomed = true; explode(s.x, s.y, SPEC.isaac.bombShotR, heroDmg(h, DEV.dmg.isaac.bomb), { src: h, col: '#ffcf5a', tag: 'bomb' }); s.dead = true; } } : null });
       }
       return;
     }
@@ -351,7 +371,7 @@ const KITS = {
       const W = SPEC.wpn, cd = SPEC.weapons.kestrel[h.weapon] ?? SPEC.weapons.kestrel.base;
       if (h.weapon === 'base' && h.dash && h.dash.roll) { // mid-roll: drop a bomb where you are (shoot it for an explosive arrow)
         setCd(h, 'ability', abilityCd(h, 4)); Snd.play('throw');
-        G.hazards.push({ kind: 'bomb', x: h.x, y: h.y, r: SPEC.isaac.bombR, delay: 1.3, t: 0, owner: h, onFire: hz => { const big = hz.boost; if (big) text(hz.x, hz.y - 30, 'EXPLOSIVE SHOT!', '#ffcf5a'); explode(hz.x, hz.y, big ? SPEC.isaac.bombR * 1.3 : SPEC.isaac.bombR, heroDmg(h, (big ? DMG.massive : DMG.heavy) * (1 + h.mods.ability)), { src: h, col: big ? '#ffd84a' : '#ff9a4a', sigKill: true, tag: 'bomb' }); } });
+        G.hazards.push({ kind: 'bomb', x: h.x, y: h.y, r: SPEC.isaac.bombR, delay: 1.3, t: 0, owner: h, onFire: hz => { const big = hz.boost; if (big) text(hz.x, hz.y - 30, 'EXPLOSIVE SHOT!', '#ffcf5a'); explode(hz.x, hz.y, big ? SPEC.isaac.bombR * 1.3 : SPEC.isaac.bombR, heroDmg(h, (big ? DMG.massive : DEV.dmg.isaac.bomb) * (1 + h.mods.ability)), { src: h, col: big ? '#ffd84a' : '#ff9a4a', sigKill: true, tag: 'bomb' }); } });
       } else if (h.weapon === 'thorn') { // Rooting Shot: T2 long thin piercing line, 2.5s hard root
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('powershot');
         shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 1100, vy: Math.sin(h.fa) * 1100, dmg: heroDmg(h, DMG.medium * (1 + h.mods.ability)), tier: 2, r: W.rootWidth / 2, life: W.rootLen / 1100, kind: 'power', owner: h, pierce: 9999, sig: true, col: '#9ad04a', knock: 60, fx: { root: W.rootTime } });
@@ -365,7 +385,7 @@ const KITS = {
       } else { // Mortar Shot (default): T3, 3m target circle, x3 hits on spawners
         setCd(h, 'ability', abilityCd(h, cd)); Snd.play('throw'); const p = aimPoint(h, 360, 80);
         lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.7, r: 8, kind: 'magma', col: '#ffcf5a', owner: h, tele: W.mortarR,
-          onLand: s => { explode(s.tx, s.ty, W.mortarR, heroDmg(h, DMG.heavy * (1 + h.mods.ability)), { src: h, col: '#ffcf5a', tag: 'bomb', tier: 3, spawnerHits: W.mortarSpawnerHits, sigKill: true }); } });
+          onLand: s => { explode(s.tx, s.ty, W.mortarR, heroDmg(h, DEV.dmg.isaac.mortar * (1 + h.mods.ability)), { src: h, col: '#ffcf5a', tag: 'bomb', tier: 3, spawnerHits: W.mortarSpawnerHits, sigKill: true }); } });
       }
     }
   },
@@ -421,7 +441,7 @@ const KITS = {
         h.charging = null; h.reticle = null; setCd(h, 'secondary', 1.0); Snd.play('grave'); h.slamT = 0.35;
         G.hazards.push({ kind: 'tele', x: p.x, y: p.y, r: 74, delay: 0.25, t: 0, col: VC, onFire: hz => { Snd.play('slam'); addTrauma(0.3); hitstop(0.06);
           G.hazards.push({ kind: 'spikes', x: hz.x, y: hz.y, r: 74, life: 0.6, t: 0, seed: Math.random() * 99 }); burst(hz.x, hz.y, '#e8e0c8', 24, 220, 3, 0.6); ring(hz.x, hz.y, 74, VC, 0.3, 5);
-          areaHit(hz.x, hz.y, 74, heroDmg(h, 30), { src: h, knock: 260, stagger: 0.9, root: 0.8, heavy: true }); } });
+          areaHit(hz.x, hz.y, 74, heroDmg(h, DEV.dmg.vesper.spikes), { src: h, knock: 260, stagger: 0.9, root: 0.8, heavy: true }); } });
       }
       return;
     }
@@ -449,8 +469,10 @@ const KITS = {
         if (golem) G.allies.filter(a => a.owner === h && a.kind === 'golem').forEach(a => a.hp = 0);
         h.souls -= cost; setCd(h, 'ability', golem ? abilityCd(h, 2) : (SPEC.weapons.vesper[h.weapon] ?? 0));   // Raise Skeletons / Summon Shades: no cooldown, essence-gated Snd.play('raise'); h.slamT = 0.4;
         if (golem) { addTrauma(0.4); ring(h.x, h.y, 90, VC, 0.5, 8); msg('A Bone Golem rises!', VC, 1.5); }
+        const burstSet = new Set();   // David's deviation 6: the ground erupts where the dead rise (one hit per foe per cast)
         kinds.forEach((kind, k) => { const a = h.fa + (k - (kinds.length - 1) / 2) * 0.6, x = h.x + Math.cos(a) * 38, y = h.y + Math.sin(a) * 38;
-          const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h); if (h.weapon === 'lantern' && kind === 'wraith') { al.eliteHunter = true; al.dmg = heroDmg(h, DMG.heavy) / 2; al.tier = 3; } al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability; mastery(h, 'signature', 1); });
+          const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h); if (h.weapon === 'lantern' && kind === 'wraith') { al.eliteHunter = true; al.dmg = heroDmg(h, DMG.heavy) / 2; al.tier = 3; } al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability; mastery(h, 'signature', 1);
+          const VD = DEV.dmg.vesper; ring(al.x, al.y, VD.raiseBurstR, VC, 0.35, 5); burst(al.x, al.y, '#e8e0c8', 14, 180, 3, 0.5); areaHit(al.x, al.y, VD.raiseBurstR, heroDmg(h, VD.raiseBurst * (1 + h.mods.ability)), { src: h, set: burstSet, knock: 220, stagger: 0.5, tier: 3, sigKill: true }); });
       }
       return;
     }
@@ -516,7 +538,7 @@ function paladinSignature(h) {
       onFire: () => { Snd.play('holyslam'); addTrauma(0.55); hitstop(0.1); G.flash = 0.18; G.flashCol = '#fff2c0';
         G.beams.push({ x1: h.x, y1: h.y - 520, x2: h.x, y2: h.y, col: '#ffe9a0', life: 0.6, w: 34, pillar: true });
         ring(h.x, h.y, S.slamR, '#ffe08a', 0.45, 10); burst(h.x, h.y, '#ffe9a0', 36, 300, 4, 0.8);
-        const n = areaHit(h.x, h.y, S.slamR, heroDmg(h, DMG.heavy * (1 + h.mods.ability)), { src: h, knock: 400, stagger: 1.0, walls: true, heavy: true, sigKill: true, tier: 3, light: true });
+        const n = areaHit(h.x, h.y, S.slamR, heroDmg(h, DEV.dmg.paladin.slam * (1 + h.mods.ability)), { src: h, knock: 400, stagger: 1.0, walls: true, heavy: true, sigKill: true, tier: 3, light: true });
         h.lastSlam = n; if (n) mastery(h, 'signature', n); } });
   }
 }
@@ -543,8 +565,8 @@ function spellCdOf(h) {   // per-weapon cooldown rule: Spellweaver = spec matrix
 const SPELLS = {
   ember: [
     { name: 'Cinder Bolt', hold: true, rate: 0.2, cd: 0, cast: h => { Snd.play('firebolt'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 620, vy: Math.sin(h.fa) * 620, dmg: heroDmg(h, DMG.medium), noFood: true, r: 7, life: 0.7, kind: 'fire', owner: h, col: '#ff8a2a', fx: { burn: 2 }, knock: 70 }); } },
-    { name: 'Twin Serpents', cd: 6, cast: h => { Snd.play('serpent'); explode(h.x, h.y, MTR, heroDmg(h, DMG.medium), { src: h, col: '#ff7a2a', tier: 2 }); h.tpBuf = false; startDash(h, h.fa, 300, SPEC.zoeyTeleport.iframes + SPEC.zoeyTeleport.vulnerable, { inv: SPEC.zoeyTeleport.iframes, trail: 'rgba(255,120,30,0.7)', trailSize: 9, hitR: 16, stopOnWall: false, onHitFoe: f => hitFoe(f, heroDmg(h, 12), { x: h.x, y: h.y, burn: 6, stagger: 0.5, slow: 2, src: h }) }); } },
-    { name: 'Magma Mortar', cd: 1.1, cast: h => { Snd.play('throw'); const p = aimPoint(h, 340, 80); lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.6, r: 11, kind: 'magma', col: '#ff6a1a', owner: h, arc: 110, tele: 85, onLand: s => explode(s.tx, s.ty, 85, heroDmg(h, 30), { src: h, col: '#ff7a2a', burn: 4 }) }); } },
+    { name: 'Twin Serpents', cd: 6, cast: h => { Snd.play('serpent'); explode(h.x, h.y, MTR, heroDmg(h, DEV.dmg.zoey.serpentBurst), { src: h, col: '#ff7a2a', tier: 2 }); h.tpBuf = false; startDash(h, h.fa, 300, SPEC.zoeyTeleport.iframes + SPEC.zoeyTeleport.vulnerable, { inv: SPEC.zoeyTeleport.iframes, trail: 'rgba(255,120,30,0.7)', trailSize: 9, hitR: 16, stopOnWall: false, onHitFoe: f => hitFoe(f, heroDmg(h, DEV.dmg.zoey.serpentPass), { x: h.x, y: h.y, burn: 6, stagger: 0.5, slow: 2, src: h }) }); } },
+    { name: 'Magma Mortar', cd: 1.1, cast: h => { Snd.play('throw'); const p = aimPoint(h, 340, 80); lob({ team: 'hero', x: h.x, y: h.y, tx: p.x, ty: p.y, time: 0.6, r: 11, kind: 'magma', col: '#ff6a1a', owner: h, arc: 110, tele: 85, onLand: s => explode(s.tx, s.ty, 85, heroDmg(h, DEV.dmg.zoey.mortar), { src: h, col: '#ff7a2a', burn: 4 }) }); } },
   ],
   rime: [
     { name: 'Flash Freeze', cd: 5, cast: h => { Snd.play('freeze'); for (let i = 0; i < 18; i++) { const a = h.fa + R(-0.6, 0.6), s = R(200, 420); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: '#dff8ff', size: 4, grav: 0 }); } areaHit(h.x, h.y, 150, heroDmg(h, 6), { cone: h.fa, arc: 1.3, src: h, freeze: 2.6 }); } },
@@ -558,11 +580,11 @@ const SPELLS = {
     { name: 'Winter Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'iceorb', col: '#bff4ff', owner: h, pierce: 99, fx: { slow: 2, slowM: 0.4 }, onEnd: s => { Snd.play('freeze'); G.hazards.push({ kind: 'frost', x: s.x, y: s.y, r: 115, life: 6, t: 0, cap: RULE('orbCap') ? 30 : 0, caught: new Set(), dps: heroDmg(h, 4), owner: h }); }, onWall: s => G.hazards.push({ kind: 'frost', x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, r: 115, life: 6, t: 0, dps: heroDmg(h, 4), owner: h }) }); } },
   ],
   storm: [
-    { name: 'Thunderclap', cd: 1.6, cast: h => { Snd.play('thunder'); ring(h.x, h.y, 95, '#ffe95a', 0.3, 7); burst(h.x, h.y, '#fff6a0', 20, 260, 2, 0.4); addTrauma(0.2); areaHit(h.x, h.y, 95, heroDmg(h, 12), { src: h, knock: 460, stagger: 0.8, hitstop: 0.05 }); } },
+    { name: 'Thunderclap', cd: 1.6, cast: h => { Snd.play('thunder'); ring(h.x, h.y, 95, '#ffe95a', 0.3, 7); burst(h.x, h.y, '#fff6a0', 20, 260, 2, 0.4); addTrauma(0.2); areaHit(h.x, h.y, 95, heroDmg(h, DEV.dmg.zoey.thunderclap), { src: h, knock: 460, stagger: 0.8, hitstop: 0.05 }); } },
     { name: 'Arc Chain', cd: 0.8, cast: h => { Snd.play('zap'); let from = { x: h.x, y: h.y }, used = new Set(), aimA = h.fa;
         for (let j = 0; j < 7; j++) { let best = null, bd = j ? 170 : 280; for (const f of G.foes) { if (!ALIVE(f) || used.has(f) || f.charm > 0 || f.type === 'reaper') continue; const d = hyp(f.x - from.x, f.y - from.y); const pen = j ? 0 : Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), aimA)) * 120; if (d + pen < bd && los(from.x, from.y, f.x, f.y)) { bd = d + pen; best = f; } }
           if (!best) { if (!j) G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(aimA) * 120, y2: h.y + Math.sin(aimA) * 120, col: '#ffe95a', life: 0.12, w: 2, zig: true }); break; }
-          used.add(best); G.beams.push({ x1: from.x, y1: from.y, x2: best.x, y2: best.y, col: '#fff6a0', life: 0.18, w: 3, zig: true }); hitFoe(best, heroDmg(h, 13), { x: from.x, y: from.y, knock: 60, stagger: 0.2, src: h }); from = best; } } },
+          used.add(best); G.beams.push({ x1: from.x, y1: from.y, x2: best.x, y2: best.y, col: '#fff6a0', life: 0.18, w: 3, zig: true }); hitFoe(best, heroDmg(h, DEV.dmg.zoey.arcChain), { x: from.x, y: from.y, knock: 60, stagger: 0.2, src: h }); from = best; } } },
     { name: 'Static Ward', cd: 10, cast: h => { Snd.play('ward'); G.hazards.push({ kind: 'ward', x: h.x, y: h.y, r: 72, life: 6, t: 0, owner: h }); } },
   ],
   void: [

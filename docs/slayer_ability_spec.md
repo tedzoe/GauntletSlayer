@@ -299,3 +299,51 @@ HP 200 (bar shows 100), speed 0.95, all attacks light-element, same button layou
 - These go behind an Options/Gameplay toggle "Extended Realms", default OFF. With it OFF the game is the faithful 3-theme Slayer loop and must stay unchanged.
 - Each area has 6 floors, the same as the others, with its own tile set, enemy roster (grunt, fast swarmer, tank, ranged or caster elite, special), a mini-boss, and a boss, all with original names. Bosses: Forest Ancient, Plague Abomination, Tomb Pharaoh (desert), Frost Titan, Death Knight. Mini-bosses: Pharaoh, Bone Knight, Succubus, and so on from the roster sheet.
 - With the toggle ON, the endless loop becomes 8 areas x 6 = 48 floors. Death and the scaling rules are unchanged, and the save floors become 1, 49, 97 and so on.
+
+# David's deliberate deviations (Oct 2026). These override the Slayer Edition rules above.
+Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
+
+0. **Name.** The game is now called **Gauntlet Slayer**: the page title, the title-screen logo (GAUNTLET / S L A Y E R) and the README.
+1. **Dash for every hero.** Every hero dashes on one button:
+   - Keyboard 1: F or middle mouse.
+   - Keyboard 2: Numpad6 or Comma.
+   - Gamepad: LT or L3. LT no longer doubles as Defend; Defend is RT or R3.
+
+   Each hero's dash is their existing Slayer mobility move, and it shares that move's cooldown key, so the original button still works:
+
+   | Hero | Dash move | Cooldown |
+   |---|---|---|
+   | Theo | Furious Charge | 5s |
+   | Gela | Shield Charge (no longer needs the shield up) | 2s |
+   | Isaac | Combat Roll | 1.5s |
+   | Zoey | Blink (new): 150 px, 0.22s i-frames | 3s |
+   | Vesper | Ghostwalk | 4s |
+   | David | Righteous Advance (no longer needs the shield up) | 5s |
+
+   The dash goes in the steered direction, or the facing direction when standing still.
+2. **Cooldown HUD.** The original shows one big ability icon. Each player panel now has a move bar instead: main, secondary, special, dash, extra abilities (Gela Bash, David Consecration), relic, and potions.
+   - **Cooling:** a radial sweep with a seconds countdown.
+   - **Unavailable:** greyed out (no essence, no potion, shield thrown).
+   - **Ready:** lit, with a 0.45s flash on becoming ready.
+   - **In use:** a pulsing ring.
+3. **Pets, clones and summons attack any hostile in reach, spawners and generators included.** The nearest target wins. This covers Vesper's minions, Mirror clones, valkyries, sprites, the gargoyle and shades.
+4. **Enemy missiles are slowed for every foe and boss.**
+   - Speed = original × 0.65, capped at 1.5 × the slowest hero (200 px/s). Life is stretched so range is unchanged, and homing turn rates scale with speed.
+   - Boss shockwave rings use the same cap. Enemy lobs take at least reaction time + the time to walk out of the circle.
+   - Dodge budget: reaction 0.35s + sidestep 24 px / 133 px/s = 0.53s. A capped missile needs 0.80s to cross 160 px.
+5. **Ground enemies never move faster than 90% of the slowest hero (0.9 × 133 = 120 px/s).**
+   - Applied at the movement step, after every multiplier (Endless ×1.15, totem haste, frenzy, lurker dive, boss rage), in every realm.
+   - Charges are capped too. Charger runs last 1.1s and boss charges 1.2s, and the boss charge telegraph is shortened to match.
+   - Grave Wisps (wraith), Shiver Sprites and Glimmerwisps keep their speed. Hollowfang (hovering sword) keeps its drift. Death is capped like everyone else.
+6. **Damage order: main < secondary < special, per hit and per activation.** Main attacks are unchanged.
+
+   | Hero | Main (per hit) | Secondary before → after | Special before → after |
+   |---|---|---|---|
+   | Theo | 10 / 18 finisher | Leap 32 → 32 | Spin 10.7 × 17 ticks (182) → 38 × 11 ticks at 3/s (418) |
+   | Gela | 10 | Thrust 32 → 32 | Extreme Prejudice 0 → 40 hit (wall crush T4 kept) |
+   | David | 10 / 18 finisher | Judgment 24-32 → 24-32 | Holy Slam 32 → 42 |
+   | Isaac | 10 per arrow | Power Shot 10-32 → 14-34 | Mortar 32 → 44; bomb / explosive arrow 32 → 44 |
+   | Zoey | Cinder Bolt 18 | Serpents 18/12 → 26/24, Thunderclap 12 → 26, Arc Chain 13 → 24 | Magma Mortar 30 → 46 |
+   | Vesper | Soul Reap 18 | Bone Spikes 30 → 30 | Raise Skeletons: no hit → 40 grave burst where each minion rises (once per foe per cast) |
+
+   Alternate weapon signatures are unchanged.

@@ -37,14 +37,14 @@ const BOSS_AI = {
     const ang = Math.atan2(t.y - f.y, t.x - f.x), fx = B.fx || {};
     const hitFx = h => { if (fx.freeze) h.frz = Math.max(h.frz || 0, fx.freeze); if (fx.slow) h.slowT = Math.max(h.slowT || 0, fx.slow); if (fx.pool) G.hazards.push({ kind: 'miasma', x: h.x, y: h.y, r: fx.pool.r, life: fx.pool.time, t: 0, team: 'foe', dps: fx.pool.dps * (G.scale.dmg || 1) }); };
     if (f.act === 'slam') { f.st -= dt; if (f.st <= 0) { f.act = null; Snd.play('slam'); addTrauma(0.4); ring(f.x, f.y, 150, B.slamCol, 0.5, 10); for (const h of heroTargets()) if (hyp(h.x - f.x, h.y - f.y) < 150 + h.r) { if (hurtHero(h, f.dmg * 1.1, { x: f.x, y: f.y, knock: 420, cause: 'area' })) hitFx(h); } } return; }
-    if (f.act === 'charge') { f.st -= dt; if (f.st > 0.5) return; const sp = 520 * rage * dt; moveEnt(f, Math.cos(f.fa) * sp, Math.sin(f.fa) * sp); for (const h of heroTargets()) if (!f.hitSet.has(h) && hyp(h.x - f.x, h.y - f.y) < f.r + h.r + 6) { f.hitSet.add(h); hurtHero(h, f.dmg, { x: f.x, y: f.y, knock: 520 }); } if (f.st <= 0) f.act = null; return; }
+    if (f.act === 'charge') { f.st -= dt; if (f.st > 0.5) return;   /* wind-up */ const sp = capFoeStep(f, 520 * rage * dt, dt); moveEnt(f, Math.cos(f.fa) * sp, Math.sin(f.fa) * sp); for (const h of heroTargets()) if (!f.hitSet.has(h) && hyp(h.x - f.x, h.y - f.y) < f.r + h.r + 6) { f.hitSet.add(h); hurtHero(h, f.dmg, { x: f.x, y: f.y, knock: 520 }); } if (f.st <= 0) f.act = null; return; }
     if (f.act === 'volley') { f.st -= dt; f.vt = (f.vt || 0) - dt; if (f.vt <= 0 && f.waves > 0) { f.vt = 0.45 / rage; f.waves--; const n = rage > 1 ? 16 : 12, off = R(0, 1); for (let i = 0; i < n; i++) bossProj(f, (i + off) / n * 6.283, 220 * rage, { col: B.projCol, kind: 'orb', freeze: fx.freeze ? fx.freeze * 0.6 : 0, slow: fx.slow || 0 }); Snd.play('bonevolley'); } if (f.waves <= 0 && f.st <= 0) f.act = null; return; }
-    f.fa = ang; moveEnt(f, Math.cos(ang) * f.spd * rage * f.slowM * dt, Math.sin(ang) * f.spd * rage * f.slowM * dt); f.walk += dt * 4;
+    f.fa = ang; { const st = capFoeStep(f, f.spd * rage * f.slowM * dt, dt); moveEnt(f, Math.cos(ang) * st, Math.sin(ang) * st); } f.walk += dt * 4;
     f.actT -= dt; if (f.actT > 0) return;
     f.actT = R(2.2, 3.2) / rage; f.ai = ((f.ai ?? -1) + 1) % B.acts.length; let a = B.acts[f.ai];
     if (d < 150 && B.acts.includes('slam') && Math.random() < 0.5) a = 'slam';
     if (a === 'slam') { f.act = 'slam'; f.st = 0.85 / rage; Snd.play('windup'); G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 150, delay: f.st, t: 0, col: B.slamCol, follow: f, visualOnly: true, silent: true, onFire: () => { } }); }
-    else if (a === 'charge') { f.act = 'charge'; f.st = 1.1; f.hitSet = new Set(); Snd.play('windup'); G.swings.push({ x: f.x, y: f.y, a: ang, arc: 0.4, r: 260, life: 0.6, max: 0.6, col: 'rgba(255,80,60,0.3)', w: 3, tele: true }); }
+    else if (a === 'charge') { f.act = 'charge'; f.st = 0.5 + DEV.ground.bossChargeTime; f.hitSet = new Set(); Snd.play('windup'); G.swings.push({ x: f.x, y: f.y, a: ang, arc: 0.4, r: GROUND_CAP() * DEV.ground.bossChargeTime + f.r, life: 0.6, max: 0.6, col: 'rgba(255,80,60,0.3)', w: 3, tele: true }); }
     else if (a === 'volley') { f.act = 'volley'; f.waves = rage > 1 ? 4 : 3; f.st = 1.2; f.vt = 0.3; }
     else if (a === 'rain') { for (const h of heroTargets()) for (let k = 0; k < (rage > 1 ? 4 : 3); k++) tele(h.x + R(-40, 40) * k, h.y + R(-40, 40) * k, 64, 0.9 + k * 0.35, f.dmg, B.slamCol, hz => { for (const q of heroTargets()) if (hyp(q.x - hz.x, q.y - hz.y) < 64 + q.r) hitFx(q); }); Snd.play('bossroar'); }
     else if (a === 'summon' && G.foes.length < 40) { const n = rage > 1 ? 5 : 3; for (let k = 0; k < n; k++) { const aa = k / n * 6.283, x = f.x + Math.cos(aa) * (f.r + 40), y = f.y + Math.sin(aa) * (f.r + 40); if (!collide(x, y, 12)) G.hazards.push({ kind: 'tele', x, y, r: 22, delay: 0.7, t: 0, col: B.slamCol, silent: true, onFire: hz => { burst(hz.x, hz.y, B.slamCol, 14, 140, 3, 0.5); mkFoe(B.summon, hz.x, hz.y, { spawned: true, awake: true }); } }); } Snd.play('summon'); }
@@ -57,7 +57,7 @@ const BOSS_AI = {
       return; }
     if (f.act === 'volley') { f.st -= dt; f.vt = (f.vt || 0) - dt; if (f.vt <= 0 && f.waves > 0) { f.vt = 0.4 / rage; f.waves--; const n = rage > 1 ? 18 : 14, off = R(0, 1); for (let i = 0; i < n; i++) bossProj(f, (i + off) / n * 6.283, 230 * rage); Snd.play('bonevolley'); } if (f.waves <= 0 && f.st <= 0) f.act = null; return; }
     // stalk
-    f.fa = ang; moveEnt(f, Math.cos(ang) * f.spd * rage * f.slowM * dt, Math.sin(ang) * f.spd * rage * f.slowM * dt); f.walk += dt * 4;
+    f.fa = ang; { const st = capFoeStep(f, f.spd * rage * f.slowM * dt, dt); moveEnt(f, Math.cos(ang) * st, Math.sin(ang) * st); } f.walk += dt * 4;
     f.actT -= dt; if (f.actT > 0) return;
     f.actT = R(2.2, 3.2) / rage;
     if (d < 140) { f.act = 'sweep'; f.st = 0.75 / rage; Snd.play('windup'); G.swings.push({ x: f.x, y: f.y, a: f.fa, arc: 3.6, r: 120, life: f.st, max: f.st, col: 'rgba(255,60,40,0.25)', w: 3, tele: true }); return; }
@@ -82,7 +82,7 @@ const BOSS_AI = {
     }
     if (f.state === 'burrow') {
       f.invuln = true; const [t] = nearestHero(f.x, f.y);
-      if (t) { const a = Math.atan2(t.y - f.y, t.x - f.x); moveEnt(f, Math.cos(a) * 190 * dt, Math.sin(a) * 190 * dt); }
+      if (t) { const a = Math.atan2(t.y - f.y, t.x - f.x); { const st = capFoeStep(f, 190 * dt, dt); moveEnt(f, Math.cos(a) * st, Math.sin(a) * st); } }
       if (Math.random() < 0.5) burst(f.x + R(-20, 20), f.y + R(-20, 20), '#6a5040', 1, 60, 3, 0.4);
       if (rage > 1) { f.extraT = (f.extraT || 0) - dt; if (f.extraT <= 0) { f.extraT = 0.6; const h = pick(heroTargets()); if (h) tele(h.x + R(-60, 60), h.y + R(-60, 60), 50, 0.9, f.dmg * 0.6, '#9a7a5a'); } }
       if (f.st <= 0) { f.state = 'erupt'; f.st = 0.95; G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 95, delay: 0.95, t: 0, col: '#ff7a3a', visualOnly: true }); Snd.play('rumble'); }
@@ -102,7 +102,7 @@ const BOSS_AI = {
       if (f.st <= 0) f.act = null; return;
     }
     if (f.act === 'hammer') { f.st -= dt; if (f.st <= 0) { f.act = null; Snd.play('slam'); addTrauma(0.7); hitstop(0.08); for (let k = 0; k < (rage > 1 ? 3 : 2); k++) G.waves.push({ x: f.x, y: f.y, r: 40, spd: 260, delay: k * 0.45, dmg: f.dmg * 0.8, hit: new Set(), life: 2.4 }); } return; }
-    f.fa = ang; moveEnt(f, Math.cos(ang) * f.spd * f.slowM * dt, Math.sin(ang) * f.spd * f.slowM * dt); f.walk += dt * 3;
+    f.fa = ang; { const st = capFoeStep(f, f.spd * f.slowM * dt, dt); moveEnt(f, Math.cos(ang) * st, Math.sin(ang) * st); } f.walk += dt * 3;
     f.actT -= dt; if (f.actT > 0) return; f.actT = R(2.4, 3.4) / rage;
     const r = Math.random();
     if (r < 0.3) { f.act = 'jets'; f.st = 3.6; f.jetA = ang; msg('Flame jets!', '#ff8a2a', 1.2); }
@@ -156,7 +156,7 @@ function bossFinish(f) {
 function updateWaves(dt) {
   for (const w of G.waves) {
     if (w.delay > 0) { w.delay -= dt; continue; }
-    w.life -= dt; w.r += w.spd * dt;
+    const wv = Math.min(w.spd * DEV.proj.mul, PROJ_CAP()); w.life -= dt * wv / w.spd; w.r += wv * dt;   // shockwave rings obey the enemy-missile cap
     for (const h of heroTargets()) { const d = hyp(h.x - w.x, h.y - w.y); if (Math.abs(d - w.r) < 14 && !w.hit.has(h) && h.z < 8) { w.hit.add(h); hurtHero(h, w.dmg, { x: w.x, y: w.y, knock: 260 }); } }
   }
   G.waves = G.waves.filter(w => w.life > 0 && w.r < 900);

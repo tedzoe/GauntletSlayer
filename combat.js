@@ -272,7 +272,7 @@ function updateFoes(dt) {
     if (f.root > 0) f.root -= dt;
     if (f.type === 'reaper') { updateReaper(f, dt); continue; }
     if (f.lostT > 0) { f.lostT -= dt; continue; }   // Smoke Bomb: lost track of their target
-    if (f.fearT > 0) { f.fearT -= dt; const a = Math.atan2(f.y - f.fearY, f.x - f.fearX) + Math.sin(G.time * 3 + f.x) * 0.6; moveEnt(f, Math.cos(a) * f.spd * 0.8 * dt, Math.sin(a) * f.spd * 0.8 * dt, f.fly); f.fa = a; f.walk += dt * 6; f.state = 'move'; continue; }   // Dread Mist: flee
+    if (f.fearT > 0) { f.fearT -= dt; const a = Math.atan2(f.y - f.fearY, f.x - f.fearX) + Math.sin(G.time * 3 + f.x) * 0.6; { const st = capFoeStep(f, f.spd * 0.8 * dt, dt); moveEnt(f, Math.cos(a) * st, Math.sin(a) * st, f.fly); } f.fa = a; f.walk += dt * 6; f.state = 'move'; continue; }   // Dread Mist: flee
     const [t, d] = pickTarget(f);
     if (!t) { f.state = 'move'; continue; }
     if (d > 900 && !f.spawned) continue; // dormant far away
@@ -282,13 +282,13 @@ function updateFoes(dt) {
     let spd = f.spd * f.slowM * hm * (f.root > 0 ? 0 : 1) * dt, dir = null;
     if (f.state === 'windup') {
       f.st -= dt;
-      if (beh === 'charger') { if (f.st <= 0) { f.state = 'charge'; f.st = 0.75; Snd.play('roar'); } continue; }
+      if (beh === 'charger') { if (f.st <= 0) { f.state = 'charge'; f.st = DEV.ground.chargeTime; Snd.play('roar'); } continue; }
       if (beh === 'exploder') { if (f.st <= 0) { f.dead = true; f.hp = 0; G.stats.kills++; explode(f.x, f.y, 70, f.dmg, { team: 'all', col: '#ff7a2a' }); } continue; }
       if (f.st <= 0) foeStrike(f, t);
       continue;
     }
     if (f.state === 'charge') {
-      f.st -= dt; const cs = 400 * dt;
+      f.st -= dt; const cs = capFoeStep(f, 400 * dt, dt);   // charge capped to the ground cap (DEV.ground), so it stays dodgeable
       const hit = moveEnt(f, Math.cos(f.fa) * cs, Math.sin(f.fa) * cs, false);
       for (const h of [...G.heroes, ...G.allies]) if (!(h.dead || h.hp <= 0) && hyp(h.x - f.x, h.y - f.y) < f.r + h.r + 4 && !f.hitSet?.has(h)) { (f.hitSet = f.hitSet || new Set()).add(h); damageTarget(f, h, f.dmg, { knock: 420, breakBlock: true }); }
       for (const o of G.foes) if (o !== f && ALIVE(o) && !o.boss && hyp(o.x - f.x, o.y - f.y) < f.r + o.r + 4) { const a = Math.atan2(o.y - f.y, o.x - f.x); o.kx += Math.cos(a) * 380; o.ky += Math.sin(a) * 380; o.stag = Math.max(o.stag, 0.4); }   // bowls over its own side
@@ -360,7 +360,7 @@ function updateFoes(dt) {
         break;
       }
     }
-    if (dir) { moveEnt(f, dir[0] * spd, dir[1] * spd, f.fly); f.walk += dt * 8; }
+    if (dir) { spd = capFoeStep(f, spd, dt); moveEnt(f, dir[0] * spd, dir[1] * spd, f.fly); f.walk += dt * 8; }
     // spikes hurt foes too
   }
   // separation
@@ -401,7 +401,7 @@ function updateReaper(f, dt) {
   if (!t) return;
   let ang = Math.atan2(t.y - f.y, t.x - f.x);
   if (f.repel > 0) { f.repel -= dt; ang += Math.PI; }
-  const spd = f.spd * dt * (f.slowM || 1) * (G.heroes.length > 1 ? 1 : 0.95);
+  const spd = capFoeStep(f, f.spd * dt * (f.slowM || 1) * (G.heroes.length > 1 ? 1 : 0.95), dt);
   const sees = los(f.x, f.y, t.x, t.y);
   const dir = (f.repel > 0 || sees) ? [Math.cos(ang), Math.sin(ang)] : (flowDir(f) || [Math.cos(ang), Math.sin(ang)]);
   moveEnt(f, dir[0] * spd, dir[1] * spd, false); f.fa = ang; f.walk += dt * 6;
@@ -537,8 +537,18 @@ function updatePickups(dt) {
 }
 
 // ---------------------------------------------------------------- projectiles
-function shoot(o) { const s = Object.assign({ life: 1, r: 5, pierce: 0, dmg: 5, team: 'hero', hit: new Set(), t: 0 }, o); G.shots.push(s); return s; }
+function shoot(o) { const s = Object.assign({ life: 1, r: 5, pierce: 0, dmg: 5, team: 'hero', hit: new Set(), t: 0 }, o);
+  if (s.team === 'foe') slowFoeShot(s);
+  G.shots.push(s); return s; }
+// David's deviation 4: every enemy missile (bosses too) is slowed by DEV.proj.mul and capped at PROJ_CAP(); range and homing turn radius are kept
+function slowFoeShot(s) {
+  const v = hyp(s.vx || 0, s.vy || 0); if (!v) return s;
+  const nv = Math.min(v * DEV.proj.mul, PROJ_CAP()), k = nv / v;
+  s.vx *= k; s.vy *= k; s.life /= k; if (s.homing) s.homing *= k; s.slowed = k; return s;
+}
 function lob(o) { // arcing missile to a point; passes over walls & pits
+  // enemy lobs: flight time is never shorter than reaction + the time to walk out of the target circle at the slowest hero's speed
+  if (o.team === 'foe') o = Object.assign({}, o, { time: Math.max(o.time || 0.7, DEV.proj.react + ((o.tele || 42) + DEV.proj.sidestepPx) / SLOWEST_HERO_SPEED()) });
   const s = shoot(Object.assign({ lob: true, sx: o.x, sy: o.y, T: o.time || 0.7, life: 99 }, o));
   if (o.tele) G.hazards.push({ kind: 'tele', x: o.tx, y: o.ty, r: o.tele, delay: s.T, t: 0, col: o.team === 'foe' ? '#ff5040' : '#80d0ff', visualOnly: true });
   return s;
@@ -719,6 +729,7 @@ function updateAllies(dt) {
     if (a.orbit) {
       a.ang = (a.ang || 0) + dt * 3.2; a.x = a.owner.x + Math.cos(a.ang) * 52; a.y = a.owner.y + Math.sin(a.ang) * 52;
       for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && hyp(f.x - a.x, f.y - a.y) < f.r + a.r && (a.hitCd.get(f) || 0) < G.time) { a.hitCd.set(f, G.time + 0.4); hitFoe(f, a.dmg, { x: a.x, y: a.y, knock: 120, src: a.owner }); }
+      for (const s of G.spawners) if (s.hp > 0 && hyp(s.x - a.x, s.y - a.y) < s.r + a.r + 4 && (a.hitCd.get(s) || 0) < G.time) { a.hitCd.set(s, G.time + 0.4); hitSpawner(s, a.dmg, a); }   // orbiting sprites grind generators too
       continue;
     }
     if (a.detonate) { const dd = a.detonate; dd.t -= dt; moveEnt(a, Math.cos(dd.ang) * 260 * dt, Math.sin(dd.ang) * 260 * dt, false); a.fa = dd.ang;   // Sacrificial Detonation: rush forward, then blow up where it stands
@@ -727,6 +738,8 @@ function updateAllies(dt) {
     let tgt = null, bd = a.kind === 'shade' ? 500 : 420;
     if (a.eliteHunter) { let hp = 0; for (const f of G.foes) if (ALIVE(f) && (f.elite || f.heavy) && !f.boss && f.type !== 'reaper' && f.hp > hp) { hp = f.hp; tgt = f; } if (tgt) bd = hyp(tgt.x - a.x, tgt.y - a.y); }   // Summon Shades: ignore trash, lock onto the highest-HP elite
     if (!tgt) for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper' && !f.invuln) { const d = hyp(f.x - a.x, f.y - a.y); if (d < bd && (a.d.fly || los(a.x, a.y, f.x, f.y))) { bd = d; tgt = f; } }
+    // David's deviation 3: pets, clones and summons attack ANY hostile in reach, spawners and generators included (nearest wins)
+    if (!a.eliteHunter || !tgt) for (const s of G.spawners) if (s.hp > 0) { const d = hyp(s.x - a.x, s.y - a.y); if (d < bd && (a.d.fly || los(a.x, a.y, s.x, s.y))) { bd = d; tgt = s; } }
     const own = a.owner && !a.owner.dead ? a.owner : null;
     let dir = null, spd = a.spd * dt;
     if (tgt) {
@@ -739,7 +752,7 @@ function updateAllies(dt) {
         if (bd > a.r + tgt.r + a.d.reach * 0.7) dir = [Math.cos(ang), Math.sin(ang)];
         else if (a.atkT <= 0) { a.atkT = a.d.rate; const dm = a.dmg * (a.owner ? a.owner.mods.dmg : 1);
           if (a.d.slam) { Snd.play('slam'); addTrauma(0.15); ring(a.x + Math.cos(ang) * 20, a.y + Math.sin(ang) * 20, a.d.slam, '#b07aff', 0.3, 5); areaHit(a.x + Math.cos(ang) * 20, a.y + Math.sin(ang) * 20, a.d.slam, dm, { src: a.owner || a, team: 'hero', knock: 260, stagger: 0.6 }); }
-          else { G.swings.push({ x: a.x, y: a.y, a: ang, arc: 1.4, r: a.r + a.d.reach + 8, life: 0.12, max: 0.12, col: a.kind === 'wraith' ? 'rgba(176,122,255,0.8)' : 'rgba(230,230,210,0.8)', w: 3 }); hitFoe(tgt, dm, { x: a.x, y: a.y, knock: 140, src: a }); if (a.d.slow) { tgt.slowT = 1.5; tgt.slowM = 0.5; } Snd.play('swing'); } }
+          else { G.swings.push({ x: a.x, y: a.y, a: ang, arc: 1.4, r: a.r + a.d.reach + 8, life: 0.12, max: 0.12, col: a.kind === 'wraith' ? 'rgba(176,122,255,0.8)' : 'rgba(230,230,210,0.8)', w: 3 }); if (tgt.spawner) hitSpawner(tgt, dm, a); else { hitFoe(tgt, dm, { x: a.x, y: a.y, knock: 140, src: a }); if (a.d.slow) { tgt.slowT = 1.5; tgt.slowM = 0.5; } } Snd.play('swing'); } }
       }
     } else if (own) {
       const d = hyp(own.x - a.x, own.y - a.y); if (d > 70) { const ang = Math.atan2(own.y - a.y, own.x - a.x); dir = [Math.cos(ang), Math.sin(ang)]; a.fa = ang; }

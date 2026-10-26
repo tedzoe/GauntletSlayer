@@ -1,5 +1,5 @@
 'use strict';
-const GAME_TITLE = 'HOLLOWCROWN', GAME_SUB = 'SLAYERS OF THE DEEP';
+const GAME_TITLE = 'GAUNTLET', GAME_SUB = 'SLAYER';
 let scene = 'title', sceneT = 0, RESULTS = null, MENU = null, PAUSE = null, menuGuard = 0;
 const FONT = (s, b = 'bold') => `${b} ${s}px "Trebuchet MS", Verdana, sans-serif`;
 function txt(s, x, y, size, col = '#fff', align = 'left', b = 'bold') { ctx.font = FONT(size, b); ctx.textAlign = align; ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillText(s, x + 1.5, y + 1.5); ctx.fillStyle = col; ctx.fillText(s, x, y); }
@@ -14,12 +14,59 @@ function cdPip(x, y, r, h, key, label, col) {
   txt(label, x, y + 4, 10, k ? '#999' : '#111', 'center');
 }
 
+// ---------------------------------------------------------------- per-player move bar (David's deviation 2)
+// every move gets a pip: radial sweep + seconds while cooling, greyed while unavailable, lit (and a flash) when ready
+function heroMoves(h) {
+  const cd = k => () => h.cd[k] || 0, zk = (sch, i) => h.weapon + ':' + sch + i;
+  const relic = h.relic ? [{ lab: 'REL', col: '#d8a0ff', cd: cd('relic'), ok: () => h.relic.rank >= 3 ? (h.shardMeter || 0) >= 35 || h.potions > 0 : h.potions > 0 }] : [];
+  const pot = [{ lab: 'POT', col: '#4a8cff', cd: () => 0, ok: () => h.potions > 0, count: () => h.potions }];
+  const main = lab => ({ lab, col: '#f2e6c8', cd: () => Math.max(0, h.atkT), main: true });
+  const dash = { lab: 'DSH', col: '#7fffd0', cd: cd(DEV.dash[h.id].cdKey) };
+  const L = {
+    brannoc: [main('ATK'), { lab: 'LEAP', col: '#ffb070', cd: cd('secondary') }, { lab: 'SPIN', col: '#ffd27a', cd: cd('ability'), act: () => h.spin > 0 }, dash],
+    sela: [main('ATK'), { lab: 'THR', col: '#ffb070', cd: cd('secondary'), act: () => !!h.thrust }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability'), ok: () => !h.shieldOut }, dash, { lab: 'BASH', col: '#9ad0ff', cd: cd('bash') }],
+    paladin: [main('ATK'), { lab: 'JDG', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'judgment' }, { lab: 'SLAM', col: '#ffd27a', cd: cd('ability') }, dash, { lab: 'CONS', col: '#fff2a0', cd: cd('consecrate') }],
+    kestrel: [main('ATK'), { lab: 'PWR', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'power' }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability') }, dash],
+    mirelle: [main('BOLT'), { lab: 'SPL', col: '#ffb070', cd: () => { if (!h.spell || !h.schools) return 0; return h.spellCd[zk(h.schools[h.spell[0]], h.spell[1])] || 0; } },
+      { lab: 'MRT', col: '#ffd27a', cd: () => h.spellCd[zk('ember', 2)] || 0 }, dash],
+    vesper: [main('ATK'), { lab: 'SPK', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'smash' }, { lab: 'RAISE', col: '#ffd27a', cd: cd('ability'), ok: () => h.souls >= (h.weapon === 'lantern' ? SPEC.wpn.shadesCost : h.weapon === 'marrow' ? 10 : SPEC.vesper.raiseCost) }, dash],
+  }[h.id] || [];
+  return [...L, ...relic, ...pot];
+}
+function movePip(h, m, x, y, r) {
+  if (!h._cdm) h._cdm = {}; if (!h._rdy) h._rdy = {};
+  const key = m.lab, c = Math.max(0, m.cd()); if (c <= 0) h._cdm[key] = 0; else if (c > (h._cdm[key] || 0)) h._cdm[key] = c;
+  const cooling = c > 0.02, ok = !h.dead && (!m.ok || m.ok()), act = m.act && m.act();
+  // ready edge -> flash
+  if (cooling) h._rdy[key] = 0; else if (h._rdy[key] === 0) h._rdy[key] = G.time; else if (h._rdy[key] === undefined) h._rdy[key] = -9;
+  const fl = !cooling && ok && G.time - (h._rdy[key] || -9) < DEV.hud.readyFlash ? 1 - (G.time - h._rdy[key]) / DEV.hud.readyFlash : 0;
+  const lit = !cooling && ok;
+  circ(x, y, r, lit ? m.col : '#1a1612', '#000', 2);
+  if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(x, y - r * 0.3, r * 0.6, 0, 6.28); ctx.fill(); }
+  if (cooling && !m.main) { const k = c / (h._cdm[key] || 1); ctx.fillStyle = 'rgba(120,120,120,0.55)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r - 2, -1.57 + 6.28 * (1 - k), -1.57 + 6.28); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = m.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 1, -1.57, -1.57 + 6.28 * (1 - k)); ctx.stroke(); }
+  if (cooling && m.main) { ctx.strokeStyle = m.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 1, -1.57, -1.57 + 6.28 * (1 - c / (h._cdm[key] || 1))); ctx.stroke(); }
+  if (act) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 3 + Math.sin(G.time * 18) * 1.5, 0, 6.28); ctx.stroke(); }
+  if (fl > 0) { ctx.strokeStyle = `rgba(255,255,220,${fl})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r + 2 + (1 - fl) * 7, 0, 6.28); ctx.stroke(); }
+  if (!ok && !cooling) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.beginPath(); ctx.arc(x, y, r, 0, 6.28); ctx.fill(); }
+  const big = cooling && !m.main ? (c < 1 ? c.toFixed(1) : String(Math.ceil(c))) : null;
+  if (big) txt(big, x, y + 5, 13, '#fff', 'center');
+  else txt(m.count ? String(m.count()) : m.lab, x, y + (m.lab.length > 3 ? 3 : 4), m.lab.length > 3 && !m.count ? 8 : 10, lit ? '#111' : '#8a8070', 'center');
+  if (big) txt(m.lab, x, y + r + 9, 8, '#bba88a', 'center', 'normal');
+}
+function drawMoveBar(h, x, y, pw) {
+  const ms = heroMoves(h), R = DEV.hud.pipR, gap = Math.min(DEV.hud.pipGap, (pw - 20) / ms.length);
+  const x0 = x + pw / 2 - (ms.length - 1) * gap / 2;
+  ms.forEach((m, i) => movePip(h, m, x0 + i * gap, y, R));
+  h._lastMoves = ms.map(m => m.lab);
+}
+
 // ---------------------------------------------------------------- HUD
 function drawHUD() {
   const n = G.heroes.length, pw = n > 2 ? 280 : 300;
   G.heroes.forEach((h, i) => {
-    const x = n === 1 ? 14 : i * (W - pw - 28) / Math.max(1, n - 1) + 14, y = H - 92;
-    panel(x, y, pw, 80, 0.8, PCOL[h.pi]);
+    const x = n === 1 ? 14 : i * (W - pw - 28) / Math.max(1, n - 1) + 14, y = H - 120;
+    panel(x, y, pw, 110, 0.8, PCOL[h.pi]);
     // portrait
     circ(x + 38, y + 40, 28, '#0c0a08', h.def.color, 3);
     if (!drawPortrait(h.def, x + 38, y + 40, 26)) { ctx.save(); ctx.beginPath(); ctx.arc(x + 38, y + 40, 26, 0, 6.28); ctx.clip(); drawHeroSprite(h.def, x + 38, y + 50, 1.57, 1.7, { noShadow: true, weapon: h.weapon }); ctx.restore(); }
@@ -33,14 +80,12 @@ function drawHUD() {
     // class resource
     const rx = x + pw - 162;
     if (h.id === 'vesper') { for (let k = 0; k < 10; k++) circ(rx + 4 + (k % 5) * 11, y + 52 + Math.floor(k / 5) * 11, 4, k < Math.floor(h.souls / 10) ? '#b07aff' : '#1f1a2a', '#000', 1); }
-    if (h.id === 'mirelle') { for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k]; circ(rx + 6 + k * 16, y + 56, 6, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); if (r !== undefined) circ(rx + 6 + k * 16, y + 56, 3, RUNE_COL[h.schools[r]]); } if (h.spell && h.spell.length === 2) { const sp = spellOf(h); txt(sp.name, rx - 2, y + 75, 10, RUNE_COL[h.schools[h.spell[0]]]); } }
-    if (h.id === 'kestrel' && h.explosiveArrow) txt('EXPLOSIVE', rx - 2, y + 75, 10, '#ff8a2a');
+    if (h.id === 'mirelle') { for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k]; circ(rx + 6 + k * 16, y + 56, 6, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); if (r !== undefined) circ(rx + 6 + k * 16, y + 56, 3, RUNE_COL[h.schools[r]]); } if (h.spell && h.spell.length === 2) { const sp = spellOf(h); txt(sp.name, rx - 2, y + 71, 10, RUNE_COL[h.schools[h.spell[0]]]); } }
+    if (h.id === 'kestrel' && h.explosiveArrow) txt('EXPLOSIVE', rx - 2, y + 71, 10, '#ff8a2a');
     // cooldown pips: defend / ability / relic
-    const cx = x + pw - 74;
-    if (h.id !== 'mirelle') { cdPip(cx, y + 60, 11, h, h.id === 'brannoc' || h.id === 'kestrel' || h.id === 'vesper' ? 'defend' : 'secondary', h.id === 'sela' ? 'LNC' : h.id === 'brannoc' ? 'RSH' : h.id === 'kestrel' ? 'RLL' : h.id === 'paladin' ? 'OVH' : 'GHO', '#9ad0ff'); cdPip(cx + 26, y + 60, 11, h, 'ability', 'ABL', '#ffd27a'); }
-    if (h.relic) { cdPip(cx + 52, y + 60, 11, h, 'relic', 'REL', '#d8a0ff'); }
-    if (G.mode === 'hub') txt(`Bank ${bankOf(h.id)} gold`, x + 150, y + 75, 10, '#ffd84a');
-    if (h.dead) txt(n > 1 ? `Confirm: rez coin (${isFinite(G.rez) ? G.rez + ' left' : 'unlimited'})` : '', x + 74, y + 75, 10, canRevive() ? '#9fffe0' : '#f88');
+    drawMoveBar(h, x, y + 88, pw);
+    if (G.mode === 'hub') txt(`Bank ${bankOf(h.id)} gold`, x + 150, y + 71, 10, '#ffd84a');
+    if (h.dead) txt(n > 1 ? `Confirm: rez coin (${isFinite(G.rez) ? G.rez + ' left' : 'unlimited'})` : '', x + 74, y + 71, 10, canRevive() ? '#9fffe0' : '#f88');
   });
   // top bar: location, purse, mode status
   const top = G.mode === 'hub' ? `${G.floorName}` : `${G.worldName} — ${G.floorName}`;
@@ -55,7 +100,7 @@ function drawHUD() {
   { const mb = (!G.boss || !ALIVE(G.boss)) && G.foes.find(f => f.d.miniboss && ALIVE(f) && (f.hp < f.maxhp || G.heroes.some(h => !h.dead && hyp(h.x - f.x, h.y - f.y) < 520))); if (mb) { G.miniBar = mb; panel(W / 2 - 240, 46, 480, 34, 0.75, '#3a5a9a'); txt(mb.d.name + '  ·  MINI-BOSS', W / 2, 62, 12, '#cfe0ff', 'center'); bar(W / 2 - 220, 66, 440, 8, mb.hp / mb.maxhp, mb.barrier > 0 ? '#9fd8ff' : '#d42a1a'); } else G.miniBar = null; }
   if (G.boss && ALIVE(G.boss)) { const b = G.boss; panel(W / 2 - 280, 46, 560, 34, 0.75, '#a03a2a'); txt(b.name, W / 2, 62, 12, '#ffb0a0', 'center'); bar(W / 2 - 260, 66, 520, 8, b.hp / b.maxhp, b.invuln ? '#9a7aff' : '#d42a1a'); if (b.invuln && b.kind === 'sovereign') txt('SHIELDED', W / 2 + 230, 62, 10, '#c8a0ff', 'center'); }
   // exit countdown
-  if (G.exitT >= 0) { txt(`Leaving floor in ${Math.ceil(G.exitT)}…`, W / 2, H - 112, 18, '#9fffe0', 'center'); txt('All heroes on the portal to go now', W / 2, H - 96, 11, '#bcd', 'center', 'normal'); }
+  if (G.exitT >= 0) { txt(`Leaving floor in ${Math.ceil(G.exitT)}…`, W / 2, H - 146, 18, '#9fffe0', 'center'); txt('All heroes on the portal to go now', W / 2, H - 130, 11, '#bcd', 'center', 'normal'); }
   // messages
   G.msgs.forEach((m, i) => { ctx.globalAlpha = Math.min(1, m.t); txt(m.s, 16, 66 + i * 20, 13, m.col, 'left'); ctx.globalAlpha = 1; });
   // banner
@@ -245,7 +290,7 @@ function drawTitle() {
   drawBackdrop(sceneT);
   const k = Math.min(1, sceneT * 1.5);
   ctx.globalAlpha = k;
-  txt(GAME_TITLE, W / 2, 170, 78, '#ffcf7a', 'center'); txt(GAME_SUB, W / 2, 210, 22, '#d8b0ff', 'center');
+  txt(GAME_TITLE, W / 2, 170, 78, '#ffcf7a', 'center'); txt(GAME_SUB.split('').join(' '), W / 2, 214, 30, '#d8b0ff', 'center');
   // hero line-up: one slot per hero, centred over its name, all feet on one baseline at one shared scale.
   // (in-game bodyScale / hover / glow are gameplay traits and are deliberately not applied here)
   const slotX = i => W / 2 + (i - (HEROES.length - 1) / 2) * 168, footY = 362;
@@ -333,7 +378,7 @@ function drawControls() {
     ['', 'Keyboard + Mouse (P1)', 'Gamepad', 'Keyboard 2 (P2)'],
     ['Move', 'WASD', 'Left stick / D-pad', 'Arrow keys'], ['Aim', 'Mouse', 'Right stick (fires primary)', 'Movement direction + auto-aim'],
     ['Primary attack', 'Left click / J', 'X', 'Numpad1 / .'], ['Secondary attack', 'Right click / K', 'Y', 'Numpad2 / /'],
-    ['Defend / mobility', 'Shift / L', 'RT / LT / R3', 'Numpad3 / Right Shift'], ['Weapon ability', 'Space / I', 'B', 'Numpad0 / Right Ctrl'],
+    ['Defend / mobility', 'Shift / L', 'RT / R3', 'Numpad3 / Right Shift'], ['Dash (every hero)', 'F / Middle click', 'LT / L3', 'Numpad6 / ,'], ['Weapon ability', 'Space / I', 'B', 'Numpad0 / Right Ctrl'],
     ['Potion ability', 'Q', 'LB', 'Numpad4 / ;'], ['Relic', 'E', 'RB', "Numpad5 / '"], ['Interact / confirm', 'Enter / Click', 'A', 'Numpad1 / NumpadEnter'], ['Pause', 'Esc / P', 'Start', 'Numpad +'],
   ];
   rows.forEach((r, i) => { const y = 100 + i * 26; txt(r[0], 60, y, 13, '#d8b070'); for (let k = 1; k < 4; k++) txt(r[k], 260 + (k - 1) * 300, y, i ? 13 : 14, i ? '#e8dcc0' : '#ffd27a', 'left', i ? 'normal' : 'bold'); });
@@ -345,7 +390,7 @@ function drawControls() {
     `${HERO_NAMES.paladin}: slow greatsword combo; Secondary = heavy overhead; hold Defend for a golden barrier that reflects missiles; Ability = Holy Slam; Potion = Golden Wings.`,
     `${HERO_NAMES.isaac}: hold Secondary to charge a Power Shot; shoot your own bomb for an Explosive Shot; press Ability while charging to load an explosive arrow.`,
     `${HERO_NAMES.vesper}: Soul Bolt; hold Secondary to aim Bone Spikes; Ghostwalk (Shift) harvests souls; tap Ability to Raise Dead, hold with 10 souls for a Bone Golem.`,
-    'Revive a fallen hero with shared gold (press confirm while dead). M toggles sound. F toggles fullscreen.',
+    'Revive a fallen hero with shared gold (press confirm while dead). M toggles sound. F toggles fullscreen on menus (in a run F is Dash).',
   ];
   notes.forEach((n2, i) => wrapText(n2, 60, 404 + i * 27, W - 120, 14, 12, '#cfc2a8'));
   txt('Esc / B / Enter: back', W / 2, H - 14, 11, '#887a66', 'center', 'normal');
