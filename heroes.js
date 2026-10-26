@@ -139,10 +139,7 @@ function vesperHunger(h) {   // Hungering Heart: the drain ring follows her for 
 }
 // Sir Theo helpers (Slayer Warrior guide)
 function breakSmoke(h) { if (h.smokeInv) { h.smokeInv = false; h.smokeOff = true; if (h.invisT > 0.05) h.invisT = 0.05; } }   // Shadowstrike smoke (FAQ): attacking or dashing ends the invisibility (the shot that breaks it still gets the shadow bonus)
-function rayFirst(h, len) { let best = null; const c = Math.cos(h.fa), sn = Math.sin(h.fa);   /* nearest foe or spawner on the beam line */
-  for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0 || !hurtRay(f, h.x, h.y, h.fa, len, 8)) continue; const n = hurtPt(f, h.x, h.y), al = Math.max(0, (n.x - h.x) * c + (n.y - h.y) * sn); if (!best || al < best.d) best = { e: f, d: al }; }
-  for (const s of G.spawners) { if (s.hp <= 0) continue; const px = s.x - h.x, py = s.y - h.y, al = px * c + py * sn; if (al > 0 && al < len && Math.abs(-px * sn + py * c) < s.r + 8 && (!best || al < best.d)) best = { e: s, d: al, sp: true }; }
-  return best; }
+function rayFirst(h, len) { return beamTargets(h.x, h.y, h.fa, len, 8)[0] || null; }   // the first foe body or spawner the beam line touches (heads count)
 function theoSlash(h, idx) {
   const S = SPEC.theo, D = DEV.dmg.theo;
   h.combo = idx; h.comboT = 0.75;
@@ -186,7 +183,7 @@ const SMALL_FOE = f => !f.boss && !f.elite && !f.heavy && f.type !== 'reaper' &&
 function gelaShieldBash(h) {
   const S = SPEC.gela; if (G.time - (h.lastBashAt || -9) < S.bashEvery) return 0; h.lastBashAt = G.time; h.bashWin = S.bashWindow;
   let n = 0; swingFx(h, h.fa, S.blockArc, S.bashR, 'rgba(220,240,255,0.9)', 8, 0.14);
-  for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper') continue; const d = hyp(f.x - h.x, f.y - h.y), off = Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa));
+  for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper') continue; const d = hurtD(f, h.x, h.y), off = aimOff(f, h.x, h.y, h.fa, S.bashInterruptR + 40);
     if (hurtInCone(f, h.x, h.y, S.bashR, h.fa, S.blockArc)) { const big = f.heavy || f.elite, k = big ? 0.5 : 1; f.kx += Math.cos(h.fa) * S.bashKnock * k; f.ky += Math.sin(h.fa) * S.bashKnock * k; f.stag = Math.max(f.stag, big ? 0.8 : 1.2);   /* Stagger Large, Knockdown Small */ if (f.state === 'windup') f.state = 'move'; n++; }
     else if (d < S.bashInterruptR && off < S.blockArc / 2 && (f.conjuring > 0 || (f.state === 'windup' && /caster|ranged|lobber/.test(f.d.beh)))) { f.conjuring = 0; f.conjT = SPEC.elites.meteorCdOnCancel; f.state = 'move'; f.atkT = Math.max(f.atkT || 0, 0.6); text(f.x, f.y - 30, 'INTERRUPTED', '#cfeaff'); n++; } }
   h.lastBash = n; return n;
@@ -195,8 +192,8 @@ function autoAim(h, fa) { // soft aim assist for keyboard players
   let best = null, bs = 0.55;
   for (const f of G.foes) {
     if (!ALIVE(f) || f.charm > 0 || f.type === 'reaper') continue;
-    const d = hyp(f.x - h.x, f.y - h.y); if (d > 420) continue;
-    const a = Math.atan2(f.y - h.y, f.x - h.x), df = Math.abs(angDiff(a, fa));
+    const d = hurtD(f, h.x, h.y); if (d > 420) continue;
+    const c = hurtCentre(f), a = Math.atan2(f.y - h.y, c.x - h.x), df = aimOff(f, h.x, h.y, fa, 440);   // picked by its whole drawn body; turns to the middle of the body where it stands, so dashes and charges run straight at it
     if (df < bs && los(h.x, h.y, f.x, f.y)) { bs = df; best = a; }
   }
   for (const s of G.spawners) { const d = hyp(s.x - h.x, s.y - h.y); if (d > 380) continue; const a = Math.atan2(s.y - h.y, s.x - h.x), df = Math.abs(angDiff(a, fa)); if (df < bs) { bs = df; best = a; } }
@@ -246,8 +243,8 @@ function aimPoint(h, maxD, minD = 40) {
   if (h.aimPt) { const d = clamp(hyp(h.aimPt.x - h.x, h.aimPt.y - h.y), minD, maxD); return { x: h.x + Math.cos(h.fa) * d, y: h.y + Math.sin(h.fa) * d }; }
   // keyboard / stick: nearest foe in the aimed direction, else a fixed distance
   let best = null, bd = maxD;
-  for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < 0.5) { bd = d; best = f; } }
-  if (best) return { x: best.x, y: best.y };
+  for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < bd && aimOff(f, h.x, h.y, h.fa, maxD + 60) < 0.5) { bd = d; best = f; } }
+  if (best) return { x: best.x, y: best.y };   // lobs land at its feet, and the blast covers the whole body
   const d = Math.min(maxD, Math.max(minD, rayWall(h.x, h.y, h.fa, maxD * 0.8) - 10));
   return { x: h.x + Math.cos(h.fa) * d, y: h.y + Math.sin(h.fa) * d };
 }
@@ -586,8 +583,8 @@ const KITS = {
     // Skeleton Slash: quick, weak, wide; a skeleton strikes at the nearest foe's distance (no minimum range); staggers small foes
     if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
       h.atkT = D.reapT / hasteMul(h); h.vRoot = S.slashRoot / hasteMul(h); h.moveMul = 0; Snd.play('swing');
-      let best = null, bd = S.slashMax; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y) - f.r; if (d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < SPEC.vesper.reapArc / 2) { bd = d; best = f; } }
-      const dist = best ? clamp(bd + best.r * 0.5, 0, S.slashMax) : 50, cx = h.x + Math.cos(h.fa) * dist, cy = h.y + Math.sin(h.fa) * dist; h.lastSlashDist = Math.round(dist);
+      let best = null, bd = S.slashMax; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hurtD(f, h.x, h.y); if (d < bd && aimOff(f, h.x, h.y, h.fa, S.slashMax + 60) < SPEC.vesper.reapArc / 2) { bd = d; best = f; } }   // aimed anywhere on the body, head included
+      const dist = best ? clamp((hurtEnter(best, h.x, h.y, h.fa, S.slashMax + 60) >= 0 ? hurtEnter(best, h.x, h.y, h.fa, S.slashMax + 60) : bd) + 6, 0, S.slashMax) : 50, cx = h.x + Math.cos(h.fa) * dist, cy = h.y + Math.sin(h.fa) * dist; h.lastSlashDist = Math.round(dist);
       G.swings.push({ x: cx, y: cy, a: h.fa, arc: 2.4, r: S.slashR, life: 0.16, max: 0.16, col: 'rgba(230,225,205,0.85)', w: 5 });
       const n = areaHit(cx, cy, S.slashR, heroDmg(h, D.reap), { src: h, knock: 120, stagger: 0.25, tier: 1 });   // Skeleton Slash: 2.5/s x 8
       if (n) hitstop(0.02);
@@ -596,7 +593,7 @@ const KITS = {
     // Skeleton Smash: a hammer skeleton rises at mid range (auto-corrects, minimum range); foes see it and attack it; a zone in front of her staggers small foes
     if (inp.pressed.secondary && cdReady(h, 'secondary')) {
       setCd(h, 'secondary', S.smashCd / hasteMul(h)); Snd.play('grave'); h.slamT = 0.35; h.vRoot = (S.smashWindup + S.smashRoot) / hasteMul(h); h.moveMul = 0;
-      let best = null, bd = 1e9; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < S.smashMax + 30 && d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < 0.7) { bd = d; best = f; } }
+      let best = null, bd = 1e9; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < S.smashMax + 30 && d < bd && aimOff(f, h.x, h.y, h.fa, S.smashMax + 60) < 0.7) { bd = d; best = f; } }
       const dist = best ? clamp(bd, S.smashMin, S.smashMax) : S.smashDef, x = h.x + Math.cos(h.fa) * dist, y = h.y + Math.sin(h.fa) * dist; h.lastSmashDist = Math.round(dist);
       const hm = mkAlly('hammer', collide(x, y, 12) ? h.x + Math.cos(h.fa) * S.smashMin : x, collide(x, y, 12) ? h.y + Math.sin(h.fa) * S.smashMin : y, h, { life: S.smashLife }); h.lastHammer = hm;
       const fx = h.x + Math.cos(h.fa) * S.smashFrontR, fy = h.y + Math.sin(h.fa) * S.smashFrontR;
@@ -638,7 +635,7 @@ function paladinSignature(h) {
   } else if (h.weapon === 'lance') { // Radiant Lance: T3 straight piercing beam, x2 vs shadow and undead
     Snd.play('holyslam'); h.throwT = 0.3; addTrauma(0.25); const len = rayWall(h.x, h.y, h.fa, S.lanceLen);
     G.beams.push({ x1: h.x, y1: h.y - 10, x2: h.x + Math.cos(h.fa) * len, y2: h.y - 10 + Math.sin(h.fa) * len, col: '#fff2c0', life: 0.35, w: 14, glow: true });
-    let n = 0; for (const f of G.foes) { if (!ALIVE(f) || f.charm > 0) continue; const px = f.x - h.x, py = f.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (!hurtRay(f, h.x, h.y, h.fa, len, S.lanceWidth)) continue;
+    let n = 0; for (const { e: f } of beamTargets(h.x, h.y, h.fa, S.lanceLen, S.lanceWidth, { spawners: false })) {
       const undead = SKELETAL(f) || FOE_FAMILY[f.type] === 'shrouds' || f.type === 'wraith';
       if (hitFoe(f, heroDmg(h, DEV.dmg.paladin.lance * (1 + h.mods.ability)) * (undead ? S.lanceUndeadMul : 1), { x: h.x, y: h.y, src: h, knock: 220, stagger: 0.6, tier: 3, light: true, sigKill: true })) n++; }
     for (const s of G.spawners) { const px = s.x - h.x, py = s.y - h.y, al = px * Math.cos(h.fa) + py * Math.sin(h.fa); if (al > 0 && al < len && Math.abs(-px * Math.sin(h.fa) + py * Math.cos(h.fa)) < s.r + S.lanceWidth) hitSpawner(s, heroDmg(h, DMG.heavy), h, { tier: 3 }); }
@@ -686,10 +683,10 @@ const SPELLS = {
   rime: [
     { name: 'Flash Freeze', cd: 5, cast: h => { Snd.play('freeze'); for (let i = 0; i < 18; i++) { const a = h.fa + R(-0.6, 0.6), s = R(200, 420); G.parts.push({ x: h.x, y: h.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 0.4, max: 0.4, col: '#dff8ff', size: 4, grav: 0 }); } areaHit(h.x, h.y, 150, 0.001, { cone: h.fa, arc: 1.3, src: h, freeze: DEV.dmg.zoey.freeze, quiet: true }); } },   // Freezing Wave: freeze 3s
     { name: 'Frost Ray', channel: (h, dt) => {
-        h.rayT = (h.rayT || 0) + dt; const wl = rayWall(h.x, h.y, h.fa, 380), ramp = Math.min(1, h.rayT / 1.5); const t0 = rayFirst(h, wl), len = t0 ? t0.d : wl;
+        h.rayT = (h.rayT || 0) + dt; const wl = rayWall(h.x, h.y, h.fa, 380), ramp = Math.min(1, h.rayT / 1.5); const t = rayFirst(h, 380), len = t ? t.d + 4 : wl;   // the beam stops where it meets the body (a head over a wall too)
         G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(h.fa) * len, y2: h.y + Math.sin(h.fa) * len, col: '#bff4ff', life: dt * 1.5, w: 6 + ramp * 6, glow: true });
         h.rayTick = (h.rayTick || 0) - dt; if (h.rayTick > 0) return; h.rayTick = 0.1; Snd.play('ray');
-        const t = rayFirst(h, len); if (!t) return;   // Ice Beam (FAQ): one target at a time, the first thing the beam touches
+        if (!t) return;   // Ice Beam (FAQ): one target at a time, the first thing the beam touches
         if (t.sp) hitSpawner(t.e, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1), h); else hitFoe(t.e, heroDmg(h, DEV.dmg.zoey.rayDps * 0.1 * (0.5 + 0.5 * ramp)), { quiet: ramp < 0.5, slow: 3, slowM: 0.4, src: h, tier: 1 });   // ramps to ~56 DPS, Slow 3
       }, moveMul: 0 },
     { name: 'Winter Orb', cd: 8, cast: h => { Snd.play('orb'); shoot({ team: 'hero', x: h.x, y: h.y, vx: Math.cos(h.fa) * 140, vy: Math.sin(h.fa) * 140, dmg: heroDmg(h, 3), r: 12, life: 1.4, kind: 'iceorb', col: '#bff4ff', owner: h, pierce: 99, fx: { slow: 2, slowM: 0.4 }, onEnd: s => { Snd.play('freeze'); G.hazards.push({ kind: 'frost', x: s.x, y: s.y, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, cap: RULE('orbCap') ? 30 : 0, caught: new Set(), dps: heroDmg(h, 4), owner: h }); }, onWall: s => G.hazards.push({ kind: 'frost', x: s.x - s.vx * 0.05, y: s.y - s.vy * 0.05, r: 115, life: DEV.dmg.zoey.orbLife, t: 0, dps: heroDmg(h, 4), owner: h }) }); } },
@@ -697,7 +694,7 @@ const SPELLS = {
   storm: [
     { name: 'Thunderclap', cd: 1.6, cast: h => { Snd.play('thunder'); ring(h.x, h.y, 95, '#ffe95a', 0.3, 7); burst(h.x, h.y, '#fff6a0', 20, 260, 2, 0.4); addTrauma(0.2); for (const f of G.foes) if (ALIVE(f) && SKELETAL(f) && !f.heavy && !f.elite && hurtD(f, h.x, h.y) < 95) killFoe(f, h, { tag: 'knockdown' }); areaHit(h.x, h.y, 95, heroDmg(h, DEV.dmg.zoey.thunderclap), { src: h, knock: 460, stagger: 1.0, hitstop: 0.05, tier: 1 }); } },   // Shock Blast: 14, knockdown destroys skeletons   // Shock Blast: 14, knockdown
     { name: 'Arc Chain', cd: 0.8, cast: h => { Snd.play('zap'); let from = { x: h.x, y: h.y }, used = new Set(), aimA = h.fa;
-        for (let j = 0; j < 7; j++) { let best = null, bd = j ? 170 : 280; for (const f of G.foes) { if (!ALIVE(f) || used.has(f) || f.charm > 0 || f.type === 'reaper') continue; const d = hyp(f.x - from.x, f.y - from.y); const pen = j ? 0 : Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), aimA)) * 120; if (d + pen < bd && los(from.x, from.y, f.x, f.y)) { bd = d + pen; best = f; } }
+        for (let j = 0; j < 7; j++) { let best = null, bd = j ? 170 : 280; for (const f of G.foes) { if (!ALIVE(f) || used.has(f) || f.charm > 0 || f.type === 'reaper') continue; const d = hurtD(f, from.x, from.y); const pen = j ? 0 : aimOff(f, h.x, h.y, aimA, 320) * 120; if (d + pen < bd && los(from.x, from.y, f.x, f.y)) { bd = d + pen; best = f; } }
           if (!best) { if (!j) G.beams.push({ x1: h.x, y1: h.y, x2: h.x + Math.cos(aimA) * 120, y2: h.y + Math.sin(aimA) * 120, col: '#ffe95a', life: 0.12, w: 2, zig: true }); break; }
           used.add(best); G.beams.push({ x1: from.x, y1: from.y, x2: best.x, y2: best.y, col: '#fff6a0', life: 0.18, w: 3, zig: true }); hitFoe(best, heroDmg(h, DEV.dmg.zoey.arcChain), { x: from.x, y: from.y, knock: 0, stagger: 0, src: h, tier: 2 }); from = best; } } },
     { name: 'Static Ward', cd: 10, cast: h => { Snd.play('ward'); G.hazards.push({ kind: 'ward', x: h.x, y: h.y, r: 72, life: DEV.dmg.zoey.ward, t: 0, owner: h }); } },

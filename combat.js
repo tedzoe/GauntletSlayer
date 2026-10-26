@@ -41,11 +41,41 @@ function hurtSeg(f, x1, y1, x2, y2) {   // distance from a segment (beam, lance,
   return Math.min(hurtD(f, x1, y1), hurtD(f, x2, y2), ps(B.l, B.t), ps(B.r, B.t), ps(B.l, B.b), ps(B.r, B.b));
 }
 function hurtRay(f, x, y, ang, len, w = 0) { return hurtSeg(f, x, y, x + Math.cos(ang) * len, y + Math.sin(ang) * len) <= w; }
-function hurtInCone(f, x, y, R, ang, arc) {   // melee arcs: reach is measured to the whole drawn body (heads count);
-  // direction is taken where the body stands (its width at foot level), so a tall foe behind the hero doesn't poke its head into a front swing
+function hurtInCone(f, x, y, R, ang, arc) {   // melee arcs: reach is measured to the whole drawn body (heads count)
   if (hurtD(f, x, y) > R) return false; if (arc >= Math.PI * 2 - 1e-6) return true;
-  const B = hurtBox(f); for (const px of [B.l, (B.l + B.r) / 2, B.r, clamp(x, B.l, B.r)]) { if (Math.abs(px - x) < 1 && Math.abs(f.y - y) < 1) return true; if (Math.abs(angDiff(Math.atan2(f.y - y, px - x), ang)) <= arc / 2) return true; }
+  const B = hurtBox(f), xs = [B.l, (B.l + B.r) / 2, B.r, clamp(x, B.l, B.r)], inArc = (px, py) => Math.abs(angDiff(Math.atan2(py - y, px - x), ang)) <= arc / 2;
+  for (const px of xs) { if (Math.abs(px - x) < 1 && Math.abs(f.y - y) < 1) return true; if (inArc(px, f.y)) return true; }   // the body where it stands (foot level)
+  // a swing aimed at the head or chest counts too, as long as the foe stands in front of the swing (a tall foe behind the hero
+  // doesn't poke its head into a front swing)
+  if (hyp(f.x - x, f.y - y) > 1 && Math.cos(Math.atan2(f.y - y, f.x - x) - ang) < -0.2) return false;
+  if (hurtEnter(f, x, y, ang, R) >= 0) return true;
+  for (const py of [B.t + (B.b - B.t) * 0.15, (B.t + B.b) / 2]) for (const px of xs) if (inArc(px, py) && hyp(px - x, py - y) <= R) return true;
   return false;
+}
+function hurtEnter(f, x, y, ang, len, w = 0) {   // how far along a ray it first touches the body (padded by w); -1 when it misses
+  const B = hurtBox(f), c = Math.cos(ang), s = Math.sin(ang); let t0 = 0, t1 = len;
+  for (const [o, d, lo, hi] of [[x, c, B.l - w, B.r + w], [y, s, B.t - w, B.b + w]]) {
+    if (Math.abs(d) < 1e-9) { if (o < lo || o > hi) return -1; continue; }
+    let a = (lo - o) / d, b = (hi - o) / d; if (a > b) [a, b] = [b, a]; if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) return -1; }
+  return t0;
+}
+function hurtCentre(f) { const B = hurtBox(f); return { x: (B.l + B.r) / 2, y: (B.t + B.b) / 2 }; }   // centre of the drawn body
+function aimOff(f, x, y, ang, range = 1e9) {   // how far off an aim line is from a foe's drawn body: 0 when the line crosses it
+  const B = hurtBox(f); if (hurtD(f, x, y) === 0) return Math.abs(angDiff(Math.atan2(f.y - y, (B.l + B.r) / 2 - x), ang));   // standing inside the drawn body (passing through it)
+  if (hurtEnter(f, x, y, ang, range) >= 0) return 0;
+  let best = 9;
+  for (const py of [f.y, (B.t + B.b) / 2, B.t + (B.b - B.t) * 0.15]) for (const px of [B.l, (B.l + B.r) / 2, B.r]) best = Math.min(best, Math.abs(angDiff(Math.atan2(py - y, px - x), ang)));
+  return best;
+}
+// Beams, rays and lances: every foe whose drawn body the line crosses, nearest first, with the distance where the line meets it.
+// The line runs to the first wall, except that a foe whose feet are in plain view still counts when its head is drawn over the wall
+// behind it. Spawners are ground objects (circle on the floor).
+function beamTargets(x, y, ang, len, w = 0, o = {}) {
+  const wl = rayWall(x, y, ang, len), out = [], c = Math.cos(ang), sn = Math.sin(ang);
+  for (const f of G.foes) { if (!ALIVE(f) || (f.charm > 0 && !o.charmed) || (o.skip && o.skip(f))) continue; const d = hurtEnter(f, x, y, ang, len, w); if (d < 0) continue;
+    if (d > wl && !los(x, y, f.x, f.y)) continue; out.push({ e: f, d }); }
+  if (o.spawners !== false) for (const s of G.spawners) { if (s.hp <= 0) continue; const px = s.x - x, py = s.y - y, al = px * c + py * sn; if (al > 0 && al < wl + s.r && Math.abs(-px * sn + py * c) < s.r + w) out.push({ e: s, d: Math.max(0, al - s.r), sp: true }); }
+  return out.sort((a, b) => a.d - b.d);
 }
 // ---------------------------------------------------------------- foes
 function mkFoe(type, x, y, o = {}) {
