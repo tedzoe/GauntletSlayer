@@ -84,13 +84,13 @@ function killFoe(f, src, o = {}) {
     if (hero.id === 'mirelle' && hero.lastElem) mastery(hero, 'elem_' + hero.lastElem, 1);
     if (hero.id === 'vesper' && src !== hero) mastery(hero, 'minionKills', 1);
   }
-  for (const h of G.heroes) if (h.id === 'vesper' && !h.dead && hero === h) addEssence(h, f.elite ? SPEC.vesper.essenceElite : SPEC.vesper.essenceGrunt);
+  { const cred = hero || G.blastCredit; for (const h of G.heroes) if (h.id === 'vesper' && !h.dead && cred === h && !(src && src.charm > 0)) { const S = SPEC.vesper; addEssence(h, f.boss ? S.soulBoss : f.elite ? S.essenceElite : f.heavy ? S.soulHeavy : S.essenceGrunt, true); } }   /* Soul Power: bigger foes give more; last hit only */
   if (Math.random() < (f.elite ? 1 : 0.18)) dropGold(f.x, f.y, Math.round(f.d.gold * (f.elite ? 3 : 1) * R(0.8, 1.3)));
   if (f.elite && Math.random() < 0.4) G.pickups.push({ kind: 'shard', x: f.x - 8, y: f.y });
   if (f.elite && Math.random() < 0.35) G.pickups.push({ kind: Math.random() < 0.6 ? 'ration' : 'potion', x: f.x + 8, y: f.y });
   if (f.d.deathFreeze) { const Z = f.d.deathFreeze; ring(f.x, f.y, Z.r, '#dff8ff', 0.5, 8); Snd.play('freeze'); for (const h of G.heroes) if (!h.dead && hyp(h.x - f.x, h.y - f.y) < Z.r + h.r && !(h.inv > 0)) h.frz = Math.max(h.frz || 0, Z.t); }
   if (f.d.deathPool) { const P = f.d.deathPool; G.hazards.push({ kind: 'miasma', x: f.x, y: f.y, r: P.r, life: P.time, t: 0, dps: P.dps * (G.scale.dmg || 1), team: 'foe' }); }
-  if (f.d.deathBlast) explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch' });
+  if (f.d.deathBlast) { const pc = G.blastCredit; if (hero && hero.id === 'vesper') G.blastCredit = hero; explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch' }); G.blastCredit = pc; }   /* her Bloated-Mummy kills: the blast's kills count for Vesper */
   if (f.d.beh === 'exploder') explode(f.x, f.y, 60, 12, { team: 'all', col: '#ff7a2a', src: null });
   if (G.mods.volatile) G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 55, delay: 0.9, t: 0, col: '#ff6a3a', onFire: hz => explode(hz.x, hz.y, 55, 14, { team: 'hero', col: '#ff6a3a' }) });
 }
@@ -206,7 +206,7 @@ function killHero(h) {
 function resetHeroTimers(h) {
   h.cd = {}; h.spellCd = {}; h._cdm = {}; h._rdy = {};
   for (const k of ['atkT', 'slamT', 'throwT', 'comboT', 'heavyT', 'hbT', 'gT', 'runeT', 'rayT', 'finT', 'drainT', 'absorbT', 'spikeT', 'lock', 'blockBroken', 'stamT', 'dashMsg', 'gateMsg']) if (h[k]) h[k] = 0;
-  h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.rushPrep = 0; h.smash = null; h.cleaveT = 0; h.titanRoot = 0; h.spinVx = h.spinVy = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
+  h.dash = null; h.charging = null; h.thrust = null; h.superSlash = null; h.rushWin = 0; h.rushPrep = 0; h.ghostEnd = 0; h.vRoot = 0; h.hungerCast = 0; h.smash = null; h.cleaveT = 0; h.titanRoot = 0; h.spinVx = h.spinVy = 0; h.advance = false; h.shieldOut = false; h.z = 0; h.kx = h.ky = 0;
   if (h.relicState) h.relicState = null;
 }
 function reviveCost() { return 0; }   // revives cost rez coins, not gold
@@ -219,7 +219,7 @@ function reviveHero(h, free) {
   if (!free && G.heroes.length === 1 && RULE('reviveShock')) { ring(h.x, h.y, W, '#fff6c0', 0.7, 10); addTrauma(0.5);   // solo coin revive: map-wide shockwave
     for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper') continue; const a = Math.atan2(f.y - h.y, f.x - h.x);
       if (f.elite || f.heavy) { f.kx += Math.cos(a) * 700; f.ky += Math.sin(a) * 700; } else { f.stag = Math.max(f.stag, 1.5); f.kx += Math.cos(a) * 250; f.ky += Math.sin(a) * 250; } } }
-  h.dead = false; h.hp = h.maxHp * 0.6; h.inv = 2 + (h.mods.reviveInvuln || 0); h.ethereal = h.mods.reviveInvuln || 0;
+  h.dead = false; h.souls = 0; h.hp = h.maxHp * 0.6; h.inv = 2 + (h.mods.reviveInvuln || 0); h.ethereal = h.mods.reviveInvuln || 0;
   Snd.play('revive'); ring(h.x, h.y, 80, '#fff6c0', 0.6); burst(h.x, h.y, '#fff6c0', 30, 200, 3, 0.8);
   msg(`${h.def.name} returns to the fight!`, '#fff6c0', 2.5); return true;
 }
@@ -285,7 +285,8 @@ function updateFoes(dt) {
       else { f.conjT = (f.conjT ?? 8) - dt; if (f.conjT <= 0) { f.conjT = 20; f.conjuring = SPEC.elites.meteorWindup; f.conjTgt = pick(G.heroes.filter(h => !h.dead)) || null; text(f.x, f.y - 30, 'CONJURING', '#ff5a8a'); } } }
     if (f.burnT > 0) { f.burnT -= dt; if (Math.random() < dt * 10) burst(f.x, f.y - 6, '#ff8a2a', 1, 40, 3, 0.4); f.hp -= f.burn * dt; if (f.hp <= 0) { killFoe(f, null); continue; } }
     if (f.slowT > 0) { f.slowT -= dt; if (f.slowT <= 0) f.slowM = 1; }
-    if (f.charm > 0) f.charm -= dt;
+    if (f.charm > 0) { f.charm -= dt; if (f.charmHaste) f.atkT -= dt * (SPEC.vesper.dominateHaste - 1); }
+    if (f.charmHaste && f.charm <= 0) { f.spd = f.spd0 ?? f.spd; f.charmHaste = false; }
     // knockback motion
     if (f.kx || f.ky) { const ex = clamp(f.kx * dt, -14, 14), ey = clamp(f.ky * dt, -14, 14), x0 = f.x, y0 = f.y; moveEnt(f, ex, ey, f.fly);
       if (f.crushT > 0) { f.crushT -= dt; const bx = Math.abs(ex) > 3 && Math.abs(f.x - x0) < Math.abs(ex) * 0.4, by_ = Math.abs(ey) > 3 && Math.abs(f.y - y0) < Math.abs(ey) * 0.4; if (bx || by_) { const by = f.crushBy;   /* blocked on either axis = slammed into a wall */ f.crushT = 0; f.kx = f.ky = 0; f.crushed = (f.crushed || 0) + 1;   // Extreme Prejudice wall crush: T4 + 2s hard stun
@@ -471,7 +472,7 @@ function hitSpawner(s, dmg, src, o = {}) {
     Snd.play('spawnerdie'); addTrauma(0.35); hitstop(0.06);
     burst(s.x, s.y, '#e0d0b0', 30, 240, 4, 0.9); ring(s.x, s.y, 70, '#ffd27a', 0.45);
     dropGold(s.x, s.y, RI(30, 60), 'chest'); G.stats.spawners++;
-    const hero = src && (src.isHero ? src : src.owner); if (hero && hero.isHero) mastery(hero, 'spawners', 1);
+    const hero = src && (src.isHero ? src : src.owner); if (hero && hero.isHero) { mastery(hero, 'spawners', 1); if (hero.id === 'vesper' && !hero.dead) addEssence(hero, SPEC.vesper.soulSpawner, true); }   /* the last hit gets the spawner souls */
   }
 }
 function updateSpawners(dt) {
@@ -694,7 +695,7 @@ function updateHazards(dt) {
         if (hz.kind === 'dread') for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper' || hyp(f.x - hz.x, f.y - hz.y) > hz.r + f.r) continue; f.fearT = Math.max(f.fearT || 0, SPEC.talisman.dreadFear); f.aiFreeze = 0; f.fearX = hz.x; f.fearY = hz.y; if (hitFoe(f, heroDmg(own, SPEC.talisman.dreadDps * 0.5), { quiet: true, src: own, tier: 1, knock: 0, stagger: 0 })) hz.dotHits = (hz.dotHits || 0) + 1; }
         break;
       }
-      case 'fire': case 'frost': case 'root': case 'smoke': case 'ward': case 'bubble': case 'whirl': case 'hunger': case 'gloom': case 'miasma': {
+      case 'fire': case 'frost': case 'root': case 'smoke': case 'ward': case 'bubble': case 'whirl': case 'hunger': case 'darkHunger': case 'gloom': case 'miasma': {
         if (hz.follow) { if (hz.follow.dead) hz.t = hz.life; hz.x = hz.follow.x; hz.y = hz.follow.y; }
         hz.tick = (hz.tick || 0) - dt;
         const tick = hz.tick <= 0; if (tick) hz.tick = 0.25;
@@ -709,6 +710,9 @@ function updateHazards(dt) {
           if (hz.kind === 'ward' || hz.kind === 'bubble') { if (f.boss || f.type === 'reaper') continue; const a = Math.atan2(f.y - hz.y, f.x - hz.x); const push = hz.r + f.r + 2 - d; if (push > 0) { moveEnt(f, Math.cos(a) * push, Math.sin(a) * push, f.fly); if (hz.kind === 'ward' && tick) hitFoe(f, 5, { x: hz.x, y: hz.y, knock: 260, stagger: 0.5, src: hz.owner }); } }
           if (hz.kind === 'gloom' && hz.pull && !f.boss && d > 12) { const a = Math.atan2(hz.y - f.y, hz.x - f.x); moveEnt(f, Math.cos(a) * 60 * hz.pull * dt, Math.sin(a) * 60 * hz.pull * dt, f.fly); }
           if (hz.kind === 'whirl' && !f.boss) { f.stag = Math.max(f.stag, 0.4); const a = Math.atan2(f.y - hz.y, f.x - hz.x) + 1.4; f.kx += Math.cos(a) * 30; f.ky += Math.sin(a) * 30; }
+          if (hz.kind === 'darkHunger') { if (f.d.beh === 'wraith' && !f.elite && hz.owner) { killFoe(f, hz.owner, { tag: 'hunger' }); continue; }   /* ghosts die on contact */
+            f.slowT = Math.max(f.slowT, 0.3); f.slowM = Math.min(f.slowM, 0.5);
+            if (tick) { hitFoe(f, hz.dps * 0.25, { quiet: true, src: hz.owner, tier: 1 }); if (hz.owner && !hz.owner.dead) healHero(hz.owner, SPEC.vesper.hungerHeal * 0.25); G.beams.push({ x1: f.x, y1: f.y, x2: hz.x, y2: hz.y, col: '#d04070', life: 0.1, w: 2 }); } continue; }
           if (hz.kind === 'hunger' && tick) { const got = hz.dps * 0.25; f.slowT = Math.max(f.slowT, 0.4); f.slowM = 0.5; if (hitFoe(f, got, { quiet: true, src: hz.owner })) { for (const h of G.heroes) if (!h.dead) healHero(h, got * 0.35 / G.heroes.length); G.beams.push({ x1: f.x, y1: f.y, x2: hz.x, y2: hz.y, col: '#7ff5d0', life: 0.2, w: 2 }); } }
           if (hz.dps && tick && hz.kind !== 'hunger') hitFoe(f, hz.dps * 0.25, { quiet: true, src: hz.owner, burn: hz.kind === 'fire' ? 4 : 0 });
         }
@@ -742,6 +746,7 @@ const ALLY = {
   guard: { hp: 190, spd: 100, r: 13, dmg: 6, reach: 20, rate: 1.0, col: '#c8c0b0', taunt: true, armor: 0.4 },
   mage: { hp: 45, spd: 110, r: 11, dmg: 10, ranged: true, rate: 1.1, col: '#b07aff', shot: 'soulbolt' },
   wraith: { hp: 40, spd: 210, r: 10, dmg: 8, reach: 16, rate: 0.5, fly: true, life: 16, col: '#9a7aff', slow: true },
+  hammer: { hp: 60, spd: 0, r: 14, dmg: 0, passive: true, col: '#e8e0c8' },
   golem: { hp: 460, spd: 92, r: 20, dmg: 26, reach: 30, rate: 1.4, col: '#e8d8c0', slam: 70, life: 45, armor: 0.3 },
 };
 function mkAlly(kind, x, y, owner, o = {}) {
@@ -753,6 +758,7 @@ function updateAllies(dt) {
   for (const a of G.allies) {
     if (a.hp <= 0) continue;
     a.life -= dt; a.atkT -= dt; a.flash -= dt;
+    if (a.d.passive) { if (a.life <= 0) a.hp = 0; continue; }   /* the Skeleton Smash hammer: a target, not a fighter */
     if (a.life <= 0 || (a.owner && a.owner.dead && !['warrior', 'archer', 'spear', 'guard', 'mage', 'golem'].includes(a.kind))) { a.hp = 0; burst(a.x, a.y, a.d.col, 10, 100, 2, 0.5); continue; }
     if (a.orbit) {
       a.ang = (a.ang || 0) + dt * 3.2; a.x = a.owner.x + Math.cos(a.ang) * 52; a.y = a.owner.y + Math.sin(a.ang) * 52;
@@ -772,13 +778,13 @@ function updateAllies(dt) {
     let dir = null, spd = a.spd * dt;
     if (tgt) {
       const ang = Math.atan2(tgt.y - a.y, tgt.x - a.x); a.fa = ang;
-      if (a.d.explode) { dir = [Math.cos(ang), Math.sin(ang)]; if (bd < tgt.r + a.r + 4) { a.hp = 0; explode(a.x, a.y, 50, a.dmg * (a.owner ? a.owner.mods.dmg : 1), { team: 'hero', col: '#7ff5d0', src: a, sound: 'shade' }); continue; } }
+      if (a.d.explode) { dir = [Math.cos(ang), Math.sin(ang)]; if (bd < tgt.r + a.r + 4) { a.hp = 0; if (a.single) { burst(a.x, a.y, '#7ff5d0', 10, 120, 2, 0.4); Snd.play('shade'); if (tgt.spawner) hitSpawner(tgt, a.dmg, a); else hitFoe(tgt, a.dmg, { x: a.x, y: a.y, knock: 120, stagger: 0.5, src: a.owner || a, team: 'hero' }); continue; } explode(a.x, a.y, 50, a.dmg * (a.owner ? a.owner.mods.dmg : 1), { team: 'hero', col: '#7ff5d0', src: a, sound: 'shade' }); continue; } }
       else if (a.d.ranged) {
         if (bd > 260) dir = [Math.cos(ang), Math.sin(ang)]; else if (bd < 120) dir = [-Math.cos(ang), -Math.sin(ang)];
-        if (a.atkT <= 0 && bd < 320) { a.atkT = a.d.rate; shoot({ team: 'hero', x: a.x, y: a.y, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: a.dmg * (a.owner ? a.owner.mods.dmg : 1), r: 5, life: 0.8, kind: a.d.shot || (a.kind === 'gargoyle' ? 'fire' : a.kind === 'illusion' ? 'bolt' : 'arrow'), col: a.d.col, owner: a }); Snd.play('allyshot'); }
+        if (a.atkT <= 0 && bd < 320) { a.atkT = a.rate ?? a.d.rate; shoot({ team: 'hero', x: a.x, y: a.y, vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520, dmg: a.dmg * (a.owner ? a.owner.mods.dmg : 1), r: 5, life: 0.8, kind: a.d.shot || (a.kind === 'gargoyle' || a.fireArrows ? 'fire' : a.kind === 'illusion' ? 'bolt' : 'arrow'), col: a.d.col, owner: a }); Snd.play('allyshot'); }
       } else {
         if (bd > a.r + tgt.r + a.d.reach * 0.7) dir = [Math.cos(ang), Math.sin(ang)];
-        else if (a.atkT <= 0) { a.atkT = a.d.rate; const dm = a.dmg * (a.owner ? a.owner.mods.dmg : 1);
+        else if (a.atkT <= 0) { a.atkT = a.rate ?? a.d.rate; const dm = a.dmg * (a.owner ? a.owner.mods.dmg : 1);
           if (a.d.slam) { Snd.play('slam'); addTrauma(0.15); ring(a.x + Math.cos(ang) * 20, a.y + Math.sin(ang) * 20, a.d.slam, '#b07aff', 0.3, 5); areaHit(a.x + Math.cos(ang) * 20, a.y + Math.sin(ang) * 20, a.d.slam, dm, { src: a.owner || a, team: 'hero', knock: 260, stagger: 0.6 }); }
           else { G.swings.push({ x: a.x, y: a.y, a: ang, arc: 1.4, r: a.r + a.d.reach + 8, life: 0.12, max: 0.12, col: a.kind === 'wraith' ? 'rgba(176,122,255,0.8)' : 'rgba(230,230,210,0.8)', w: 3 }); if (tgt.spawner) hitSpawner(tgt, dm, a); else { hitFoe(tgt, dm, { x: a.x, y: a.y, knock: 140, src: a }); if (a.d.slow) { tgt.slowT = 1.5; tgt.slowM = 0.5; } } Snd.play('swing'); } }
       }

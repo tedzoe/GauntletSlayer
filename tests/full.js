@@ -136,13 +136,13 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   ok('vesper raised allies', await ev(() => G.allies.map(a => a.kind).join(',')));
   await ev(() => TT.run(2)); await shot('08-vesper-allies.png'); ok('vesper allies dealt dmg', await ev(() => Math.round(G.foes.reduce((q, f) => q + f.maxhp - Math.max(0, f.hp), 0))));
   await ev(() => { G.heroes[0].souls = 100; G.heroes[0].cd = {}; }); await p.keyboard.down('Space'); await ev(() => TT.run(0.9)); await p.keyboard.up('Space'); await ev(() => TT.run(0.6));
-  ok('vesper bone golem', await ev(() => ({ golem: G.allies.filter(a => a.kind === 'golem').length, souls: G.heroes[0].souls })));
+  ok('vesper full-meter summon', await ev(() => ({ golem: G.allies.filter(a => a.kind === 'golem').length, souls: G.heroes[0].souls })));
   await ev(() => TT.run(1.5)); await shot('08b-vesper-golem.png');
   for (const k of ['lantern']) { await ev(k => { const h = G.heroes[0]; h.weapon = k; h.souls = 100; h.cd = {}; }, k); await press('Space'); await ev(() => TT.run(0.3)); }
   ok('vesper minion kinds', await ev(() => G.allies.map(a => a.kind).join(',')));
   ok('vesper skeletons draw aggro', await ev(() => { G.allies = G.allies.filter(a => a.kind !== 'wraith'); const sk = mkAlly('warrior', G.heroes[0].x + 120, G.heroes[0].y, G.heroes[0]); const f = TT.dummies(1, 'shambler', 150)[0]; return pickTarget(f)[0] === sk; }));
   await ev(() => { G.foes = []; TT.dummies(4, 'shambler', 50); G.heroes[0].potions = 2; G.heroes[0].souls = 0; G.heroes[0].weapon = 'base'; }); d0 = await ev(() => TT.dmg()); await press('KeyQ'); await ev(() => TT.run(0.6)); await shot('08d-vesper-dread-mist.png'); await ev(() => TT.run(0.5));
-  ok('vesper potion (dread mist)', await ev(() => ({ mist: G.hazards.some(z => z.kind === 'dread'), feared: G.foes.filter(f => f.fearT > 0).length })));
+  ok('vesper potion (hungering heart)', await ev(() => ({ cast: G.heroes[0].hungerCast > 0 || G.hazards.some(z => z.kind === 'darkHunger') })));
   await ev(() => { G.heroes[0].weapon = 'base'; });
 
   // ---------------- relics (all 10)

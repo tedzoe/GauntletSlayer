@@ -17,7 +17,7 @@ const DEBUG = {
       lines.push([`${h.def.name}  HP ${Math.ceil(h.hp)}/${h.maxHp} (bar ${Math.round(h.hp / h.maxHp * SPEC.hero[h.def.id].uiHp)})  inv ${Math.max(0, h.inv || 0).toFixed(2)}`, h.def.color]);
       lines.push([`  cd: ${cds}`, '#ddd']);
       const meters = [`potions ${h.potions}`, `shards ${Math.round(h.shardMeter || 0)}/100`];
-      if (h.def.id === 'vesper') meters.push(`essence ${Math.round(h.souls || 0)}/${SPEC.vesper.essenceMax}`);
+      if (h.def.id === 'vesper') meters.push(`souls ${Math.round(h.souls || 0)}/${SPEC.vesper.essenceMax} (${soulBars(h)} bars${soulFull(h) ? ', FULL' : ''})`);
       if (h.crown) meters.push('CROWN'); if (h.bubble) meters.push('bubble');
       lines.push([`  ${meters.join('  ')}`, '#ddd']);
     }

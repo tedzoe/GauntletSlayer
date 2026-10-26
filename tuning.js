@@ -67,7 +67,15 @@ const SPEC = {
   // Elf -> Ranger Isaac
   isaac: { rapidDmg: 14, rapidRate: 0.25, sniperDmg: 'heavy', sniperDraw: 0.75,   /* Neoseeker FAQ: aimed shots ~1.3/s */ bombR: 95 * 1.4, bombShotR: 95, rollCd: 1.5, rollIframes: 0.4, mortarCd: 6, mortarDmg: 'heavy', mortarR: 3.0 * MTR, rootTime: 2.5 },
   // Necromancer -> Vesper Linda
-  vesper: { reapDmg: 'medium', reapArc: 140 * Math.PI / 180, reapR: 64, ghostCd: 4, ghostIframes: 2.0, shadesDmg: 'heavy', essenceMax: 100, essenceGrunt: 5, essenceElite: 25, raiseCost: 20, essencePerHit: 2 },
+  vesper: { reapDmg: 'medium', reapArc: 140 * Math.PI / 180, reapR: 64, ghostCd: 0, ghostIframes: 0.3, shadesDmg: 'heavy', essenceMax: 100, essenceGrunt: 3, essenceElite: 10, raiseCost: 10, essencePerHit: 0,
+    // Soul Power (Slayer Necromancer): 0-100. Bars 1-5 = souls 10-50 (strength), 50-100 = tier 2, 100 = FULL (bonus). The ability empties it.
+    soulBar: 10, soulHeavy: 6, soulBoss: 20, soulSpawner: 15, soulGhost: 3, soulGhostCap: 5,
+    ghostDist: 150, ghostTime: 0.22, ghostEnd: 0.2,                          // short teleport-dash, no start delay, a landing delay
+    slashMax: 120, slashR: 46, slashRoot: 0.25,                              // Skeleton Slash: auto-ranges to the nearest foe, no minimum range; rooted while swinging
+    smashMin: 70, smashMax: 210, smashDef: 140, smashWindup: 0.3, smashRoot: 0.3, smashCd: 1.0, smashFrontR: 36, smashLife: 0.7,   // Skeleton Smash: ~1/s
+    soldierLife: 15, archerLife: 20, archerHp: 16, archerRate: 1.5, archerFire: 22, minionCap: 25,
+    dominateR: 90, dominateT: [3, 5, 7, 10, 15], dominateHaste: 1.5, dominateHeal: 2,
+    hungerCast: 0.8, hungerR: 80, hungerTime: 6, hungerDps: 8, hungerHeal: 4 },
   zoeyTeleport: { iframes: 48 / 60, vulnerable: 6 / 60 },
   // Paladin -> Highlord David (light element). Radii in px (1m = 32px).
   paladin: { combo: 3, comboArc: 2.4, comboR: 68, finisherArc: 3.1, finisherR: 82,
@@ -86,7 +94,7 @@ const SPEC = {
     brannoc: { base: 10, axe: 5, turbo: 7, demonic: 6 },
     sela: { base: 9, splitter: 6, vanguard: 0, ricochet: 8 },
     kestrel: { base: 6, thorn: 5, sparks: 8, dusk: 7 },
-    vesper: { base: 0, lantern: 0, marrow: 0 },
+    vesper: { base: 0, lantern: 0, marrow: 0, scepter: 0 },
     paladin: { base: 9, hammer: 6, lance: 7, sanctuary: 10 },
   },
   // 'Weapon precise numbers' (authoritative)
@@ -131,7 +139,7 @@ const DEV = {
     sela: { move: 'Shield Charge', cdKey: 'scharge', cd: 2 },            // SPEC.gela.chargeCd (no longer needs the shield raised)
     kestrel: { move: 'Combat Roll', cdKey: 'defend', cd: 1.5 },          // SPEC.isaac.rollCd
     mirelle: { move: 'Blink', cdKey: 'dash', cd: 3, dist: 150, dur: 0.16, iframes: 0.22 },   // new short blink for Zoey
-    vesper: { move: 'Ghostwalk', cdKey: 'defend', cd: 4 },               // SPEC.vesper.ghostCd
+    vesper: { move: 'Ghostwalk', cdKey: 'defend', cd: 0 },               // SPEC.vesper.ghostCd 
     paladin: { move: 'Righteous Advance', cdKey: 'advance', cd: 5 },     // SPEC.paladin.advanceCd (no longer needs the shield raised)
   },
   // 2. COOLDOWN HUD: ready flash length (s) and pip size (px)
@@ -210,7 +218,13 @@ const ENDLESS = {
   coopCount: players => [1, 1.6, 2.2, 2.8][players - 1] || 1,
   soloEliteHp: 0.75,
 };
-function addEssence(h, v) { h.souls = Math.min(SPEC.vesper.essenceMax, (h.souls || 0) + v); }
+function addEssence(h, v, kill) {   // Soul Power; Dominate (scepter) heals per bar filled from KILLS while the meter isn't full
+  const S = SPEC.vesper, before = h.souls || 0; if (before >= S.essenceMax) return;
+  h.souls = Math.min(S.essenceMax, before + v);
+  if (kill && h.weapon === 'scepter') { const n = Math.floor(h.souls / S.soulBar) - Math.floor(before / S.soulBar); if (n > 0 && typeof healHero === 'function') healHero(h, n * S.dominateHeal); }
+}
+const soulBars = h => Math.min(5, Math.floor((h.souls || 0) / SPEC.vesper.soulBar));
+const soulFull = h => (h.souls || 0) >= SPEC.vesper.essenceMax;
 
 // ---- Relics (Rank II = halfway between I and III). Shards recharge Rank III relics instead of a potion.
 const lerpRank = (a, c) => [a, (a + c) / 2, c];

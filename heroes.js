@@ -21,7 +21,7 @@ function mkHero(pi, id, dev) {
   const h = { isHero: true, pi, id, def, dev, body, x: 0, y: 0, r: body.r, maxHp: SPEC.hero[id].hp + mods.hp * HP_SCALE, hp: SPEC.hero[id].hp + mods.hp * HP_SCALE, baseSpeed: heroSpeed(id), calmT: 0, bubble: false, crown: false, armor: SPEC.hero[id].armor || 0, mods,
     potions: 2, keys: 0, fa: 0, ax: 1, ay: 0, kx: 0, ky: 0, vx: 0, vy: 0, inv: 0, ethereal: 0, invisT: 0, invis: false, hurtT: 0, slowT: 0,
     cd: {}, atkT: 0, combo: 0, comboT: 0, charge: 0, charging: null, blocking: false, blockFlash: 0, spin: 0, spinTick: 0, dash: null, lock: 0,
-    rushWin: 0, souls: 30, runes: [], runeT: 0, spell: [0, 0], spellCd: {}, channel: null, shieldOut: false, buff: {}, swing: null, walk: 0,
+    rushWin: 0, souls: 0, runes: [], runeT: 0, spell: [0, 0], spellCd: {}, channel: null, shieldOut: false, buff: {}, swing: null, walk: 0,
     weapon: lo.weapon, talisman: lo.talisman, relic: lo.relic ? { id: lo.relic, rank: SAVE.owned[id].relics[lo.relic] || 1 } : null,
     dead: false, deadAt: 0, reviveHold: 0, lastHitT: -9, scale: 1, z: 0, explosiveArrow: false };
   if (id === 'mirelle') h.schools = WEAPONS.mirelle.find(w => w.id === h.weapon).schools;
@@ -58,6 +58,7 @@ function updateHero(h, inp, dt) {
   else if (inp.mx || inp.my) { h.ax = inp.mx; h.ay = inp.my; h.aimPt = null; }
   let fa = Math.atan2(h.ay, h.ax);
   if (inp.aim !== 'mouse' && inp.aim !== 'stick') fa = autoAim(h, fa);
+  h.prevFa = h.fa;
   if (!h.dash && !h.channelLock && !(h.id === 'sela' && h.blocking && inp.aim !== 'mouse' && inp.aim !== 'stick')) h.fa = fa;   // Gela strafes behind her shield
   h.aimDist = h.aimPt ? hyp(h.aimPt.x - h.x, h.aimPt.y - h.y) : null;
   // knockback
@@ -100,6 +101,41 @@ function heroDash(h, inp) {
   else KITS[h.id](h, fake({ defend: true }, { defend: true }), 0);
   if (h.id === 'sela' || h.id === 'paladin') h.blocking = false;
   return !cdReady(h, D.cdKey);
+}
+// Vesper Linda helpers (Slayer Necromancer guide)
+function vesperSummon(h) {
+  const S = SPEC.vesper, D = DEV.dmg.vesper, VC = '#b07aff', bars = soulBars(h), full = soulFull(h);
+  if (bars < 1) { text(h.x, h.y - 30, 'No Soul Power', VC); Snd.play('error'); return false; }
+  h.souls = 0; h.lastSummon = { bars, full, weapon: h.weapon }; Snd.play('raise'); h.slamT = 0.4; mastery(h, 'signature', 1);
+  if (full) { ring(h.x, h.y, 90, '#ffffff', 0.4, 6); text(h.x, h.y - 40, 'FULL SOULS', '#ffffff'); }
+  if (h.weapon === 'scepter') {   // Dominate: everything around her but bosses / mini-bosses
+    const T = S.dominateT[bars - 1]; let n = 0; ring(h.x, h.y, S.dominateR, '#d04070', 0.4, 6);
+    for (const f of G.foes) if (ALIVE(f) && !f.boss && !f.miniBoss && f.type !== 'reaper' && hyp(f.x - h.x, f.y - h.y) < S.dominateR + f.r) {
+      f.charm = Math.max(f.charm, T); f.aiFreeze = 0; n++; if (!f.heavy && !f.elite) f.stag = Math.max(f.stag, 0.4);
+      if (full && !f.charmHaste) { f.charmHaste = true; f.spd0 = f.spd; f.spd *= S.dominateHaste; } burst(f.x, f.y, '#d04070', 8, 90, 2, 0.4); }
+    h.lastDominate = { n, t: T }; return true;
+  }
+  let kinds, place;
+  if (h.weapon === 'lantern') { kinds = Array(full ? 20 : bars * 2).fill('shade'); place = k => h.fa + (k / kinds.length) * 6.28; }
+  else if (h.weapon === 'marrow') { kinds = Array(full ? 5 : bars).fill('archer'); place = k => h.fa + Math.PI + (k - (kinds.length - 1) / 2) * 0.5; }   // archers rise BEHIND her
+  else { kinds = Array(full ? 5 : bars).fill('warrior'); place = k => h.fa + (k - (kinds.length - 1) / 2) * 0.6; }   // soldiers rise in front
+  const mine = G.allies.filter(a => a.owner === h && a.hp > 0 && !a.d.passive); if (mine.length + kinds.length > S.minionCap) mine.slice(0, mine.length + kinds.length - S.minionCap).forEach(a => a.hp = 0);   // they stack; a hard cap keeps the frame rate
+  const burstSet = new Set();   // David's deviation 6: the ground erupts where the dead rise (one hit per foe per cast); rising also stuns
+  kinds.forEach((kind, k) => { const a = place(k), r = kind === 'shade' ? 30 : 40, x = h.x + Math.cos(a) * r, y = h.y + Math.sin(a) * r;
+    const o = kind === 'warrior' ? { life: S.soldierLife } : kind === 'archer' ? { life: S.archerLife } : { life: 1e9 };
+    const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h, o);
+    if (kind === 'warrior' && full) { al.hp *= 1.6; al.dmg = 12; }
+    if (kind === 'archer') { al.hp = S.archerHp; al.atkT = 0.5; al.rate = S.archerRate; if (full) { al.dmg = S.archerFire; al.fireArrows = true; } }
+    if (kind === 'shade') { al.dmg = heroDmg(h, D.minion.wraith); al.single = true; }
+    al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability;
+    if (kind !== 'shade') { const VD = D; ring(al.x, al.y, VD.raiseBurstR, VC, 0.35, 5); burst(al.x, al.y, '#e8e0c8', 14, 180, 3, 0.5);
+      for (const f of G.foes) if (ALIVE(f) && !f.boss && f.charm <= 0 && hyp(f.x - al.x, f.y - al.y) < VD.raiseBurstR + f.r) f.stag = Math.max(f.stag, 0.6);
+      areaHit(al.x, al.y, VD.raiseBurstR, heroDmg(h, VD.raiseBurst * (1 + h.mods.ability)), { src: h, set: burstSet, knock: 220, stagger: 0.5, tier: 3, sigKill: true }); } });
+  h.lastRaise = kinds.length; return true;
+}
+function vesperHunger(h) {   // Hungering Heart: the drain ring follows her for 6s
+  const S = SPEC.vesper; Snd.play('nova'); ring(h.x, h.y, S.hungerR, '#d04070', 0.5, 6);
+  G.hazards.push({ kind: 'darkHunger', x: h.x, y: h.y, r: S.hungerR, life: S.hungerTime, t: 0, owner: h, follow: h, dps: heroDmg(h, S.hungerDps), team: 'hero' });
 }
 // Sir Theo helpers (Slayer Warrior guide)
 function theoSlash(h, idx) {
@@ -257,7 +293,7 @@ const KITS = {
     if (h.rushWin > 0 && !h.dash && inp.pressed.primary && h.atkT <= 0) { h.rushWin = 0; text(h.x, h.y - 34, 'SUPER SLASH', '#ffcf7a'); theoSlash(h, 3); return; }
     if (h.rushWin > 0 && !h.dash && inp.pressed.secondary) { h.rushWin = 0; theoLeap(h); return; }
     // Rush (defend / dash button): faster than running, invincible for the whole dash, can't steer
-    if (inp.pressed.defend && cdReady(h, 'defend')) { setCd(h, 'defend', S.chargeCd); h.rushPrep = S.rushStartup; h.rushAng = h.fa; return; }
+    if (inp.pressed.defend && cdReady(h, 'defend')) { setCd(h, 'defend', S.chargeCd); h.rushPrep = S.rushStartup; h.moveMul = 0; h.rushAng = h.fa; return; }
     // 7-swing axe combo: weak 14s in a front arc (stagger small foes, interrupt casters); hit 4 = Super Slash (white trail, stuns heavies); hit 7 = 360 with long recovery
     if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) { theoSlash(h, h.comboT > 0 ? (h.combo + 1) % S.combo : 0); return; }
     // Smash (secondary)
@@ -518,76 +554,50 @@ const KITS = {
   },
 
   // ------------------------------------------------ Vesper: summoner
-  vesper(h, inp, dt) {   // Vesper Linda: necromancer
-    const VC = '#b07aff';
-    if (inp.pressed.defend && cdReady(h, 'defend')) { // Ghostwalk / Dark Rift phase-step: harvests souls from foes passed through
-      setCd(h, 'defend', SPEC.vesper.ghostCd); Snd.play('ghost'); h.inv = SPEC.vesper.ghostIframes;   // Ghostwalk: 2.0s intangible
-      const a = (inp.mx || inp.my) ? Math.atan2(inp.my, inp.mx) : h.fa;
-      let gained = 0;
-      startDash(h, a, 210, 0.34, { ethereal: true, inv: 0.36, trail: 'rgba(176,122,255,0.45)', trailSize: 10, hitR: 4, stopOnWall: false,
-        onHitFoe: f => { f.slowT = DEV.dmg.vesper.ghostSlow; f.slowM = 0.4; hitFoe(f, heroDmg(h, DEV.dmg.vesper.ghost), { quiet: true, src: h, tier: 1 }); if (gained < 3) { gained++; addEssence(h, 10); burst(f.x, f.y, VC, 6, 80, 2, 0.4); } } });   // Ghostwalk: 4 + Slow 5
+  vesper(h, inp, dt) {   // Vesper Linda: necromancer (Slayer Necromancer guide)
+    const VC = '#b07aff', S = SPEC.vesper, D = DEV.dmg.vesper;
+    // Ghostwalk in flight: the weapon ability is the emergency brake
+    if (h.dash && h.dash.ghost) { if (!inp.pressed.ability) return; h.dash = null; h.z = 0; h.ghostEnd = 0; }
+    // Hungering Heart cast: slow and vulnerable; the weapon ability cuts it short (the drain still starts)
+    if (h.hungerCast > 0) { h.hungerCast -= dt; h.moveMul = 0; if (inp.pressed.ability) h.hungerCast = 0; if (h.hungerCast <= 0) vesperHunger(h); if (!inp.pressed.ability) return; }
+    // Ghostwalk (dash): short teleport-dash, invincible, passes through foes (slow 5, 4 damage, flat souls each), never turns her; landing delay
+    if (inp.pressed.defend && cdReady(h, 'defend')) {
+      setCd(h, 'defend', S.ghostCd); Snd.play('ghost'); h.vRoot = 0; h.smashing = null; h.ghostEnd = 0;
+      const fa0 = h.prevFa ?? h.fa, a = (inp.mx || inp.my) ? Math.atan2(inp.my, inp.mx) : h.fa; let gained = 0;   /* Ghostwalk never turns her: keep last frame's facing */
+      startDash(h, a, S.ghostDist, S.ghostTime, { ghost: true, ethereal: true, inv: true, trail: 'rgba(176,122,255,0.45)', trailSize: 10, hitR: 4, stopOnWall: false,
+        onHitFoe: f => { f.slowT = D.ghostSlow; f.slowM = 0.4; hitFoe(f, heroDmg(h, D.ghost), { quiet: true, src: h, tier: 1, stagger: 0.25 }); if (gained < S.soulGhostCap) { gained++; addEssence(h, S.soulGhost); burst(f.x, f.y, VC, 6, 80, 2, 0.4); } },
+        onEnd: () => { h.ghostEnd = S.ghostEnd; } });
+      h.fa = fa0; h.lastGhostFa = fa0;
       return;
     }
-    if (h.charging === 'smash') { // Bone Spikes: hold to aim, release to erupt at the target
-      h.moveMul = 0.6; h.charge += dt;
-      const p = aimPoint(h, 260, 60); h.reticle = p;
-      if (!inp.down.secondary) {
-        h.charging = null; h.reticle = null; setCd(h, 'secondary', 1.0); Snd.play('grave'); h.slamT = 0.35;
-        G.hazards.push({ kind: 'tele', x: p.x, y: p.y, r: 74, delay: 0.25, t: 0, col: VC, onFire: hz => { Snd.play('slam'); addTrauma(0.3); hitstop(0.06);
-          G.hazards.push({ kind: 'spikes', x: hz.x, y: hz.y, r: 74, life: 0.6, t: 0, seed: Math.random() * 99 }); burst(hz.x, hz.y, '#e8e0c8', 24, 220, 3, 0.6); ring(hz.x, hz.y, 74, VC, 0.3, 5);
-          const hitSet = new Set(); areaHit(hz.x, hz.y, 40, heroDmg(h, DEV.dmg.vesper.spikes), { src: h, set: hitSet, knock: 260, stagger: 0.9, root: 0.8, heavy: true, tier: 3 });
-          areaHit(hz.x, hz.y, 74, heroDmg(h, DEV.dmg.vesper.spikesSplash), { src: h, set: hitSet, knock: 120, stagger: 0.3, tier: 1 });   // Skeleton Smash: 46 in the middle + 2 splash
-          for (const f of G.foes) if (ALIVE(f) && hitSet.has(f)) { f.t3By = h; f.t3Lock = Math.max(f.t3Lock || 0, 2); } } });   // draws aggro
-      }
+    if (h.ghostEnd > 0) { h.ghostEnd -= dt; h.moveMul = 0; if (!inp.pressed.ability) return; }
+    // weapon ability: Soul Power, not a timer. Empties the meter. Usable out of any attack recovery ("pivot": faces the aim as it fires)
+    if (inp.pressed.ability && cdReady(h, 'ability')) { if (vesperSummon(h)) { h.vRoot = 0; h.smashing = null; } return; }
+    if (h.vRoot > 0) { h.vRoot -= dt; h.moveMul = 0; return; }   // rooted after a slash or smash (Ghostwalk or the ability cancel it)
+    // Skeleton Slash: quick, weak, wide; a skeleton strikes at the nearest foe's distance (no minimum range); staggers small foes
+    if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) {
+      h.atkT = D.reapT / hasteMul(h); h.vRoot = S.slashRoot / hasteMul(h); h.moveMul = 0; Snd.play('swing');
+      let best = null, bd = S.slashMax; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y) - f.r; if (d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < SPEC.vesper.reapArc / 2) { bd = d; best = f; } }
+      const dist = best ? clamp(bd + best.r * 0.5, 0, S.slashMax) : 50, cx = h.x + Math.cos(h.fa) * dist, cy = h.y + Math.sin(h.fa) * dist; h.lastSlashDist = Math.round(dist);
+      G.swings.push({ x: cx, y: cy, a: h.fa, arc: 2.4, r: S.slashR, life: 0.16, max: 0.16, col: 'rgba(230,225,205,0.85)', w: 5 });
+      const n = areaHit(cx, cy, S.slashR, heroDmg(h, D.reap), { src: h, knock: 120, stagger: 0.25, tier: 1 });   // Skeleton Slash: 2.5/s x 8
+      if (n) hitstop(0.02);
       return;
     }
-    if (h.channel === 'drain') { // Life Drain (Hungering Skull): channel a beam into one foe
-      h.moveMul = 0.4; h.drainT = (h.drainT || 0) + dt;
-      let tgt = h.drainTgt; if (!tgt || !ALIVE(tgt) || hyp(tgt.x - h.x, tgt.y - h.y) > 300) { tgt = null; let bd = 280; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < 0.8 && los(h.x, h.y, f.x, f.y)) { bd = d; tgt = f; } } h.drainTgt = tgt; }
-      if (tgt) { h.fa = Math.atan2(tgt.y - h.y, tgt.x - h.x); G.beams.push({ x1: h.x + Math.cos(h.fa) * 14, y1: h.y - 18, x2: tgt.x, y2: tgt.y - 6, col: VC, life: 0.05, w: 4, zig: true });
-        h.drainTick = (h.drainTick || 0) - dt; if (h.drainTick <= 0) { h.drainTick = 0.2; const d = heroDmg(h, DEV.dmg.vesper.drain * (1 + h.mods.ability)); hitFoe(tgt, d, { quiet: true, src: h, sigKill: true }); healHero(h, d * 0.45); }
-        h.drainSoul = (h.drainSoul || 0) + dt; if (h.drainSoul > 1.2) { h.drainSoul = 0; addEssence(h, 10); } }
-      if (!inp.down.ability || h.drainT > 4) { h.channel = null; h.drainTgt = null; setCd(h, 'ability', abilityCd(h, 3)); }
+    // Skeleton Smash: a hammer skeleton rises at mid range (auto-corrects, minimum range); foes see it and attack it; a zone in front of her staggers small foes
+    if (inp.pressed.secondary && cdReady(h, 'secondary')) {
+      setCd(h, 'secondary', S.smashCd / hasteMul(h)); Snd.play('grave'); h.slamT = 0.35; h.vRoot = (S.smashWindup + S.smashRoot) / hasteMul(h); h.moveMul = 0;
+      let best = null, bd = 1e9; for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && f.type !== 'reaper') { const d = hyp(f.x - h.x, f.y - h.y); if (d < S.smashMax + 30 && d < bd && Math.abs(angDiff(Math.atan2(f.y - h.y, f.x - h.x), h.fa)) < 0.7) { bd = d; best = f; } }
+      const dist = best ? clamp(bd, S.smashMin, S.smashMax) : S.smashDef, x = h.x + Math.cos(h.fa) * dist, y = h.y + Math.sin(h.fa) * dist; h.lastSmashDist = Math.round(dist);
+      const hm = mkAlly('hammer', collide(x, y, 12) ? h.x + Math.cos(h.fa) * S.smashMin : x, collide(x, y, 12) ? h.y + Math.sin(h.fa) * S.smashMin : y, h, { life: S.smashLife }); h.lastHammer = hm;
+      const fx = h.x + Math.cos(h.fa) * S.smashFrontR, fy = h.y + Math.sin(h.fa) * S.smashFrontR;
+      for (const f of G.foes) if (ALIVE(f) && !f.heavy && !f.elite && !f.boss && hyp(f.x - fx, f.y - fy) < S.smashFrontR + f.r) f.stag = Math.max(f.stag, 0.4);   // the zone right in front still staggers small foes
+      G.hazards.push({ kind: 'tele', x: hm.x, y: hm.y, r: 74, delay: S.smashWindup, t: 0, col: VC, onFire: hz => { Snd.play('slam'); addTrauma(0.3); hitstop(0.06);
+        G.hazards.push({ kind: 'spikes', x: hz.x, y: hz.y, r: 74, life: 0.6, t: 0, seed: Math.random() * 99 }); burst(hz.x, hz.y, '#e8e0c8', 24, 220, 3, 0.6); ring(hz.x, hz.y, 74, VC, 0.3, 5);
+        const hitSet = new Set(G.foes.filter(f => f.charm > 0));   // Skeleton Smash never hurts dominated foes
+        areaHit(hz.x, hz.y, 40, heroDmg(h, D.spikes), { src: h, set: hitSet, knock: 260, stagger: 0.9, heavy: true, tier: 3, lethal: true, tag: 'smash' });
+        areaHit(hz.x, hz.y, 74, heroDmg(h, D.spikesSplash), { src: h, set: hitSet, knock: 120, stagger: 0.5, tier: 1 }); } });   // Skeleton Smash: 46 Lethal in the middle + 2 splash that still staggers
       return;
-    }
-    if (h.charging === 'raise') { // Raise Dead: tap = a minion; hold with 10 souls = Bone Golem
-      h.charge += dt; h.moveMul = 0.5;
-      if (h.souls >= 100 && h.charge > 0.25 && Math.random() < 0.5) G.parts.push({ x: h.x + R(-24, 24), y: h.y + R(-10, 10), vx: 0, vy: -60, life: 0.4, max: 0.4, col: VC, size: 3, grav: 0 });
-      if (!inp.down.ability || (h.charge >= 0.7 && h.souls >= 100)) {
-        const golem = h.charge >= 0.7 && h.souls >= 100; h.charging = null; h.charge = 0;
-        let kinds, cost;
-        if (golem) { kinds = ['golem']; cost = 100; }
-        else if (h.weapon === 'lantern') { kinds = ['wraith', 'wraith', 'wraith', 'wraith']; cost = SPEC.wpn.shadesCost; }   // Summon Shades: the full essence bar, T3 phantoms lock onto the highest-HP elite
-        else { const rot = h.weapon === 'marrow' ? ['guard', 'mage'] : ['warrior', 'spear', 'archer']; h.raiseIx = ((h.raiseIx ?? -1) + 1) % rot.length; kinds = [rot[h.raiseIx]]; cost = h.weapon === 'marrow' ? 30 : SPEC.vesper.raiseCost; }
-        if (h.souls < cost) { text(h.x, h.y - 30, `Need ${cost} essence`, VC); Snd.play('error'); setCd(h, 'ability', 0.4); return; }
-        const mine = G.allies.filter(a => a.owner === h && a.kind !== 'golem' && a.hp > 0);
-        if (!golem && mine.length + kinds.length > 5) { mine.slice(0, mine.length + kinds.length - 5).forEach(a => a.hp = 0); }
-        if (golem) G.allies.filter(a => a.owner === h && a.kind === 'golem').forEach(a => a.hp = 0);
-        h.souls -= cost; setCd(h, 'ability', golem ? abilityCd(h, 2) : (SPEC.weapons.vesper[h.weapon] ?? 0));   // Raise Skeletons / Summon Shades: no cooldown, essence-gated Snd.play('raise'); h.slamT = 0.4;
-        if (golem) { addTrauma(0.4); ring(h.x, h.y, 90, VC, 0.5, 8); msg('A Bone Golem rises!', VC, 1.5); }
-        const burstSet = new Set();   // David's deviation 6: the ground erupts where the dead rise (one hit per foe per cast)
-        kinds.forEach((kind, k) => { const a = h.fa + (k - (kinds.length - 1) / 2) * 0.6, x = h.x + Math.cos(a) * 38, y = h.y + Math.sin(a) * 38;
-          const al = mkAlly(kind, collide(x, y, 12) ? h.x : x, collide(x, y, 12) ? h.y : y, h); if (h.weapon === 'lantern' && kind === 'wraith') { al.eliteHunter = true; al.dmg = heroDmg(h, DEV.dmg.vesper.minion.wraith); al.tier = 3; } al.hp *= 1 + h.mods.ability; al.maxhp = al.hp; al.dmg *= 1 + h.mods.ability; mastery(h, 'signature', 1);   // shades 28 each
-          const VD = DEV.dmg.vesper; ring(al.x, al.y, VD.raiseBurstR, VC, 0.35, 5); burst(al.x, al.y, '#e8e0c8', 14, 180, 3, 0.5); areaHit(al.x, al.y, VD.raiseBurstR, heroDmg(h, VD.raiseBurst * (1 + h.mods.ability)), { src: h, set: burstSet, knock: 220, stagger: 0.5, tier: 3, sigKill: true }); });
-      }
-      return;
-    }
-    if ((inp.down.primary || inp.pressed.primary) && h.atkT <= 0) { // Soul Reap: medium, 140-degree front arc; every foe hit feeds the essence bar
-      h.atkT = DEV.dmg.vesper.reapT / hasteMul(h); h.lock = 0.08; Snd.play('swing');
-      swingFx(h, h.fa, SPEC.vesper.reapArc, SPEC.vesper.reapR + 6, 'rgba(190,140,255,0.85)', 6, 0.16);
-      const n = melee(h, h.fa, SPEC.vesper.reapArc, SPEC.vesper.reapR, DEV.dmg.vesper.reap, { knock: 140, stagger: 0.2, hitstop: 0.03, tier: 1 });   // Skeleton Slash: 2.5/s x 8
-      if (n) addEssence(h, n * SPEC.vesper.essencePerHit);
-      return;
-    }
-    if (inp.pressed.secondary && cdReady(h, 'secondary')) { h.charging = 'smash'; h.charge = 0; return; }
-    if (inp.pressed.ability && cdReady(h, 'ability')) {
-      const W = SPEC.wpn, mine = G.allies.filter(a => a.owner === h && a.hp > 0 && a.kind !== 'golem' && !a.detonate);
-      if (h.weapon === 'marrow' && mine.length) { // Sacrificial Detonation: 10 essence, every skeleton rushes forward and blows up (3m, T3) where it stands
-        if (h.souls < W.detonateCost) { text(h.x, h.y - 30, `Need ${W.detonateCost} essence`, VC); Snd.play('error'); return; }
-        h.souls -= W.detonateCost; Snd.play('raise'); text(h.x, h.y - 30, 'DETONATE!', VC); h.slamT = 0.3;
-        for (const a of mine) { a.detonate = { t: 0.45, ang: h.fa }; }
-        h.lastDetonate = mine.length; return; }
-      h.charging = 'raise'; h.charge = 0;
     }
   },
 };
@@ -752,9 +762,7 @@ function usePotion(h) {
     Snd.play('nova'); ring(h.x, h.y, W / 2, '#bfe0ff', 0.5, 10); G.flash = 0.35; G.flashCol = '#cfe8ff'; addTrauma(0.5); hitstop(0.08);
     h.lastNova = areaHit(h.x, h.y, W, heroDmg(h, DEV.dmg.zoey.nova), { src: h, knock: 500, stagger: 1, heavy: true, tier: 4 }); repelAll(h.x, h.y, 300); }   // Arcane Blast: 106
   else if (id === 'mirelle') { Snd.play('ward'); G.hazards.push({ kind: 'bubble', x: h.x, y: h.y, r: 130, life: 7, t: 0, owner: h }); repelAll(h.x, h.y, 260); }
-  else if (id === 'vesper' && tal === 'base') { // Dread Mist: 0 burst damage; a mist that makes foes flee and deals low damage over time
-    Snd.play('nova'); ring(h.x, h.y, TS.dreadR, '#b07aff', 0.55, 8); G.flash = 0.15; G.flashCol = '#c8a0ff';
-    G.hazards.push({ kind: 'dread', x: h.x, y: h.y, r: TS.dreadR, life: TS.dreadTime, t: 0, owner: h, tick: 0 }); repelAll(h.x, h.y, 280); }
+  else if (id === 'vesper' && tal === 'base') { h.hungerCast = SPEC.vesper.hungerCast; h.moveMul = 0; text(h.x, h.y - 34, 'HUNGER...', '#d04070'); }   // Hungering Heart: slow cast, then the drain ring (Slayer Dark Hunger)
   else if (id === 'vesper') {
     const dead = G.heroes.filter(o => o.dead).sort((a, b) => a.deadAt - b.deadAt)[0];
     if (dead) reviveHero(dead, true); else { healHero(h, 60); h.inv = 4; ring(h.x, h.y, 60, '#7ff5d0', 0.6, 6); Snd.play('revive'); }

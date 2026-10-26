@@ -28,11 +28,11 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
 
 | Hero | Class | Play style |
 |---|---|---|
-| **Sir Theo** | Warrior | A halberd knight with a four-swing combo, a leaping cleave and an armored charge. His Whirlwind spin can't be touched. |
+| **Sir Theo** | Warrior | A halberd knight with a seven-swing combo, a stunning Smash and an untouchable Rush that turns into a Super Slash or a Leap. His Whirlwind spin can't be touched. |
 | **Dawnbringer Gela** | Valkyrie shield fighter | Spear and shield. Block and reflect missiles, bash, lunge and shield-charge, or throw her shield. |
 | **Ranger Isaac** | Archer | Quick and nimble. Rapid shots, a charged sniper shot that pierces everything, a combat roll and bombs. |
 | **Sorceress Zoey** | Wizard | Combines two of three runes (Ember, Rime, Storm) to prime one of nine spells, then casts it. |
-| **Vesper Linda** | Necromancer and summoner | Reaps essence from foes, raises skeletons to fight for her, erupts bone spikes and ghostwalks through enemies. |
+| **Vesper Linda** | Necromancer and summoner | Skeleton servants slash and smash for her, Ghostwalk carries her through enemies, and Soul Power from kills calls skeletons, archers or shades, or dominates foes. |
 | **Highlord David** | Paladin | The toughest hero. A greatsword combo, a charged Judgment, a shield that throws missiles back and consecrated ground that heals allies. |
 
 ## How to play

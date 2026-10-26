@@ -217,7 +217,7 @@ function drawPickup(it) {
   }
   ctx.restore();
 }
-const MINION_SPR = { warrior: 'warrior', archer: 'archer', spear: 'spear', guard: 'guard', mage: 'mage', wraith: 'wraith', golem: 'golem' };
+const MINION_SPR = { warrior: 'warrior', archer: 'archer', spear: 'spear', guard: 'guard', mage: 'mage', wraith: 'wraith', golem: 'golem', hammer: 'guard' };   // the Skeleton Smash hammer uses the guard skeleton art
 function drawAlly(a) {
   ctx.save(); ctx.translate(a.x, a.y);
   const mk = a.owner && a.owner.id === 'vesper' && MINION_SPR[a.kind];

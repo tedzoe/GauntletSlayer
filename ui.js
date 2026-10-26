@@ -30,7 +30,7 @@ function heroMoves(h) {
     kestrel: [main('ATK'), { lab: 'PWR', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'power' }, { lab: 'SPC', col: '#ffd27a', cd: cd('ability') }, dash],
     mirelle: [main('BOLT'), { lab: 'SPL', col: '#ffb070', cd: () => { if (!h.spell || !h.schools) return 0; return h.spellCd[zk(h.schools[h.spell[0]], h.spell[1])] || 0; } },
       { lab: 'MRT', col: '#ffd27a', cd: () => h.spellCd[zk('ember', 2)] || 0 }, dash],
-    vesper: [main('ATK'), { lab: 'SPK', col: '#ffb070', cd: cd('secondary'), act: () => h.charging === 'smash' }, { lab: 'RAISE', col: '#ffd27a', cd: cd('ability'), ok: () => h.souls >= (h.weapon === 'lantern' ? SPEC.wpn.shadesCost : h.weapon === 'marrow' ? 10 : SPEC.vesper.raiseCost) }, dash],
+    vesper: [main('ATK'), { lab: 'SMSH', col: '#ffb070', cd: cd('secondary') }, { lab: 'SOUL', col: '#b07aff', soul: true, cd: () => 0, ok: () => soulBars(h) >= 1 }, dash],   // the weapon ability runs on Soul Power: a meter, never a cooldown sweep
   }[h.id] || [];
   return [...L, ...relic, ...pot];
 }
@@ -44,6 +44,10 @@ function movePip(h, m, x, y, r) {
   const lit = !cooling && ok;
   circ(x, y, r, lit ? m.col : '#1a1612', '#000', 2);
   if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.arc(x, y - r * 0.3, r * 0.6, 0, 6.28); ctx.fill(); }
+  if (m.soul) { const v = (h.souls || 0) / SPEC.vesper.essenceMax, t1 = Math.min(1, v * 2), t2 = Math.max(0, v * 2 - 1), full = v >= 1;   // Soul Power meter: 5 segments, then tier 2 fills inside, FULL glows white
+    ctx.lineWidth = 3; for (let k = 0; k < 5; k++) { const a0 = -1.57 + k * 1.2566 + 0.08, a1 = a0 + 1.2566 - 0.16; ctx.strokeStyle = full ? '#ffffff' : t1 * 5 > k + 0.999 ? '#c89aff' : '#3a2f4a'; ctx.beginPath(); ctx.arc(x, y, r + 1, a0, a1); ctx.stroke(); }
+    if (t2 > 0) { ctx.fillStyle = full ? 'rgba(255,255,255,0.85)' : 'rgba(200,154,255,0.6)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r - 3, -1.57, -1.57 + 6.28 * t2); ctx.closePath(); ctx.fill(); }
+    txt(full ? 'MAX' : String(soulBars(h)), x - (full ? 9 : 3), y + 4, 10, full ? '#2a1a3a' : '#fff'); }
   if (cooling && !m.main) { const k = c / (h._cdm[key] || 1); ctx.fillStyle = 'rgba(120,120,120,0.55)'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r - 2, -1.57 + 6.28 * (1 - k), -1.57 + 6.28); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = m.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 1, -1.57, -1.57 + 6.28 * (1 - k)); ctx.stroke(); }
   if (cooling && m.main) { ctx.strokeStyle = m.col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + 1, -1.57, -1.57 + 6.28 * (1 - c / (h._cdm[key] || 1))); ctx.stroke(); }
@@ -80,7 +84,7 @@ function drawHUD() {
     for (let k = 0; k < h.keys && k < 5; k++) { const kx = x + 80 + k * 12, ky = y + 70; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(kx - 2, ky - 3, 3, 0, 6.28); ctx.moveTo(kx + 1, ky - 3); ctx.lineTo(kx + 8, ky - 3); ctx.stroke(); }
     // class resource
     const rx = x + pw - 162;
-    if (h.id === 'vesper') { for (let k = 0; k < 10; k++) circ(rx + 4 + (k % 5) * 11, y + 52 + Math.floor(k / 5) * 11, 4, k < Math.floor(h.souls / 10) ? '#b07aff' : '#1f1a2a', '#000', 1); }
+    if (h.id === 'vesper') { for (let k = 0; k < 10; k++) circ(rx + 4 + (k % 5) * 11, y + 52 + Math.floor(k / 5) * 11, 4, k < Math.floor(h.souls / 10) ? (soulFull(h) ? '#ffffff' : '#b07aff') : '#1f1a2a', '#000', 1); }
     if (h.id === 'mirelle') { for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k]; circ(rx + 6 + k * 16, y + 56, 6, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); if (r !== undefined) circ(rx + 6 + k * 16, y + 56, 3, RUNE_COL[h.schools[r]]); } if (h.spell && h.spell.length === 2) { const sp = spellOf(h); txt(sp.name, rx - 2, y + 71, 10, RUNE_COL[h.schools[h.spell[0]]]); } }
     if (h.id === 'kestrel' && h.explosiveArrow) txt('EXPLOSIVE', rx - 2, y + 71, 10, '#ff8a2a');
     // cooldown pips: defend / ability / relic
@@ -405,7 +409,7 @@ function drawControls() {
     `${HERO_NAMES.gela}: hold Defend for a wind barrier (reflects missiles); Primary while blocking = Shield Bash. Hold Secondary to charge a Lance Lunge.`,
     `${HERO_NAMES.paladin}: slow greatsword combo; Secondary = heavy overhead; hold Defend for a golden barrier that reflects missiles; Ability = Holy Slam; Potion = Golden Wings.`,
     `${HERO_NAMES.isaac}: hold Secondary to charge a Power Shot; shoot your own bomb for an Explosive Shot; press Ability while charging to load an explosive arrow.`,
-    `${HERO_NAMES.vesper}: Soul Bolt; hold Secondary to aim Bone Spikes; Ghostwalk (Shift) harvests souls; tap Ability to Raise Dead, hold with 10 souls for a Bone Golem.`,
+    `${HERO_NAMES.vesper}: Skeleton Slash finds its own range; Secondary raises a hammer skeleton (Lethal) that foes attack; Ghostwalk (Shift) teleports through foes for souls; Ability spends ALL Soul Power (1-5 souls, then FULL for a bonus).`,
     'Revive a fallen hero with a rez coin (press confirm while dead). M toggles sound. F toggles fullscreen on menus (in a run F is Dash).',
   ];
   notes.forEach((n2, i) => wrapText(n2, 60, 404 + i * 27, W - 120, 14, 12, '#cfc2a8'));

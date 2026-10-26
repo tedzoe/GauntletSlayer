@@ -67,8 +67,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     { const { h } = fire('kestrel', 'dusk', () => { const f = WT.foe('shambler', 120); f.spd = 80; }); out.isaac_dusk = { cd: WT.cd(h), invis: h.invisT >= 2, smoke: G.hazards.some(z => z.kind === 'smoke' && z.r === 2 * MTR), lost: G.foes[0].lostT > 0 }; }
     // Vesper
     { const { h } = fire('vesper', 'base'); KITS.vesper(h, WT.N(), 1 / 60); out.vesper_base = { cd: WT.cd(h), essence: h.souls, minions: G.allies.length }; }
-    { const { h } = fire('vesper', 'lantern', () => { WT.foe('shambler', 80); WT.foe('hulk', 200, 0, 9000).elite = true; WT.foe('hulk', 200, 60, 3000).elite = true; }); KITS.vesper(h, WT.N(), 1 / 60); const ws = G.allies.filter(a => a.kind === 'wraith'); updateAllies(1 / 60); out.vesper_lantern = { cd: WT.cd(h), essence: h.souls, shades: ws.length, hunter: ws.every(a => a.eliteHunter) }; }
-    { const { h } = fire('vesper', 'marrow', h => { h.souls = 60; mkAlly('warrior', h.x + 30, h.y - 20, h); mkAlly('spear', h.x + 30, h.y + 20, h); G.lastDetonations = []; }); const pos = G.allies.filter(a => a.detonate).map(a => [a.x, a.y]); TT.run(0.6); out.vesper_marrow = { cd: WT.cd(h), essenceLeft: h.souls, rushed: pos.length, blasts: (G.lastDetonations || []).length, atSkeleton: (G.lastDetonations || []).every(b => pos.some(p => hyp(p[0] - b.x, p[1] - b.y) < 140)) }; }
+    { const { h } = fire('vesper', 'lantern', () => { WT.foe('shambler', 80); WT.foe('hulk', 200, 0, 9000).elite = true; WT.foe('hulk', 200, 60, 3000).elite = true; }); KITS.vesper(h, WT.N(), 1 / 60); const ws = G.allies.filter(a => a.kind === 'shade'); out.vesper_lantern = { cd: WT.cd(h), essence: h.souls, shades: ws.length, dmg: ws[0] && ws[0].dmg }; }
+    { const { h } = fire('vesper', 'marrow', h => { h.souls = 60; }); const ar = G.allies.filter(a => a.kind === 'archer'); out.vesper_marrow = { cd: WT.cd(h), essenceLeft: h.souls, archers: ar.length, behind: ar.every(a => (a.x - h.x) * Math.cos(h.fa) + (a.y - h.y) * Math.sin(h.fa) < 0), life: ar[0] && Math.round(ar[0].life) }; }
     // Paladin
     for (const w of ['base', 'hammer', 'lance', 'sanctuary']) { const { h, before } = fire('paladin', w); out['david_' + w] = { cd: WT.cd(h) }; }
     // Zoey schools: cooldown rule across all 9 combos
@@ -87,9 +87,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Isaac Rooting Shot: 5s, 2.5s root', wres.isaac_thorn, g => g.cd === 5 && g.root >= 2);
   chk('Isaac Sparks trap: 8s, 1m trigger mine', wres.isaac_sparks, { cd: 8, mine: true, trigger: 32 });
   chk('Isaac Smoke Bomb: 7s, 2m cloud, 2s invisible, aggro lost', wres.isaac_dusk, { cd: 7, invis: true, smoke: true, lost: true });
-  chk('Vesper Raise Skeletons: no cd, 20 essence', wres.vesper_base, { cd: 0, essence: 80, minions: 1 });
-  chk('Vesper Summon Shades: all 100 essence, elite hunters', wres.vesper_lantern, { cd: 0, essence: 0, shades: 4, hunter: true });
-  chk('Vesper Sacrificial Detonation: 10 essence, blasts on each skeleton', wres.vesper_marrow, g => g.cd === 0 && g.essenceLeft === 50 && g.rushed === 2 && g.blasts === 2 && g.atSkeleton);
+  chk('Vesper Raise Skeletons: no cd, spends ALL Soul Power, full meter = 5', wres.vesper_base, { cd: 0, essence: 0, minions: 5 });
+  chk('Vesper Summon Shades: full meter = 20 shades of 28', wres.vesper_lantern, { cd: 0, essence: 0, shades: 20, dmg: 28 });
+  chk('Vesper Bone Archers: 5 souls = 5 archers behind her, 20s, meter emptied', wres.vesper_marrow, { cd: 0, essenceLeft: 0, archers: 5, behind: true, life: 20 });
   chk('David weapon cooldowns: Slam 9, Hammer 6, Lance 7, Pulse 10', [wres.david_base.cd, wres.david_hammer.cd, wres.david_lance.cd, wres.david_sanctuary.cd], [9, 6, 7, 10]);
   chk('Zoey Spellweaver cooldowns = spec matrix', wres.zoey_base, [0, 6, 2, 3, 0, 20, 1, 1, 20]);
   chk('Zoey Hollow Chapters: even 5s cooldowns', wres.zoey_hollow, [5, 5, 5, 5, 5, 5, 5, 5, 5]);
@@ -117,9 +117,8 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Wall crush: T4 damage + 2s stun on elites, grunts executed', crush, g => g.eliteCrushed >= 1 && g.eliteDmg >= 60 && g.eliteStun >= 1.5 && g.gruntDead);
   const feast = await ev(() => { const r = {}; for (const fl of [5, 40]) { TT.setup(['brannoc']); beginRun(); startEndlessFloor(fl); const h = G.heroes[0]; h.talisman = 'base'; h.potions = 1; G.foes.forEach(f => f.hp = f.maxhp = 1e6); const h0 = G.foes.reduce((a, f) => a + f.hp, 0); usePotion(h); for (let i = 0; i < 30; i++) updatePickups(1 / 60); r[fl] = { food: G.pickups.filter(i => i.talisman && (i.kind === 'ration' || i.kind === 'feast') && !i.dead).length, dmg: Math.round(h0 - G.foes.reduce((a, f) => a + f.hp, 0)) }; } return r; });
   chk("Quartermaster's Horn: food spawned, 0 damage, works past floor 37", feast, g => g[5].food === 3 && g[40].food === 3 && g[5].dmg === 0);
-  const dread = await ev(() => { const h = WT.equip('vesper', 'base', 'base'); h.potions = 1; const fs = [WT.foe('shambler', 60), WT.foe('bonesoldier', -60), WT.foe('shambler', 0, 60)]; fs.forEach(f => f.spd = 90); const d0 = fs.map(f => hyp(f.x - h.x, f.y - h.y)); const hp0 = fs.map(f => f.hp); usePotion(h); const burst = fs.map((f, i) => hp0[i] - f.hp); TT.run(2.0); const hz = G.hazards.find(z => z.kind === 'dread');
-    return { burst: Math.max(...burst), feared: fs.filter(f => f.fearT > 0).length, fled: fs.filter((f, i) => hyp(f.x - h.x, f.y - h.y) > d0[i] + 20).length, dotTicks: hz ? hz.ticks : 0, dotDmg: Math.round(fs.reduce((a, f, i) => a + hp0[i] - f.hp, 0)) }; });
-  chk('Dread Mist: 0 burst, fear applied, foes flee, DoT ticks', dread, g => g.burst === 0 && g.feared >= 2 && g.fled >= 2 && g.dotTicks >= 3 && g.dotDmg > 0);
+  const dread = await ev(() => { const h = WT.equip('vesper', 'base', 'base'); h.potions = 1; const fs = [WT.foe('shambler', 50), WT.foe('shambler', -50)]; const hp0 = fs.map(f => f.hp); usePotion(h); const cast = h.hungerCast > 0; const burst = fs.map((f, i) => hp0[i] - f.hp); TT.run(2.0); const hz = G.hazards.find(z => z.kind === 'darkHunger'); return { cast, burst: Math.max(...burst), ring: !!hz, drained: fs.filter((f, i) => f.hp < hp0[i]).length, slowed: fs.filter(f => f.slowT > 0).length }; });
+  chk('Hungering Heart: slow cast, 0 burst, then a drain ring that hurts and slows', dread, g => g.cast && g.burst === 0 && g.ring && g.drained === 2 && g.slowed === 2);
   const aegis = await ev(() => { const h = WT.equip('sela', 'base', 'aegis'); h.potions = 1; h.hp = 60; usePotion(h); const f = WT.foe('shambler', 30); f.spd = 80; for (let i = 0; i < 5; i++) shoot({ team: 'foe', x: h.x + 200, y: h.y, vx: -400, vy: 0, dmg: 10, r: 5, life: 2, kind: 'arrow' }); const hp0 = h.hp; TT.run(1.5); const hz = G.hazards.find(z => z.kind === 'aegis');
     return { blocked: hz.blocked || 0, pushedOut: hyp(f.x - hz.x, f.y - hz.y) >= hz.r, healed: h.hp > hp0, dmg: 0 }; });
   chk('Shieldwall Oath: field blocks missiles, keeps melee out, heals', aegis, { blocked: 5, pushedOut: true, healed: true, dmg: 0 });
@@ -169,7 +168,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Lay on Hands: full heals, revives in range without a coin', pal.lay, { revived: true, allyFull: true, selfFull: true, coinsUsed: 0 });
   // ======================= shop + gold banking + crown bonus
   const shop = await ev(() => { const prices = {}; for (const id in WEAPONS) prices[id] = WEAPONS[id].map(w => w.cost); TT.setup(['paladin']); SAVE.banks.paladin = 20000; SAVE.owned.paladin.weapons = ['base']; openShop(G.heroes[0]); const it = MENU.items.find(i => i.label && i.label.startsWith('Sunspear')); it.act(); closeMenu(); return { prices, bank: SAVE.banks.paladin, owned: SAVE.owned.paladin.weapons.includes('lance'), armory: WEAPONS.paladin.length }; });
-  chk('All alt weapons 15000, default free', shop.prices, { brannoc: [0, 15000, 15000, 15000], sela: [0, 15000, 15000, 15000], kestrel: [0, 15000, 15000, 15000], mirelle: [0, 15000, 15000], vesper: [0, 15000, 15000], paladin: [0, 15000, 15000, 15000] });
+  chk('All alt weapons 15000, default free', shop.prices, { brannoc: [0, 15000, 15000, 15000], sela: [0, 15000, 15000, 15000], kestrel: [0, 15000, 15000, 15000], mirelle: [0, 15000, 15000], vesper: [0, 15000, 15000, 15000], paladin: [0, 15000, 15000, 15000] });
   chk('Shop: buying a weapon spends that hero\'s own bank', { bank: shop.bank, owned: shop.owned }, { bank: 5000, owned: true });
   const bank = await ev(() => { TT.setup(['brannoc']); SAVE.banks.brannoc = 0; beginRun(); startCampaignFloor(0, 0); const h = G.heroes[0]; G.purse = 300; h.goldRun = 300; G.deathsFloor = 0; G.rez = 0; h.potions = 0; floorComplete(); const afterExit = SAVE.banks.brannoc;
     startCampaignFloor(0, 1); scene = 'game'; G.purse += 700; h.goldRun += 700; defeat(); const afterDeath = SAVE.banks.brannoc; const purse = G.purse; bankAndReturn(); return { afterExit, afterDeath, purseAfterDeath: purse, final: SAVE.banks.brannoc }; });

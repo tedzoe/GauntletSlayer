@@ -55,7 +55,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return out; });
   chk('Theo rush/smash/spin cooldowns 0.6/0/10, spin 2.5s (Slayer: dashes and Smash have no cooldown, Destructo Spin ~10s)', [cds.theoCharge, cds.theoLeap, cds.theoSpin, cds.theoSpinCd], [0.6, 0, 2.5, 10]);
   chk('Isaac roll cd 1.5, i-frames 0.4', [cds.isaacRollCd, cds.isaacRollInv], [1.5, 0.4]);
-  chk('Vesper ghostwalk cd 4, i-frames 2.0', [cds.vesperGhostCd, cds.vesperGhostInv], [4, 2]);
+  chk('Vesper Ghostwalk: no cooldown, invincible only for the dash (Slayer Necromancer)', [cds.vesperGhostCd, cds.vesperGhostInv], [0, 0.27]);
   chk('Zoey teleport 48 i-frames then 6 open frames', [cds.zoeyTpInv, cds.zoeyTpDur], [0.8, 0.9]);
   chk('Zoey spell cooldowns', cds.zoeyCds, { 'ember+ember': 0, 'ember+rime': 6, 'ember+storm': 2, 'rime+rime': 0, 'rime+ember': 3, 'rime+storm': 20, 'storm+storm': 20, 'storm+rime': 1, 'storm+ember': 1 });
   chk('Gela Extreme Prejudice cd 9', cds.gelaExecCd, 9);
@@ -90,7 +90,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('shard meter: 40-35=5, blocked at 5, potion refills to 100-35', shard, [5, 5, 65, 0]);
   // ---- essence
   const ess = await ev(() => { TT.setup(['vesper']); TT.testRoom(); const v = G.heroes[0]; v.souls = 0; const g = TT.dummies(1, 'bonesoldier', 40)[0]; killFoe(G.foes[0], v); const a = v.souls; const e = mkFoe('hexcaller', v.x + 40, v.y); killFoe(e, v); return [a, v.souls, SPEC.vesper.raiseCost, SPEC.vesper.essenceMax]; });
-  chk('essence: +5 grunt, +25 elite, raise 20, max 100', ess, [5, 30, 20, 100]);
+  chk('Soul Power: +3 grunt, +10 elite, one soul = 10, max 100', ess, [3, 13, 10, 100]);
   // ---- crown
   const crown = await ev(() => { TT.setup(['brannoc']); TT.testRoom(); const h = G.heroes[0]; G.pickups = [{ kind: 'crown', x: h.x, y: h.y }]; updatePickups(0.016); const got = h.crown; G.purse = 0; G.pickups.push({ kind: 'gold', x: h.x, y: h.y, val: 10, src: 'mob' }); updatePickups(0.016); const gold = G.purse; h.inv = 0; hurtHero(h, 1, {}); const dropped = !h.crown && G.pickups.some(i => i.kind === 'crown');
     for (let i = 0; i < 60 * 4.9; i++) { h.x = 0; updatePickups(1 / 60); } const still = G.pickups.some(i => i.kind === 'crown'); for (let i = 0; i < 12; i++) updatePickups(1 / 60); return { got, gold, dropped, at4_9s: still, after5s: G.pickups.some(i => i.kind === 'crown'), slowLinger: +h.crownSlowT.toFixed(2) }; });

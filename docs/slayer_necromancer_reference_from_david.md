@@ -1,0 +1,16 @@
+# Necromancer (Lilith) mechanics reference, applies to Vesper Linda
+Source: Lein's Steam guide, https://steamcommunity.com/sharedfiles/filedetails/?id=1798796585 (David, Oct 25 2026)
+- A hybrid with mid range: more reach than Warrior or Valkyrie, less than Elf or Wizard. Strong, but easy to die with.
+- Skeleton Slash: a quick, weak attack at short to mid range. A summoned skeleton strikes, auto-adjusting its distance to hit the nearest target. Stuns small enemies. No minimum range.
+- Skeleton Smash: the hammer, her main damage, at mid range. Great against groups of light enemies. It is its own ENTITY: enemies see it and attack it, and it counts as a minion. It auto-corrects its distance but has a MINIMUM range; a zone right in front of her still stuns small enemies. A short cooldown between smashes, about one slash long, so slash fits in between ("dual wielding").
+- Ghostwalk: a short teleport dash with invincibility. Passing through enemies slows them, deals tiny damage and collects Soul Power. It does NOT change which way she faces.
+- Soul Power replaces a cooldown for her weapon ability. It comes from kills (more from bigger enemies; spawners give a lot, but only to whoever lands the last hit; relic and talisman kills count) and from Ghostwalking through enemies (a flat amount regardless of size).
+  - A meter under her, visible only to her player, plus a HUD number. Stages: empty, then tier 1 with 1 to 5 souls, which sets the strength (archer count or dominate length), then tier 2 (no extra effect, just a step toward full), then FULL, which adds a bonus: fire arrows for archers, faster attacking dominated enemies.
+  - Using the ability empties the meter. The meter is empty on spawn, revive and each new floor.
+  - When she kills a Bloated Mummy, the enemies its blast kills count for her.
+- Animation cancelling: standard attacks can be cancelled into other moves, and Ghostwalk can be cancelled any time by the weapon ability (an emergency brake). Cancels don't reset cooldowns. Order: hammer, then ability, then Ghostwalk, or hammer, Ghostwalk, ability. "Pivot": you can change facing as the ability fires.
+- Necrotic Vessel: Summon Skeletal Archers, up to 5 per use (one per soul), and they stack. They last 20s. Very fragile (die from any touch, a hit or two) and spawn BEHIND her. They briefly stun enemies as they rise from the ground. At full meter they shoot fire arrows. They earn Soul Power passively.
+- Scepter of the Vampire King: Dominate charms any non-mini-boss enemy around her for a time that scales with souls. At full meter, charmed enemies move and attack faster. Charmed enemies take altered damage and can't be hit by Skeleton Smash (use slash). It's the only weapon that heals: each soul gained heals her, so no healing at full meter.
+- Eternal Night (from comments): summons kamikaze ghosts, and the strong attack becomes a sniping orb with a small area of effect.
+- Dark Hunger talisman: a circle around her that slows and drains enemies to heal her. It doesn't make her immune. Brief vulnerable startup (cancellable with the weapon ability). Kills ghosts on contact.
+- Dark Remnant talisman (from comments): drops an object that pulls aggro and explodes for strong AoE when destroyed.

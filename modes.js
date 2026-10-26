@@ -83,7 +83,7 @@ function scaleFor(mode, n) {
 }
 function placeHeroes() {
   const st = G.map.starts.length ? G.map.starts : [{ x: G.map.w * T / 2, y: G.map.h * T / 2 }];
-  G.heroes.forEach((h, i) => { const s = st[i % st.length]; h.x = s.x + (st.length > 1 ? 0 : i * 26); h.y = s.y; h.kx = h.ky = 0; h.dash = null; h.charging = null; h.spin = 0; h.shieldOut = false; h.blocking = false; h.inv = Math.max(h.inv, 1.5); });
+  G.heroes.forEach((h, i) => { const s = st[i % st.length]; h.x = s.x + (st.length > 1 ? 0 : i * 26); h.y = s.y; h.kx = h.ky = 0; h.dash = null; h.charging = null; h.spin = 0; h.souls = 0; h.shieldOut = false; h.blocking = false; h.inv = Math.max(h.inv, 1.5); });
   if (G.allies) for (const a of G.allies) if (a.owner) { a.x = a.owner.x + R(-30, 30); a.y = a.owner.y + R(-30, 30); }
   updateCamera(true);
 }
@@ -193,7 +193,7 @@ function startHub() {
   const LABEL = { Q: 'World I · ' + WORLDS[0].short, W: 'World II · ' + WORLDS[1].short, Z: 'World III · ' + WORLDS[2].short, Y: 'The Hollow Throne', N: 'Endless Descent', A: 'Daily Arena', M: 'Peddler (Shop)', T: 'Mastery Tablet', K: 'Armory (Loadout)', H: 'Hero Shrine (change hero)', O: 'Lantern Post (Options)' };
   for (const it of G.map.items) if (LABEL[it.c]) G.stations.push({ id: it.c, x: it.x, y: it.y, label: LABEL[it.c] });
   renderMapCanvas();
-  for (const h of G.heroes) { h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 30; h.cd = {}; h.buff = {}; }
+  for (const h of G.heroes) { h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 0; h.cd = {}; h.buff = {}; }
   placeHeroes(); G.banner = { s: "Wayfarer's Rest", sub: G.heroes.map(h => `${h.def.name.toUpperCase()} ${bankOf(h.id)}G`).join(' · '), t: 2 };
 }
 function hubInteract(h, inp) {

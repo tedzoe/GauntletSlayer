@@ -456,3 +456,40 @@ Sources: `docs/slayer_warrior_reference_from_david.md` (Steam guide) and the Neo
 - **Demonic Cleave**: 6s cooldown. Rooted and invincible for 0.5s. A 140 cleave over about 290 degrees (everything except mid-back), radius 2.6m, plus a 1.2m stun ring on every side. This replaces the old 6m fire line.
 - **More of Thor (Titan)**: invincible from the start; rooted for 0.8s while transforming unless Rush is held.
 - **Guesses and differences**: the spin slide grip, Rush speed 1.5x, smash timing split (0.2s windup, 0.83s total), the 0.6s Rush spam guard, and Rush cancelling the Smash recovery. We have no egg-sac spawners, so "one-shots egg sacs" has nothing to apply to. Slash start-up is not slowed (it would cut DPS below Quick Shot).
+
+## Vesper Linda to the Slayer Necromancer guide (Oct 25 2026)
+Sources: `docs/slayer_necromancer_reference_from_david.md` (Steam guide) and the Neoseeker FAQ Lilith section.
+- **Skeleton Slash** (8, ~2.5/s): the strike lands at the nearest front foe's distance, up to 120 px, with no minimum range. It is wide, staggers small foes, and roots her while swinging.
+- **Skeleton Smash** (46 Lethal + 2 splash that still staggers, ~1/s):
+  - A hammer skeleton rises at the nearest foe's distance, clamped to 70-210 px (minimum range).
+  - The hammer is an ally entity (kind `hammer`), so foes target it.
+  - A small zone right in front of her staggers small foes.
+  - She is rooted for 0.6s; Ghostwalk or the ability cancels the root.
+  - Dominated foes are never hit by it.
+- **Ghostwalk**:
+  - No cooldown, invincible for the dash only, passes through foes. Each foe passed is slowed for 5s and takes 4.
+  - Each foe gives a flat 3 souls (up to 5 foes), whatever its size.
+  - Never turns her: she keeps the previous frame's facing.
+  - A 0.2s landing delay; another Ghostwalk or the ability skips it.
+  - The weapon ability cancels it mid-flight.
+- **Soul Power** (0-100):
+  - Bars 1-5 (10 each) set the strength; 50-100 is tier 2 (no extra effect); 100 is FULL (bonus).
+  - Kills give grunt 3, heavy 6, elite 10, boss 20, spawner 15, last hit only; minion kills count, dominated-foe kills don't.
+  - The blast of a Bloated Mummy she killed counts for her.
+  - The ability always empties it. It resets to 0 at spawn, on revive and on every new floor.
+- **Weapon abilities** (all run on Soul Power, no cooldown):
+  - Ossuary Staff: 1 warrior per soul (max 5) in front, 15s; FULL makes them tougher (x1.6 HP, 12 damage).
+  - Wraith Lantern: 2 shades per soul, 20 at FULL. Each hits one target for 28 and dies; they wait at her side indefinitely.
+  - Marrow Reliquary: 1 archer per soul (max 5), rising BEHIND her. They last 20s, have 16 HP, fire every 1.5s and stack (cap 25 minions in total). FULL gives fire arrows (22).
+  - Crimson Scepter (new): Dominate everything but bosses and mini-bosses within 90 px for 3/5/7/10/15s by souls; small foes stagger. FULL makes them move and attack x1.5 faster. Each soul bar filled from kills heals 2, but not while full.
+  - Rising minions stun nearby foes and keep David's deviation 6 eruption.
+- **Hungering Heart** (replaces Dread Mist as her base talisman):
+  - A 0.8s rooted, vulnerable cast; the weapon ability cuts it short and the drain still starts. Ghostwalk can't cancel it (FAQ).
+  - Then for 6s, an 80 px ring that follows her: 8 DPS, slows, heals her 4 HP/s per foe inside, and kills ghosts on contact. She is not immune.
+- **HUD**: her weapon-ability pip is the Soul meter (5 segments, then a tier-2 fill, white at FULL, with the soul count), never a cooldown sweep. Smash and dash keep their sweeps.
+- **Removed (ours, not in Slayer)**: the Bone Golem hold, Sacrificial Detonation, essence from slash hits, the 4s Ghostwalk cooldown with 2s of i-frames, and the starting 30 essence.
+- **Guesses and differences**:
+  - All soul gain amounts, the slash and smash ranges, the hammer life, the Dominate radius, the Hunger ring radius and the minion cap.
+  - The meter shows in the HUD only, not under her sprite.
+  - Not built: Eternal Night's Cold Bolt replacing the smash, and the Dark Remnant talisman.
+  - Death still kills a Ghostwalk only through the normal reaper rules.
