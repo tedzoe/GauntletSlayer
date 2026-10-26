@@ -47,7 +47,7 @@ const SPEC = {
     paladin: { hp: 200, uiHp: 100, speed: 0.95, iframes: 0.15, iframeNote: 'Righteous Advance start-up (armored for the whole dash)' },
   },
   // Warrior -> Sir Theo
-  theo: { combo: 7, strongHits: [4, 7], comboArc: 1.6, comboR: 58, finisherR: 1.5 * MTR, finisherFrames: 24,
+  theo: { combo: 7, strongHits: [4, 7], comboArc: 1.6, comboR: 58, superArc: 2.6, finisherR: 1.5 * MTR, finisherFrames: 24,
     chargeCd: 0.6, chargeDmg: 'medium', chargeDist: 230, chargeWidth: 6,   // Rush: Slayer dashes have no real cooldown (0.6s is our spam guard)
     rushStartup: 0.1, rushSpeedMul: 1.5, rushBump: 0.4, rushWin: 0.15, superRoot: 0.15, heavyStun: 1.0,   // short start-up, faster than running, heavy bump recovery
     smashCd: 0, smashWindup: 0.2, smashTime: 0.83, smashFwd: 34, smashR: 64, smashStunR: 110,   // Smash: 50 per 0.83s = ~60 DPS (reference ~60)

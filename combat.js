@@ -114,6 +114,7 @@ function hitFoe(f, dmg, o = {}) {
   const shatter = f.frz > 0 && tier >= 3 && !f.boss; if (shatter) dmg *= SHATTER.mul;   // frozen + T3/T4 = x2
   if ((o.tier >= 4 || o.lethal) && !f.boss && (!f.elite || (o.lethal && f.d.beh === 'caster')) && !f.heavy && f.type !== 'reaper') { f.hp = 0; text(f.x, f.y - 22, 'EXECUTE', '#ffcf5a'); killFoe(f, o.src, o); return true; }   // Lethal kills small foes and casters
   if (!f.boss) { const st = TIER_STAGGER[tier] * (f.heavy || f.elite ? (tier >= 3 ? 0.6 : 0.2) : 1); if (st > (o.stagger || 0)) o = Object.assign({}, o, { stagger: st }); if (tier >= 4) o = Object.assign({}, o, { knock: Math.max(o.knock || 0, 600) }); }
+  if (o.lightStun && (f.heavy || f.elite)) o = Object.assign({}, o, { stagger: 0 });   // Theo's normal slashes: heavies ignore the stagger
   if (o.src && o.src.isHero && f.charm > 0) { if (o.tag === 'bomb') return false; dmg *= 2; }   // charmed foes don't defend: x2 (Neoseeker FAQ); mortars and bombs spare them
   if (f.type === 'reaper' || f.invuln) {
     if (o.repel && f.type === 'reaper') repelReaper(f);

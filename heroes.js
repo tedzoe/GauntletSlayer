@@ -147,13 +147,15 @@ function theoSlash(h, idx) {
   h.atkT = (fin ? D.finRec : strong ? D.strongT : D.weakT) / hasteMul(h); h.lock = 0.1;
   moveEnt(h, Math.cos(h.fa) * 8, Math.sin(h.fa) * 8, false, g => tryGate(h, g));
   Snd.play(strong ? 'heavyswing' : 'swing');
-  if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, 'rgba(255,220,150,0.95)', 8, 0.4); h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }
-  if (strong) { swingFx(h, h.fa, 2.4, S.comboR + 10, 'rgba(255,255,255,0.98)', 8); G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: 2.9, r: S.comboR + 20, life: 0.22, max: 0.22, col: 'rgba(255,255,255,0.5)', w: 12, follow: h }); addTrauma(0.08);   // Super Slash: white trail
-    const set = new Set(); melee(h, h.fa, 2.4, S.comboR + 6, D.combo[idx], { set, knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3, tag: 'superSlash' });
+  const last = () => G.swings[G.swings.length - 1];
+  if (fin) { swingFx(h, h.fa, 6.28, S.finisherR + 10, '#ffd24a', 8, 0.4); last().cols = ['rgba(225,240,255,0.98)', '#ffd24a', '#ffd24a', '#ff9a3a', '#e8402a']; h.finT = S.finisherFrames / 60; h.finSet = new Set(); addTrauma(0.12); hitstop(0.05); return; }   // hit 7: blue-white flash, then a full GOLD ring fading to orange-red
+  if (strong) { swingFx(h, h.fa, S.superArc, S.comboR + 10, 'rgba(230,244,255,0.98)', 10, 0.3); last().cols = ['rgba(230,244,255,0.98)', 'rgba(230,244,255,0.98)', 'rgba(255,246,225,0.9)'];   // Super Slash: thick icy-white crescent, stays white ~0.2s
+    G.swings.push({ x: h.x, y: h.y, a: h.fa, arc: S.superArc + 0.3, r: S.comboR + 18, life: 0.24, max: 0.24, col: 'rgba(200,228,255,0.55)', w: 12, follow: h }); addTrauma(0.08);
+    const set = new Set(); melee(h, h.fa, S.superArc, S.comboR + 10, D.combo[idx], { set, knock: 260, stagger: 0.8, hitstop: 0.05, tier: 3, tag: 'superSlash' });
     for (const f of set) if (HIT_FOE(f) && (f.heavy || f.elite) && !f.boss) f.stag = Math.max(f.stag, S.heavyStun);
     return; }
-  swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.85)', 5); G.swings[G.swings.length - 1].dir = idx % 2 ? -1 : 1;
-  const set = new Set(); melee(h, h.fa, S.comboArc, S.comboR, D.combo[idx], { set, knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1 });
+  swingFx(h, h.fa, S.comboArc, S.comboR, 'rgba(255,240,210,0.9)', 5, 0.2); last().dir = idx % 2 ? -1 : 1; last().cols = ['rgba(255,244,220,0.95)', 'rgba(255,150,50,0.9)', 'rgba(220,40,30,0.85)'];   // cream-white -> orange -> red
+  const set = new Set(); melee(h, h.fa, S.comboArc, S.comboR, D.combo[idx], { set, knock: 110, stagger: 0.15, hitstop: 0.035, tier: 1, lightStun: true });
   for (const f of set) if (HIT_FOE(f) && (f.d.beh === 'caster' || f.conjuring > 0)) { f.conjuring = 0; if (f.state === 'windup') f.state = 'move'; }   // weak slashes interrupt casters
 }
 function theoRushGo(h) {
@@ -163,7 +165,7 @@ function theoRushGo(h) {
     if (f.heavy || f.elite || f.boss) { hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 120, stagger: 0.8, src: h, tag: 'charge', tier: 1 }); if (!f.boss) f.stag = Math.max(f.stag, 0.8); h.dash = null; h.z = 0; h.lock = S.rushBump; h.atkT = Math.max(h.atkT, S.rushBump); h.rushWin = 0; text(h.x, h.y - 30, 'BLOCKED', '#ffcf7a'); Snd.play('clank'); return; }   // can't pass a heavy
     hitFoe(f, heroDmg(h, D.rush), { x: h.x, y: h.y, knock: 340, stagger: 1.0, src: h, tag: 'charge', tier: 1 }); };   // tackles lesser foes aside (Knockdown Small)
   if (h.mods.leap) startDash(h, h.rushAng, S.chargeDist + 20, 0.32, { rush: true, jump: true, armor: true, inv: true, onHitFoe: thru, hitR: S.chargeWidth, onEnd: () => { Snd.play('slam'); addTrauma(0.3); ring(h.x, h.y, 70, '#ffcf7a', 0.3, 6); areaHit(h.x, h.y, 70, heroDmg(h, D.rush), { src: h, knock: 300, stagger: 0.8, tag: 'charge', tier: 1 }); } });   // Bull Rush mastery: leap smash
-  else startDash(h, h.rushAng, S.chargeDist, S.chargeDist / (h.baseSpeed * S.rushSpeedMul), { rush: true, trail: 'rgba(255,200,140,0.5)', hitR: S.chargeWidth, armor: true, inv: true, onHitFoe: thru });
+  else startDash(h, h.rushAng, S.chargeDist, S.chargeDist / (h.baseSpeed * S.rushSpeedMul), { rush: true, trail: 'rgba(235,60,80,0.55)', hitR: S.chargeWidth, armor: true, inv: true, onHitFoe: thru });
 }
 function theoLeap(h) {   // Leap Attack: jumps OVER enemies (heavies too), extends the invincibility, lands a Smash
   const S = SPEC.theo, D = DEV.dmg.theo; Snd.play('leap');

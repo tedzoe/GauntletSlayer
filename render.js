@@ -332,7 +332,7 @@ const DECOR_ART = {
 function drawSwing(s) {
   const x = s.follow ? s.follow.x : s.x, y = s.follow ? s.follow.y : s.y, k = s.life / s.max;
   if (s.tele) { ctx.fillStyle = s.col; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, s.r, s.a - s.arc / 2, s.a + s.arc / 2); ctx.closePath(); ctx.fill(); ctx.strokeStyle = 'rgba(255,80,60,0.8)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, s.r * (1 - k), s.a - s.arc / 2, s.a + s.arc / 2); ctx.stroke(); return; }
-  ctx.globalAlpha = Math.min(1, k * 1.6); ctx.strokeStyle = s.col; ctx.lineCap = 'round';
+  ctx.globalAlpha = Math.min(1, k * 1.6); ctx.strokeStyle = s.cols ? s.cols[Math.min(s.cols.length - 1, Math.floor((1 - k) * s.cols.length))] : s.col; ctx.lineCap = 'round';   // cols: the trail burns through these over its life
   const prog = 1 - k, a0 = s.a - s.arc / 2, a1 = s.arc >= 6 ? a0 + 6.28 : a0 + s.arc * Math.min(1, prog * 2.2 + 0.25);
   for (let i = 0; i < 3; i++) { ctx.lineWidth = s.w * (1 - i * 0.3); ctx.beginPath(); ctx.arc(x, y, s.r * (0.72 + i * 0.13), a0, a1); ctx.stroke(); }
   ctx.lineCap = 'butt'; ctx.globalAlpha = 1;
