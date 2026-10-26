@@ -1,6 +1,6 @@
 // Runs every headless suite in order and prints a summary. Needs Chrome (set CHROME=/path/to/chrome if it is not found).
 const { spawnSync } = require('child_process'), path = require('path');
-const SUITES = ['smoke', 'full', 'spectest', 'weapontest', 'enemytest', 'xrealmtest', 'spr', 'sprfile', 'door', 'body', 'perf', 'devtest', 'roomtest', 'gatebanktest'];
+const SUITES = ['smoke', 'full', 'spectest', 'weapontest', 'enemytest', 'xrealmtest', 'spr', 'sprfile', 'door', 'body', 'perf', 'devtest', 'roomtest', 'gatebanktest', 'brandtest'];
 let bad = 0;
 for (const s of SUITES) {
   const r = spawnSync(process.execPath, [path.join(__dirname, s + '.js')], { encoding: 'utf8', timeout: 600000 });

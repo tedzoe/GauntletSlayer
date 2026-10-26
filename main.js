@@ -9,6 +9,16 @@ let titleDev = 'kb1';
 function allDevs() { return ['kb1', 'kb2', ...Input.pads().map(p => 'pad' + p.index)]; }
 function anyPressed(btn, devs = allDevs()) { for (const d of devs) if (Input.read(d).pressed[btn]) return d; return null; }
 
+// studio splash on page load: fade in, hold, fade out; any key, click or pad button skips. Automated browsers skip it unless ?splash is set.
+const SPLASH = { t: 0, wait: 0, skip: false };
+if (navigator.webdriver && !/[?&]splash\b/.test(location.search)) scene = 'title';
+addEventListener('keydown', () => { SPLASH.skip = true; }, true); addEventListener('pointerdown', () => { SPLASH.skip = true; }, true);
+function tickSplash() {
+  if (!brandReady(BRAND.logo) && SPLASH.wait < SPEC.splash.maxWait) { SPLASH.wait += DT; if (!SPLASH.skip) return; }
+  for (const gp of Input.pads()) if (gp.buttons && gp.buttons.some(b => b.pressed)) SPLASH.skip = true;
+  SPLASH.t += DT;
+  if (SPLASH.skip || SPLASH.t >= splashLen()) { scene = 'title'; sceneT = 0; }
+}
 function tickTitle() {
   if (Input.keyPressed('KeyC')) { scene = 'controls'; CONTROLS_BACK = 'title'; sceneT = 0; return; }
   const d = sceneT > 0.4 && anyPressed('confirm'); if (d) { Snd.init(); Snd.play('confirm'); SEL.slots = [{ dev: d, idx: 0, ready: false }]; scene = 'select'; sceneT = 0; }
@@ -77,14 +87,14 @@ function tick() {
   if (Input.keyPressed('KeyM') && !(MENU)) { Snd.init(); Snd.toggle(); }
   if (Input.keyPressed('KeyF') && scene !== 'game') { (document.fullscreenElement ? document.exitFullscreen() : cv.requestFullscreen()).catch(() => { }); }
   try {
-    if (scene === 'title') tickTitle(); else if (scene === 'select') tickSelect(); else if (scene === 'controls') tickControls();
+    if (scene === 'splash') tickSplash(); else if (scene === 'title') tickTitle(); else if (scene === 'select') tickSelect(); else if (scene === 'controls') tickControls();
     else if (scene === 'results') { tickResults(); updateFx(DT); } else if (scene === 'game') tickGame(DT);
   } catch (e) { ERRORS.push(e.stack || String(e)); console.error(e); }
   Input.commit(allDevs());
 }
 function draw() {
   try {
-    if (scene === 'title') drawTitle(); else if (scene === 'select') drawSelect(); else if (scene === 'controls') drawControls();
+    if (scene === 'splash') drawSplash(); else if (scene === 'title') drawTitle(); else if (scene === 'select') drawSelect(); else if (scene === 'controls') drawControls();
     else if (scene === 'results') drawResults();
     else if (scene === 'game') { drawWorld(); drawStations(); drawHUD(); drawMenu(); DEBUG.draw(); }
   } catch (e) { ERRORS.push(e.stack || String(e)); console.error(e); }
@@ -97,5 +107,5 @@ function frame(now) {
 }
 requestAnimationFrame(frame);
 // debug / test hooks
-window.__game = { G, get scene() { return scene; }, set scene(v) { scene = v; }, get SAVE() { return SAVE; }, ERRORS, PARTY, SEL, startParty, startHub, startCampaignFloor, startEndlessFloor, startArena, openStation, tick, draw,
+window.__game = { SPLASH, G, get scene() { return scene; }, set scene(v) { scene = v; }, get SAVE() { return SAVE; }, ERRORS, PARTY, SEL, startParty, startHub, startCampaignFloor, startEndlessFloor, startArena, openStation, tick, draw,
   get MENU() { return MENU; }, get RESULTS() { return RESULTS; }, closeMenu, mkFoe, killFoe, beginRun, resultOpts, Input };

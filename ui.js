@@ -1,6 +1,6 @@
 'use strict';
 const GAME_TITLE = 'GAUNTLET', GAME_SUB = 'SLAYER';
-let scene = 'title', sceneT = 0, RESULTS = null, MENU = null, PAUSE = null, menuGuard = 0;
+let scene = 'splash', sceneT = 0, RESULTS = null, MENU = null, PAUSE = null, menuGuard = 0;
 const FONT = (s, b = 'bold') => `${b} ${s}px "Trebuchet MS", Verdana, sans-serif`;
 function txt(s, x, y, size, col = '#fff', align = 'left', b = 'bold') { ctx.font = FONT(size, b); ctx.textAlign = align; ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillText(s, x + 1.5, y + 1.5); ctx.fillStyle = col; ctx.fillText(s, x, y); }
 function panel(x, y, w, h, a = 0.78, border = '#6a5a3a') { ctx.fillStyle = `rgba(14,10,8,${a})`; ctx.fillRect(x, y, w, h); ctx.strokeStyle = border; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.strokeStyle = 'rgba(255,220,150,0.08)'; ctx.strokeRect(x + 4, y + 4, w - 8, h - 8); }
@@ -286,6 +286,18 @@ function drawBackdrop(t) {
   for (let i = 0; i < 60; i++) { const x = (hash(i, 3) * W + t * 12 * (0.3 + hash(i, 7))) % W, y = H - ((hash(i, 5) * H + t * 30 * (0.4 + hash(i, 9))) % H); circ(x, y, 1 + hash(i, 1) * 2, `rgba(255,${120 + hash(i, 2) * 100 | 0},60,${0.25 + 0.4 * hash(i, 4)})`); }
   ctx.fillStyle = '#07050a'; ctx.beginPath(); ctx.moveTo(0, H); for (let x = 0; x <= W; x += 48) ctx.lineTo(x, H - 90 - hash(x, 1) * 70 - (x % 96 ? 0 : 40)); ctx.lineTo(W, H); ctx.fill();
 }
+// ---------------------------------------------------------------- Tezois Studio branding
+const BRAND = { logo: new Image(), small: new Image() };
+BRAND.logo.src = 'assets/brand/tezois_logo_512.jpg'; BRAND.small.src = 'assets/brand/tezois_mark_64.png';
+const brandReady = im => im.complete && im.naturalWidth > 0;
+function splashLen() { return SPEC.splash.fadeIn + SPEC.splash.hold + SPEC.splash.fadeOut; }
+function drawSplash() {
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
+  const S = SPEC.splash, t = SPLASH.t;
+  const a = t < S.fadeIn ? t / S.fadeIn : t < S.fadeIn + S.hold ? 1 : Math.max(0, 1 - (t - S.fadeIn - S.hold) / S.fadeOut);
+  if (!brandReady(BRAND.logo)) return;
+  ctx.globalAlpha = a; const s = S.logo; ctx.drawImage(BRAND.logo, W / 2 - s / 2, H / 2 - s / 2 - 10, s, s); ctx.globalAlpha = 1;
+}
 function drawTitle() {
   drawBackdrop(sceneT);
   const k = Math.min(1, sceneT * 1.5);
@@ -303,6 +315,9 @@ function drawTitle() {
   txt('C — controls    ·    up to 4 players: keyboard+mouse, a second keyboard cluster, and gamepads', W / 2, 500, 12, '#bba88a', 'center', 'normal');
   txt(`Banked ${bankTotal()} gold · Worlds ${['w1', 'w2', 'w3'].filter(w => SAVE.progress[w] >= 4).length}/3 · Endless best ${SAVE.endless.best} · Arena best ${SAVE.arena.best}/6`, W / 2, 530, 12, '#998a70', 'center', 'normal');
   txt('An original action-dungeon crawler. All art and sound are generated in code.', W / 2, H - 16, 10, '#665a4a', 'center', 'normal');
+  // studio credit, bottom-right and out of the way
+  ctx.globalAlpha = k * 0.85; if (brandReady(BRAND.small)) { ctx.globalCompositeOperation = 'lighter'; ctx.drawImage(BRAND.small, W - 138, H - 41, 28, 28); ctx.globalCompositeOperation = 'source-over'; }
+  txt('Tezois Studio', W - 104, H - 22, 11, '#8fc8ff', 'left', 'normal'); ctx.globalAlpha = k;
   ctx.globalAlpha = 1;
 }
 const SEL = { slots: [] }; // [{dev, idx, ready}]

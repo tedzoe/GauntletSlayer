@@ -101,7 +101,12 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
 
 ## Credits
 
-Gauntlet Slayer is an **unofficial fan tribute** to Gauntlet: Slayer Edition. It is not affiliated with or endorsed by the owners of the Gauntlet name. All art and audio are original: the hero art is our own, and the monsters, levels, effects and sound are made in code.
+<p align="center">
+  <img src="assets/brand/tezois_logo_512.jpg" alt="Tezois Studio" width="140"><br>
+  <b>A Tezois Studio game</b>
+</p>
+
+Gauntlet Slayer is made by **Tezois Studio**. It is an **unofficial fan tribute** to Gauntlet: Slayer Edition. It is not affiliated with or endorsed by the owners of the Gauntlet name. All art and audio are original: the hero art is our own, and the monsters, levels, effects and sound are made in code.
 
 <details>
 <summary><b>For developers</b></summary>
