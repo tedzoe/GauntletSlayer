@@ -14,30 +14,30 @@
    "frames": 4,
    "fps": 4,
    "loop": true,
-   "frameW": 84,
-   "frameH": 121,
-   "footY": 116,
-   "originX": 42
+   "frameW": 86,
+   "frameH": 135,
+   "footY": 130,
+   "originX": 43
   },
   "run": {
    "file": "run_{dir}.png",
    "frames": 6,
    "fps": 10,
    "loop": true,
-   "frameW": 96,
-   "frameH": 127,
-   "footY": 121,
-   "originX": 48
+   "frameW": 102,
+   "frameH": 141,
+   "footY": 135,
+   "originX": 51
   },
   "attack": {
    "file": "attack_{dir}.png",
    "frames": 3,
    "fps": 14,
    "loop": false,
-   "frameW": 120,
-   "frameH": 116,
-   "footY": 107,
-   "originX": 60
+   "frameW": 126,
+   "frameH": 123,
+   "footY": 115,
+   "originX": 63
   },
   "hurt": {
    "file": "hurt_{dir}.png",
@@ -45,8 +45,8 @@
    "fps": 10,
    "loop": false,
    "frameW": 94,
-   "frameH": 135,
-   "footY": 125,
+   "frameH": 146,
+   "footY": 136,
    "originX": 47
   },
   "death": {
@@ -54,26 +54,26 @@
    "frames": 3,
    "fps": 5,
    "loop": false,
-   "frameW": 118,
-   "frameH": 105,
-   "footY": 100,
-   "originX": 59
+   "frameW": 120,
+   "frameH": 108,
+   "footY": 102,
+   "originX": 60
   },
   "spin": {
    "file": "spin_{dir}.png",
    "frames": 4,
    "fps": 16,
    "loop": true,
-   "frameW": 84,
-   "frameH": 121,
-   "footY": 116,
-   "originX": 42
+   "frameW": 86,
+   "frameH": 135,
+   "footY": 130,
+   "originX": 43
   }
  },
- "frameW": 84,
- "frameH": 121,
- "footY": 116,
- "originX": 42,
+ "frameW": 86,
+ "frameH": 135,
+ "footY": 130,
+ "originX": 43,
  "bodyScale": 1.25,
  "hitbox": 15,
  "movement": {

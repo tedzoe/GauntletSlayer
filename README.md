@@ -246,7 +246,9 @@ To swap in new art, replace the files, edit the manifest, then run `python3 tool
 **Sprite pipeline** (`tools/sprite_pipeline/`, Python + Pillow): keys the concept sheets' navy background to transparency,
 segments figures, normalizes every hero's front idle to the same stored body height, and builds the strips. Idle frames come
 straight from the concept/master sheets; run cycles, hurt/death motion and attack timing are procedural transforms of the
-generated poses (`build_sprites.py <hero>`; `build_sprites.py minions` for Vesper's dead).
+generated poses (`build_sprites.py <hero>`; `build_sprites.py minions` for Vesper's dead). Sir Theo's source figures were
+chibi-proportioned; `theo_head_fix.py` shrinks his head and lengthens his shins so he matches the other five, and
+`build_sprites.py` uses those fixed figures when they exist.
 
 ## Files
 - `index.html`: entry point.

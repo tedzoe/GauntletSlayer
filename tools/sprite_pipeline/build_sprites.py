@@ -13,9 +13,15 @@ SEG = 'seg'
 CONC = {'theo': 'theo_concept.jpg', 'zoey': 'zoey_concept.jpg', 'isaac': 'isaac_concept.jpg', 'paladin': 'paladin_master_idle.jpg'}
 DIRS = ['down', 'up', 'left', 'right']
 
+# proportion-fixed figures (theo_head_fix.py: smaller head, longer shins) override the raw segments when present
+PFIX = '/workspace/spritework/seg_theo_fix'
+def _src(stem):
+    p = f'{PFIX}/{stem}.png'
+    return p if os.path.exists(p) else f'{SEG}/{stem}.png'
+
 def load(sheet, i):
     if sheet == 'idle': return None
-    return Image.open(f'{SEG}/{sheet}_{i}.png').convert('RGBA')
+    return Image.open(_src(f'{sheet}_{i}')).convert('RGBA')
 
 def mirror(im): return ImageOps.mirror(im)
 
@@ -94,6 +100,8 @@ R = {
 SRC_IDLE = {'gela': 'gela_master', 'vesper': 'vesper_master'}
 
 def idle_figures(name):
+    if os.path.exists(f'{PFIX}/idle_{name}_0.png'):
+        return [Image.open(f'{PFIX}/idle_{name}_{i}.png').convert('RGBA') for i in range(4)]
     if name in SRC_IDLE:
         return [Image.open(f'{SEG}/{SRC_IDLE[name]}_{i}.png').convert('RGBA') for i in range(4)]
     k = key(Image.open('/workspace/hero-concepts/' + CONC[name]))
@@ -142,7 +150,8 @@ def fwd(d, k):
 def build(name):
     r = R[name]
     idle = idle_figures(name)
-    for i, x in enumerate(idle): x.save(f'{SEG}/idle_{name}_{i}.png')
+    if not os.path.exists(f'{PFIX}/idle_{name}_0.png'):
+        for i, x in enumerate(idle): x.save(f'{SEG}/idle_{name}_{i}.png')
     s_idle = H / body_h(idle[0])
     ref_h = body_h(idle[0]) * s_idle  # == H
     # per-sheet scale
