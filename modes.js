@@ -272,7 +272,7 @@ function roomDoors(r) {   // the first walkable tile outside the room on every o
   for (const i of set) { const x = i % m.w, y = (i / m.w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue; const j = ny * m.w + nx; if (set.has(j)) continue; const t = m.t[j]; if (t === TL.FLOOR || t === TL.SPIKE) out.add(j); } }
   return [...out];
 }
-const battleFoes = B => G.foes.filter(f => ALIVE(f) && f.type !== 'reaper' && f.charm <= 0 && (f.room === B.r || B.set.has(Math.floor(f.y / T) * G.map.w + Math.floor(f.x / T))));
+const battleFoes = B => G.foes.filter(f => ALIVE(f) && f.type !== 'reaper' && f.charm <= 0 && (f.battleR === B.r || B.set.has(Math.floor(f.y / T) * G.map.w + Math.floor(f.x / T))));   // a room foe that wandered out before the lock is not locked in, so it doesn't hold the gates
 const battleSpawners = B => G.spawners.filter(s => s.hp > 0 && s.room === B.r);
 function lockBattle(r) {
   const m = G.map, S = SPEC.battle, doors = roomDoors(r); if (!doors.length) { (m.cleared = m.cleared || {})[r] = true; return; }
@@ -300,8 +300,8 @@ function battleSpawn(B, type) {
     let x, y; if (rise) { const i = pick(tiles); x = (i % m.w + 0.5) * T; y = (((i / m.w) | 0) + 0.5) * T; } else { const s = pick(sp), a = R(0, 6.28); x = s.x + Math.cos(a) * (s.r + 18); y = s.y + Math.sin(a) * (s.r + 18); }
     if (!B.set.has(Math.floor(y / T) * m.w + Math.floor(x / T)) || collide(x, y, 14) || G.heroes.some(h => !h.dead && hyp(h.x - x, h.y - y) < S.minHeroDist)) continue;
     const tier = G.mode === 'endless' ? Math.min(3, 1 + Math.floor(G.endless / 25)) : 1;
-    if (rise) G.hazards.push({ kind: 'tele', x, y, r: 22, delay: S.riseTime, t: 0, col: '#8a6a40', waveSpawn: true, battle: true, onFire: hz => { const f = mkFoe(type, hz.x, hz.y, { tier, spawned: true }); f.room = B.r; f.stag = Math.max(f.stag || 0, S.riseStun); f.risen = 0.6; burst(hz.x, hz.y, '#6a5030', 18, 140, 4, 0.7); decal(hz.x, hz.y, 16, 'rgba(40,25,10,0.45)', 20); } });   // rises out of the dirt
-    else { const f = mkFoe(type, x, y, { tier, spawned: true }); f.room = B.r; burst(x, y, '#c9b08a', 10, 120, 3, 0.5); }
+    if (rise) G.hazards.push({ kind: 'tele', x, y, r: 22, delay: S.riseTime, t: 0, col: '#8a6a40', waveSpawn: true, battle: true, onFire: hz => { const f = mkFoe(type, hz.x, hz.y, { tier, spawned: true }); f.room = B.r; f.battleR = B.r; f.stag = Math.max(f.stag || 0, S.riseStun); f.risen = 0.6; burst(hz.x, hz.y, '#6a5030', 18, 140, 4, 0.7); decal(hz.x, hz.y, 16, 'rgba(40,25,10,0.45)', 20); } });   // rises out of the dirt
+    else { const f = mkFoe(type, x, y, { tier, spawned: true }); f.room = B.r; f.battleR = B.r; burst(x, y, '#c9b08a', 10, 120, 3, 0.5); }
     return true;
   }
   return false;
@@ -345,13 +345,38 @@ function updateArena(dt) {
     A.spawnQ = A.spawnQ || [];
     A.t -= dt;
     if (A.queue.length && A.t <= 0) { A.t = 0.35; const type = A.queue.shift(); spawnWaveFoe(type); }
-    const left = G.foes.filter(f => ALIVE(f) && f.type !== 'reaper').length + A.queue.length + G.hazards.filter(h => h.waveSpawn).length;
+    const foes = arenaFoes(), pend = G.hazards.filter(h => h.waveSpawn && h.arena).length;
+    const left = foes.length + A.queue.length + pend;
     A.left = left;
+    if (left && arenaGuard(A, foes, dt)) return;
     if (left === 0) {
       if (A.wave >= A.waves) { A.state = 'done'; arenaDone(); }
       else { A.state = 'break'; A.t = 4; msg(`Wave ${A.wave} cleared!`, '#ffd27a', 2); Snd.play('wavedone'); if (A.kind === 'arena') { G.purse += 120 * A.wave; text(G.heroes[0].x, G.heroes[0].y - 40, `+${120 * A.wave} gold`, '#ffd84a', true); mastery(G.heroes[0], 'arenaWaves', 1); for (const h of G.heroes.slice(1)) mastery(h, 'arenaWaves', 1); } dropWaveSupplies(); }
     }
   }
+}
+// Wave progress counts only what is locked in with the party: this wave's own spawns (wherever they are) plus any foe standing
+// inside the arena. Foes and spawners elsewhere on the floor, Death and charmed foes never hold a wave open.
+const inArena = (x, y) => { const m = G.map; return !m.arenaSet || !m.arenaSet.size || m.arenaSet.has(Math.floor(y / T) * m.w + Math.floor(x / T)); };
+function arenaFoes() { return G.foes.filter(f => ALIVE(f) && f.type !== 'reaper' && !(f.charm > 0) && (f.arenaWave || inArena(f.x, f.y))); }
+// Soft-lock guard: if nothing changes for a while, stragglers are pulled into the arena, and after a long stall they crumble.
+function arenaGuard(A, foes, dt) {
+  const S = SPEC.arenaGuard, sig = foes.length + ':' + Math.round(foes.reduce((a, f) => a + f.hp, 0)) + ':' + A.queue.length + ':' + A.wave;
+  if (sig !== A.sig) { A.sig = sig; A.stall = 0; A.pullT = 0; return false; }
+  A.stall = (A.stall || 0) + dt;
+  if (A.stall >= S.clearAfter) {
+    for (const f of foes) { burst(f.x, f.y, '#c060ff', 12, 120, 3, 0.5); f.hp = 0; f.dead = true; f.noLoot = true; }
+    A.queue.length = 0; G.hazards = G.hazards.filter(h => !(h.waveSpawn && h.arena)); A.stall = 0; A.sig = ''; msg('The stragglers crumble to dust.', '#c8a0ff', 2.5);
+    (G.arenaLog = G.arenaLog || []).push({ ev: 'clear', wave: A.wave, n: foes.length }); return true;
+  }
+  if (A.stall >= S.pullAfter && (A.pullT -= dt) <= 0) {
+    A.pullT = S.pullEvery; const tiles = arenaTiles(), m = G.map; let n = 0;
+    for (const f of foes) { if (inArena(f.x, f.y) && G.heroes.some(h => !h.dead && hyp(h.x - f.x, h.y - f.y) < 8 * T)) continue;
+      for (let k = 0; k < 20; k++) { const i = pick(tiles), x = (i % m.w + 0.5) * T, y = (Math.floor(i / m.w) + 0.5) * T; if (collide(x, y, f.r)) continue;
+        burst(f.x, f.y, '#c060ff', 10, 120, 3, 0.5); f.x = x; f.y = y; f.kx = f.ky = 0; f.awake = true; burst(x, y, '#c060ff', 14, 120, 3, 0.5); n++; break; } }
+    if (n) (G.arenaLog = G.arenaLog || []).push({ ev: 'pull', wave: A.wave, n });
+  }
+  return false;
 }
 function arenaTiles() { const m = G.map; if (m.arenaTiles.length) return m.arenaTiles; const out = []; for (let i = 0; i < m.t.length; i++) if (m.t[i] === TL.FLOOR) out.push(i); return out; }
 function spawnWaveFoe(type) {
@@ -359,7 +384,7 @@ function spawnWaveFoe(type) {
   for (let k = 0; k < 30; k++) {
     const i = pick(tiles), x = (i % G.map.w + 0.5) * T, y = (Math.floor(i / G.map.w) + 0.5) * T;
     if (G.heroes.some(h => !h.dead && hyp(h.x - x, h.y - y) < 200) || collide(x, y, 14)) continue;
-    G.hazards.push({ kind: 'tele', x, y, r: 24, delay: 0.7, t: 0, col: '#c060ff', waveSpawn: true, onFire: hz => { mkFoe(type, hz.x, hz.y, { tier: 1 + Math.floor(G.arena.wave / 3), spawned: true }); burst(hz.x, hz.y, '#c060ff', 14, 120, 3, 0.5); } });
+    G.hazards.push({ kind: 'tele', x, y, r: 24, delay: 0.7, t: 0, col: '#c060ff', waveSpawn: true, arena: true, onFire: hz => { const f = mkFoe(type, hz.x, hz.y, { tier: 1 + Math.floor(G.arena.wave / 3), spawned: true }); f.arenaWave = G.arena ? G.arena.wave : 1; burst(hz.x, hz.y, '#c060ff', 14, 120, 3, 0.5); } });
     return;
   }
 }

@@ -122,6 +122,7 @@ const SPEC = {
   // Slayer camera: zooms out to frame a big battle room plus every player, back to 1x in corridors and small rooms
   // Slayer battle rooms: large rooms lock with iron gates when they wake and send waves; gates open when the room is clear
   battle: { kinds: ['L'], firstDelay: 1.6, waves: 2, wavesDeep: 3, deepEndless: 20, waveBase: 4, wavePer: 2, nextAt: 2, spawnGap: 0.3, riseShare: 0.5, riseTime: 0.9, riseStun: 0.6, minHeroDist: 150, stall: 25, pullEvery: 0.5, doorClear: 1.5 },
+  arenaGuard: { pullAfter: 15, pullEvery: 5, clearAfter: 45 },   // arena soft-lock guard: no wave progress for 15s pulls stragglers in, 45s clears them
   cam: { battleKinds: ['L', 'A'], margin: 1.5 * 32, hud: 96, min: 0.58, coopPad: 120, rate: 2.2, follow: 0.14, maxDpr: 2.5 },
   splash: { fadeIn: 0.6, hold: 2.0, fadeOut: 0.6, maxWait: 1.5, logo: 400 },   // Tezois Studio splash on page load (seconds, logo px)   // gate crossings bank carried gold (min amount to trigger, HUD flash seconds)
   crown: { goldMul: 2, floatTime: 5, endBonus: 500, slow: 0.1, aggroR: 10 * MTR },
