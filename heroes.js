@@ -53,7 +53,7 @@ function updateHero(h, inp, dt) {
   // (shields have no stamina: David / Slayer Valkyrie rule)
   if (SAVE.settings.hunger && G.mode !== 'hub') { h.hp -= dt * 0.8 * HP_SCALE; if (h.hp <= 0) { killHero(h); return; } }
   // aim
-  if (inp.aim === 'mouse') { const wx = Input.mouse.x + G.cam.x, wy = Input.mouse.y + G.cam.y; h.aimPt = { x: wx, y: wy }; const a = Math.atan2(wy - h.y, wx - h.x); h.ax = Math.cos(a); h.ay = Math.sin(a); }
+  if (inp.aim === 'mouse') { const wx = Input.mouse.x / camZ() + G.cam.x, wy = Input.mouse.y / camZ() + G.cam.y; h.aimPt = { x: wx, y: wy }; const a = Math.atan2(wy - h.y, wx - h.x); h.ax = Math.cos(a); h.ay = Math.sin(a); }
   else if (inp.aim === 'stick') { h.ax = inp.ax; h.ay = inp.ay; h.aimPt = null; }
   else if (inp.mx || inp.my) { h.ax = inp.mx; h.ay = inp.my; h.aimPt = null; }
   let fa = Math.atan2(h.ay, h.ax);
@@ -74,7 +74,7 @@ function updateHero(h, inp, dt) {
     h.vx = inp.mx * spd; h.vy = inp.my * spd;
     if (mx || my) { moveEnt(h, mx, my, false, g => tryGate(h, g)); h.walk += dt * 10; }
   }
-  if (G.heroes.length > 1 && G.mode !== 'hub') { const ox = h.x, oy = h.y; h.x = clamp(h.x, G.cam.x + 16, G.cam.x + W - 16); h.y = clamp(h.y, G.cam.y + 70, G.cam.y + H - 16); if ((h.x !== ox || h.y !== oy) && collide(h.x, h.y, h.r, false)) { h.x = ox; h.y = oy; } }   // the shared-screen leash never shoves anyone into a wall
+  if (G.heroes.length > 1 && G.mode !== 'hub') { const ox = h.x, oy = h.y; const tg = camTarget(), vw = W / tg.z, vh = H / tg.z, cx0 = tg.cx - vw / 2, cy0 = tg.cy - vh / 2 - 20; h.x = clamp(h.x, cx0 + 16, cx0 + vw - 16); h.y = clamp(h.y, cy0 + 70 / tg.z, cy0 + vh - 16);   /* leash to the view the camera is heading for, so a zoom in progress never yanks anyone */ if ((h.x !== ox || h.y !== oy) && collide(h.x, h.y, h.r, false)) { h.x = ox; h.y = oy; } }   // the shared-screen leash never shoves anyone into a wall
   antiStuck(h, inp, dt);
   if (G.mode === 'hub') return hubInteract(h, inp);
   if (inp.pressed.dash && !h.dash && heroDash(h, inp)) { /* dashed this tick */ }

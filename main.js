@@ -80,7 +80,7 @@ function tickGame(dt) {
   for (const c of G.hands) c.life -= dt; G.hands = G.hands.filter(c => c.life > 0);
   if (G.banner) { if (!G.banner.max) G.banner.max = G.banner.t; G.banner.t -= dt; if (G.banner.t <= 0) G.banner = null; }
   updateMode(dt);
-  if (scene === 'game') { updateCamera(false); updateFx(dt); }
+  if (scene === 'game') { updateCamera(false, dt); updateFx(dt); }
 }
 function tick() {
   sceneT += DT;
@@ -92,7 +92,15 @@ function tick() {
   } catch (e) { ERRORS.push(e.stack || String(e)); console.error(e); }
   Input.commit(allDevs());
 }
+// crisp at every size: the backing store follows the on-screen size x devicePixelRatio; everything draws in the 1152x648 logical space
+function fitBacking() {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(SPEC.cam.maxDpr, window.devicePixelRatio || 1);
+  const bw = Math.max(W, Math.round(r.width * dpr)), bh = Math.round(bw * H / W);
+  if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+  ctx.setTransform(bw / W, 0, 0, bh / H, 0, 0); ctx.imageSmoothingEnabled = true;
+}
 function draw() {
+  fitBacking();
   try {
     if (scene === 'splash') drawSplash(); else if (scene === 'title') drawTitle(); else if (scene === 'select') drawSelect(); else if (scene === 'controls') drawControls();
     else if (scene === 'results') drawResults();

@@ -113,12 +113,12 @@ function drawHUD() {
   // solo revive offer
   if (G.reviveOffer && G.heroes.every(h => h.dead)) { panel(W / 2 - 220, H / 2 - 50, 440, 92, 0.9, '#9fffe0'); txt('You have fallen', W / 2, H / 2 - 18, 22, '#ffb0a0', 'center'); txt(`Press confirm to spend a rez coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, H / 2 + 10, 14, '#9fffe0', 'center'); txt('(or wait to accept defeat)', W / 2, H / 2 + 30, 11, '#aaa', 'center', 'normal'); }
   // hub station prompts
-  if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sx = s.x - G.cam.x, sy = s.y - G.cam.y - 44; panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
+  if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sp0 = toScreen(s.x, s.y), sx = sp0.x, sy = sp0.y - 44; panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
 }
 function drawStations() {
   if (G.mode !== 'hub') return;
   for (const s of G.stations) {
-    const x = s.x - G.cam.x, y = s.y - G.cam.y;
+    const sp1 = toScreen(s.x, s.y), x = sp1.x, y = sp1.y;
     const col = { Q: '#9ab8d0', W: '#9ad070', Z: '#ff8a4a', Y: '#b07aff', N: '#9fffe0', A: '#ff6a5a', M: '#ffd84a', T: '#e8d8a0', K: '#c0c8d0', H: '#ff9ad0', O: '#ffcf7a' }[s.id];
     const world = 'QWZY'.includes(s.id);
     if (world) { const k = 'QWZY'.indexOf(s.id); const locked = k === 3 && !finUnlocked(); ell(x, y + 6, 26, 10, 'rgba(0,0,0,0.4)'); circ(x, y - 8, 22, '#0a0812', locked ? '#555' : col, 4); if (!locked) for (let i = 0; i < 3; i++) { ctx.strokeStyle = hexA(col, 0.6 - i * 0.15); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - 8, 6 + i * 5, G.time * (2 + i), G.time * (2 + i) + 4); ctx.stroke(); } const prog = SAVE.progress[['w1', 'w2', 'w3', 'fin'][k]] || 0, tot = WORLDS[k].floors.length; txt(locked ? 'SEALED' : `${prog}/${tot}`, x, y + 26, 10, locked ? '#888' : col, 'center'); }

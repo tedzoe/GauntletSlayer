@@ -264,15 +264,33 @@ function updateFx(dt) {
 }
 
 // ---------------------------------------------------------------- camera
-function updateCamera(snap) {
+// ---- camera (Slayer style): follows the party at 1x; in a big battle room it smoothly zooms out to frame the whole room and every player
+const camZ = () => G.cam.z || 1, viewW = () => W / camZ(), viewH = () => H / camZ();
+function battleRoomOf(list) {   // the big room the party is in (any living hero inside), else -1
+  const m = G.map; if (!m || !m.rooms || !m.rooms.length) return -1;
+  for (const h of list) { const r = roomAt(h.x, h.y); if (r >= 0 && SPEC.cam.battleKinds.includes(m.rooms[r].kind) || (r >= 0 && m.rooms[r].arena)) return r; }
+  return -1;
+}
+function camTarget() {
+  const C = SPEC.cam, alive = G.heroes.filter(h => !h.dead), list = alive.length ? alive : G.heroes;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const h of list) { x0 = Math.min(x0, h.x); y0 = Math.min(y0, h.y); x1 = Math.max(x1, h.x); y1 = Math.max(y1, h.y); }
+  let z = 1, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, room = G.mode === 'hub' ? -1 : battleRoomOf(list);
+  if (list.length === 1 && room < 0) { cx += Math.cos(list[0].fa) * 40; cy += Math.sin(list[0].fa) * 30; }   // look-ahead toward aim, solo
+  if (room >= 0) { const r = G.map.rooms[room]; x0 = Math.min(x0, r.x * T - T); y0 = Math.min(y0, r.y * T - T); x1 = Math.max(x1, (r.x + r.w + 1) * T); y1 = Math.max(y1, (r.y + r.h + 1) * T);
+    cx = (x0 + x1) / 2; cy = (y0 + y1) / 2; z = Math.min(1, W / (x1 - x0 + 2 * C.margin), (H - C.hud) / (y1 - y0 + 2 * C.margin)); }
+  else if (list.length > 1 && G.mode !== 'hub') z = Math.min(1, W / (x1 - x0 + 2 * C.coopPad), (H - C.hud) / (y1 - y0 + 2 * C.coopPad));   // co-op: keep every player on screen
+  return { z: Math.max(C.min, z), cx, cy: cy + C.hud / 2 / Math.max(C.min, z) * 0.5, room };
+}
+function updateCamera(snap, dt = 1 / 60) {
   const alive = G.heroes.filter(h => !h.dead); const list = alive.length ? alive : G.heroes;
   if (!list.length) return;
-  let ax = 0, ay = 0; for (const h of list) { ax += h.x; ay += h.y; } ax /= list.length; ay /= list.length;
-  // look-ahead toward aim for single player
-  if (list.length === 1) { ax += Math.cos(list[0].fa) * 40; ay += Math.sin(list[0].fa) * 30; }
-  const mw = G.map.w * T, mh = G.map.h * T;
-  let tx = mw <= W ? (mw - W) / 2 : clamp(ax - W / 2, 0, mw - W);
-  let ty = mh <= H - 60 ? (mh - H) / 2 - 30 : clamp(ay - H / 2 - 20, -64, mh - H);
-  if (snap) { G.cam.x = tx; G.cam.y = ty; } else { G.cam.x += (tx - G.cam.x) * 0.14; G.cam.y += (ty - G.cam.y) * 0.14; }
+  const C = SPEC.cam, tg = camTarget();
+  if (snap || !G.cam.z) G.cam.z = tg.z; else G.cam.z += (tg.z - G.cam.z) * Math.min(1, dt * C.rate);
+  G.cam.room = tg.room;
+  const vw = viewW(), vh = viewH(), mw = G.map.w * T, mh = G.map.h * T;
+  const tx = mw <= vw ? (mw - vw) / 2 : clamp(tg.cx - vw / 2, 0, mw - vw);
+  const ty = mh <= vh - 60 / camZ() ? (mh - vh) / 2 - 30 / camZ() : clamp(tg.cy - vh / 2 - 20, -64, mh - vh + C.hud / camZ());
+  if (snap) { G.cam.x = tx; G.cam.y = ty; } else { G.cam.x += (tx - G.cam.x) * C.follow; G.cam.y += (ty - G.cam.y) * C.follow; }
 }
-const onScreen = (x, y, m = 40) => x > G.cam.x - m && x < G.cam.x + W + m && y > G.cam.y - m && y < G.cam.y + H + m;
+const onScreen = (x, y, m = 40) => x > G.cam.x - m && x < G.cam.x + viewW() + m && y > G.cam.y - m && y < G.cam.y + viewH() + m;
+const toScreen = (x, y) => ({ x: (x - G.cam.x) * camZ(), y: (y - G.cam.y) * camZ() });

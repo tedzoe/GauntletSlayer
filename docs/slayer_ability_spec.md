@@ -368,7 +368,13 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
      - A room's foes and spawners are dormant (no moving, spawning or shooting) until one of three things happens: a hero steps into the room; one of its foes gets line of sight to a hero within 330 px (walls and pillars block it; LOS is checked 5 times a second); or anything in the room is hit.
      - Then the whole room's encounter wakes: each foe shows a "!" and acts after a 0.25-0.7s reaction delay.
      - Death, bosses on boss floors, arena waves and corridor foes are not affected.
-   - Guess: Slayer Edition's own trigger is per battle room, where the doors lock and waves come in. Its camera also zooms out in battle rooms; here every large room fits the fixed 1152×648 view instead.
+   - Guess: Slayer Edition's own trigger is per battle room, where the doors lock and waves come in.
+   - **Camera (Slayer match, Oct 25 2026).**
+     - At 1x the camera follows the party, with an aim look-ahead when playing solo.
+     - When any living hero is inside a large battle room (`L`) or the arena room (`A`), it eases out (rate 2.2/s) to frame the whole room plus a 1.5-tile margin and every player. It never goes below 0.58x.
+     - In co-op outside battle rooms, it zooms out just enough to keep every player on screen.
+     - Mouse aim, the co-op leash, hub prompts and lights all follow the zoom. The leash uses the view the camera is heading for, so a zoom in progress never yanks a player.
+     - The canvas backing store follows the on-screen size × devicePixelRatio (capped at 2.5), so zoomed views stay crisp. Numbers are in `SPEC.cam`.
 
 # David's rules: stuck heroes, death and shields (Oct 2026)
 - **Nothing closes on a hero.**

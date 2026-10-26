@@ -299,7 +299,7 @@ function drawHazard(hz) {
 const darkCv = document.createElement('canvas'); darkCv.width = W; darkCv.height = H; const dctx = darkCv.getContext('2d');
 function drawDynamicTiles() {
   const m = G.map, th = m.theme, x0 = Math.max(0, Math.floor(G.cam.x / T) - 1), y0 = Math.max(0, Math.floor(G.cam.y / T) - 1),
-    x1 = Math.min(m.w - 1, Math.ceil((G.cam.x + W) / T) + 1), y1 = Math.min(m.h - 1, Math.ceil((G.cam.y + H) / T) + 1);
+    x1 = Math.min(m.w - 1, Math.ceil((G.cam.x + viewW()) / T) + 1), y1 = Math.min(m.h - 1, Math.ceil((G.cam.y + viewH()) / T) + 1);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const t = m.t[y * m.w + x], px = x * T, py = y * T;
     if (t === TL.GATE) { ctx.fillStyle = '#3a2410'; ctx.fillRect(px, py + 2, T, T - 2); ctx.fillStyle = '#7a5020'; for (let k = 0; k < 4; k++) ctx.fillRect(px + 2 + k * 8, py + 3, 5, T - 4); ctx.fillStyle = '#c8a040'; ctx.fillRect(px, py + 8, T, 3); ctx.fillRect(px, py + 22, T, 3); circ(px + 16, py + 16, 4, '#ffd84a', '#7a5a10', 1.5); ctx.fillStyle = '#222'; ctx.fillRect(px + 15, py + 15, 2, 4); }
@@ -386,8 +386,8 @@ function drawWorld() {
   const sh = G.trauma * G.trauma * 14, ox = R(-sh, sh), oy = R(-sh, sh);
   const th = G.map.theme;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  ctx.save(); ctx.translate(-Math.round(G.cam.x + ox), -Math.round(G.cam.y + oy));
-  ctx.drawImage(G.map.canvas, 0, 0);
+  const z = camZ(); ctx.save(); ctx.scale(z, z); ctx.translate(-Math.round((G.cam.x + ox) * z) / z, -Math.round((G.cam.y + oy) * z) / z);
+  ctx.imageSmoothingQuality = 'high'; ctx.drawImage(G.map.canvas, 0, 0);
   drawDynamicTiles();
   for (const d of G.decals) { ctx.globalAlpha = Math.min(1, d.life / d.max * 2) * 0.55; circ(d.x, d.y, d.r, d.col); } ctx.globalAlpha = 1;
   drawDecor(); drawTorches();
@@ -419,7 +419,7 @@ function drawWorld() {
   if (G.map.dark) {
     dctx.globalCompositeOperation = 'source-over'; dctx.fillStyle = 'rgba(0,0,0,0.93)'; dctx.fillRect(0, 0, W, H);
     dctx.globalCompositeOperation = 'destination-out';
-    const light = (x, y, r) => { const sx = x - G.cam.x, sy = y - G.cam.y; if (sx < -r || sy < -r || sx > W + r || sy > H + r) return; const g = dctx.createRadialGradient(sx, sy, r * 0.25, sx, sy, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); dctx.fillStyle = g; dctx.beginPath(); dctx.arc(sx, sy, r, 0, 6.28); dctx.fill(); };
+    const light = (x, y, r) => { r *= camZ(); const sx = (x - G.cam.x) * camZ(), sy = (y - G.cam.y) * camZ(); if (sx < -r || sy < -r || sx > W + r || sy > H + r) return; const g = dctx.createRadialGradient(sx, sy, r * 0.25, sx, sy, r); g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)'); dctx.fillStyle = g; dctx.beginPath(); dctx.arc(sx, sy, r, 0, 6.28); dctx.fill(); };
     for (const h of G.heroes) if (!h.dead) light(h.x, h.y, 170 + (h.id === 'mirelle' ? 40 : 0));
     for (const t of G.map.torches) light(t.x, t.y, 120);
     for (const s of G.shots) if (!s.dead && s.team === 'hero') light(s.x, s.y, 50);

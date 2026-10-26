@@ -119,6 +119,8 @@ const SPEC = {
   potion: { shockR: 12 * MTR, shockStagger: 0.6, foodInv: 0.5, aiFreeze: 1.5, exitGold: 500, spawnerStop: 4 },
   gateBank: { min: 1, flash: 1.6 },
   stuck: { overlap: 0.1, frozen: 0.5 },   // anti-stuck safety net: seconds overlapping geometry / frozen while steering before a nudge
+  // Slayer camera: zooms out to frame a big battle room plus every player, back to 1x in corridors and small rooms
+  cam: { battleKinds: ['L', 'A'], margin: 1.5 * 32, hud: 96, min: 0.58, coopPad: 120, rate: 2.2, follow: 0.14, maxDpr: 2.5 },
   splash: { fadeIn: 0.6, hold: 2.0, fadeOut: 0.6, maxWait: 1.5, logo: 400 },   // Tezois Studio splash on page load (seconds, logo px)   // gate crossings bank carried gold (min amount to trigger, HUD flash seconds)
   crown: { goldMul: 2, floatTime: 5, endBonus: 500, slow: 0.1, aggroR: 10 * MTR },
   coins: { capPerPlayer: 5 },
