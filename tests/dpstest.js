@@ -58,15 +58,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return out;
   });
   const D = R.ref;
-  chk('Theo combo per-hit = reference 14 / 42', R.main.brannoc.perHit, [14, 42]);
+  chk('Theo combo per-hit = 18 / 54 (FAQ 14 / 42 ratio, scaled for the guide pace)', R.main.brannoc.perHit, [18, 54]);
   chk('Gela combo per-hit = reference 8 / 42', R.main.sela.perHit, [8, 42]);
   chk('David combo per-hit = 18 / 48 (our choice)', R.main.paladin.perHit, [18, 48]);
   chk('Isaac Quick Shot = 14', R.main.kestrel.perHit, [14]);
   chk('Zoey Firebolts = 22 at ~1.8/s', R.main.mirelle, g => g.perHit.join() === '22' && g.rate > 1.6 && g.rate <= 1.85);
   chk('Vesper Skeleton Slash = 8 at ~2.5/s (hitstop included)', R.main.vesper, g => g.perHit.join() === '8' && g.rate > 2.0 && g.rate <= 2.5);
+  console.log('DPS theo', R.main.brannoc.dps, 'isaac', R.main.kestrel.dps);
   chk('Isaac fires ~4/s', R.main.kestrel.rate, g => g > 3.5 && g <= 4);
   for (const id of ['brannoc', 'sela', 'paladin']) {
-    chk(id + ' melee DPS beats Quick Shot DPS', [R.main[id].dps, R.main.kestrel.dps], g => g[0] > g[1]);
+    chk(id + ' melee DPS beats Quick Shot DPS' + (id === 'brannoc' ? ' by 10%+' : ''), [R.main[id].dps, R.main.kestrel.dps], g => id === 'brannoc' ? g[0] >= g[1] * 1.1 : g[0] > g[1]);
     chk(id + ' swings slower than Isaac shoots', [R.main[id].rate, R.main.kestrel.rate], g => g[0] < g[1]);
   }
   chk('secondary per hit: Smash/Leap 50, Spear Thrust 42, Judgment 50, Sniper 36, Bone Spikes 46', ['brannoc', 'sela', 'paladin', 'kestrel', 'vesper'].map(id => R.sec[id].max), [50, 42, 50, 36, 46]);
@@ -76,7 +77,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Zoey: Fireball 56, Serpents 16, Chain Lightning 22, Shock Blast 14', [R.zoey.fireball.max, R.zoey.serpents.max, R.zoey.arc.max, R.zoey.clap.max], [56, 16, 22, 14]);
   chk('Flaming Serpents burn 8/s for 12s (96 total)', R.zoey.burn, g => g.dps === 8 && g.t >= 11);
   chk('Destructo Spin lasts 2.5s and Theo is invulnerable while spinning', [R.spin.spinTime, R.spin.safe], [2.5, true]);
-  chk('Super Slash during Rush stops it; chain continues from hit 5: 42, 14, 14, 42', [R.superWin, R.superSlash], [true, [42, 14, 14, 42]]);
+  chk('Super Slash during Rush stops it; chain continues from hit 5: 54, 18, 18, 54', [R.superWin, R.superSlash], [true, [54, 18, 18, 54]]);
   chk('Lethal: Smash, Spear Thrust and a full Sniper Shot execute a big non-elite foe', [R.lethal.leap, R.lethal.thrust, R.lethal.sniper], [true, true, true]);
   chk('not Lethal: half-drawn shot, 56 Fireball, combo hits', [R.lethal.sniperHalf, R.lethal.fireball, R.lethal.combo], [false, false, false]);
   chk('spawners: Quick Shot half a hit, full Sniper Shot 1.5 hits', R.spawner, g => g.quick === 0.5 && g.sniper === 1.5);

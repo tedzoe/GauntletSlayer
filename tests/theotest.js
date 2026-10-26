@@ -72,7 +72,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   chk('Leap mid-Rush: over a heavy, invincible throughout, stuns it on landing', R.leap, { over: true, heavyStill: true, allInv: true, heavyStun: true });
   chk('Rush cancels into the weapon ability', R.rushCancel, { spin: true, dashGone: true });
   chk('Smash: instant wide stun before damage, interrupts casters, destroys missiles; 50 Lethal stuns heavies; ~60 DPS', R.smash, g => g.farStun && g.farHp && g.caster && g.missile && g.heavyHit && g.heavyStun && g.dps >= 55 && g.dps <= 65);
-  chk('Slash: weak hits interrupt casters, heavies ignore them; hit 7 long recovery 0.6s', [R.slash.interrupt, R.slash.weakHeavyStag === 0, R.slash.finRecovery], [true, true, 0.6]);
+  chk('Slash: weak hits interrupt casters, heavies ignore them; hit 7 long recovery 0.7s', [R.slash.interrupt, R.slash.weakHeavyStag === 0, R.slash.finRecovery], [true, true, 0.7]);
   chk('Demonic Cleave: 6s, rooted, invincible, hits after the ~0.45s wind-up (not if he dies first), sides yes, mid-back no damage but stun ring', R.cleave, { cd: 6, rooted: true, inv: true, waits: true, front: true, side: true, backNoDmg: true, backStun: true, deadNoHit: true });
   chk('Destructo Spin: 10s cooldown, slides', R.spin, { cd: 10, slides: true });
   chk('More of Thor: rooted while transforming, invincible, holding Rush skips the root', R.titan, { rooted: true, invuln: true, rushSkips: true });

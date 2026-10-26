@@ -180,7 +180,7 @@ const DEV = {
   //    numbers 1:1 because our enemy HP already sits on the reference scale (small ~30, strong ~48, casters 60-96).
   //    Rates are tuned so every melee hero out-damages Isaac's Quick Shot (David's rule) while swinging slower than he shoots.
   dmg: {
-    theo: { combo: [14, 14, 14, 42, 14, 14, 42], weakT: 0.28, strongT: 0.45, finRec: 0.6,   // hit 7 has a long recovery; 154 per 2.45s nominal (~2.8s with hitstop) = ~54 DPS (reference ~46)
+    theo: { combo: [18, 18, 18, 54, 18, 18, 54], weakT: 0.36, strongT: 0.5, finRec: 0.7,   // guide pace (iXNHat3): ~0.36-0.40s between normal hits, ~0.5s after Super Slash, 0.7s after the circle; FAQ 14/42 ratio scaled to 18/54 so melee stays ~15%+ over Quick Shot (60 vs 51 DPS measured)
       rush: 8, superSlash: [42, 14, 14, 42], leap: 50,   // Rush; Super Slash = hit 4 during Rush, chain continues 5-7; Smash and Leap 50 Lethal
       spinTick: 20, spinTicks: 8, spinTime: 2.5,                                 // Destructo Spin 8 x 20 = 160, 2.5s invulnerable
       axe: 28, turbo: 140, turboAoe: 14, demonic: 140, titanMul: 1.65 },
