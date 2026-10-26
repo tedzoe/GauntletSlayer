@@ -226,7 +226,7 @@ function startHub() {
   for (const it of G.map.items) if (LABEL[it.c]) G.stations.push({ id: it.c, x: it.x, y: it.y, label: LABEL[it.c] });
   renderMapCanvas();
   for (const h of G.heroes) { h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 0; h.cd = {}; h.buff = {}; }
-  placeHeroes(); G.banner = { s: "Wayfarer's Rest", sub: G.heroes.map(h => `${h.def.name.toUpperCase()} ${bankOf(h.id)}G`).join(' · '), t: 2 };
+  placeHeroes(); G.banner = null;   // the top bar names the camp; a centre banner covered the Hero Shrine
 }
 function hubInteract(h, inp) {
   let near = null, bd = 50;

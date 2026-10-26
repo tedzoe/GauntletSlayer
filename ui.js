@@ -120,7 +120,6 @@ function drawPlayerPanel(h, x, y, pw, n) {
   // little captions above the panel
   let cap = null, cc = '#bba88a';
   if (h.dead && n > 1) { cap = `Confirm: rez coin (${isFinite(G.rez) ? G.rez + ' left' : 'unlimited'})`; cc = canRevive() ? '#9fffe0' : '#f88'; }
-  else if (G.mode === 'hub') { cap = `Bank ${bankOf(h.id)} gold`; cc = '#ffd84a'; }
   else if (h.id === 'mirelle' && h.spell && h.spell.length === 2) { cap = spellOf(h).name; cc = RUNE_COL[h.schools[h.spell[0]]]; }
   else if (h.id === 'kestrel' && h.explosiveArrow) { cap = 'EXPLOSIVE'; cc = '#ff8a2a'; }
   if (cap) txt(cap, x + pw / 2, y - 4, 10, cc, 'center');
@@ -153,7 +152,7 @@ function drawHUD() {
   // solo revive offer
   if (reviveBoxUp()) { const r = reviveRect(); panel(r.x, r.y, r.w, r.h, 0.9, '#9fffe0'); txt('You have fallen', W / 2, H / 2 - 18, 22, '#ffb0a0', 'center'); txt(`Press confirm to spend a rez coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, H / 2 + 10, 14, '#9fffe0', 'center'); txt('(or wait to accept defeat)', W / 2, H / 2 + 30, 11, '#aaa', 'center', 'normal'); }
   // hub station prompts
-  if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sp0 = toScreen(s.x, s.y), sx = sp0.x, sy = sp0.y - 44; panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
+  if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sp0 = toScreen(s.x, s.y), sx = clamp(sp0.x, 128, W - 128), sy = Math.max(70, sp0.y - 44); panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
 }
 function drawStations() {
   if (G.mode !== 'hub') return;
@@ -163,7 +162,8 @@ function drawStations() {
     const world = 'QWZY'.includes(s.id);
     if (world) { const k = 'QWZY'.indexOf(s.id); const locked = k === 3 && !finUnlocked(); ell(x, y + 6, 26, 10, 'rgba(0,0,0,0.4)'); circ(x, y - 8, 22, '#0a0812', locked ? '#555' : col, 4); if (!locked) for (let i = 0; i < 3; i++) { ctx.strokeStyle = hexA(col, 0.6 - i * 0.15); ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y - 8, 6 + i * 5, G.time * (2 + i), G.time * (2 + i) + 4); ctx.stroke(); } const prog = SAVE.progress[['w1', 'w2', 'w3', 'fin'][k]] || 0, tot = WORLDS[k].floors.length; txt(locked ? 'SEALED' : `${prog}/${tot}`, x, y + 26, 10, locked ? '#888' : col, 'center'); }
     else { ell(x, y + 8, 18, 7, 'rgba(0,0,0,0.4)'); ctx.fillStyle = '#3a3028'; ctx.fillRect(x - 12, y - 14, 24, 22); ctx.fillStyle = col; ctx.fillRect(x - 12, y - 18, 24, 5); const g = 0.5 + 0.3 * Math.sin(G.time * 3 + s.x); circ(x, y - 26, 6, hexA(col, g), null); txt({ N: '∞', A: '⚔', M: '$', T: '★', K: '⚒', H: '☉', O: '⚙' }[s.id] || '?', x, y + 3, 14, col, 'center'); }
-    txt(s.label, x, y - 40, 10, hexA(col, 0.85), 'center', 'normal');
+    if (G.heroes.some(h => h.station === s)) continue;   // its prompt panel shows the name instead
+    ctx.font = FONT(10, 'normal'); const lw = ctx.measureText(s.label).width / 2 + 6; txt(s.label, clamp(x, lw, W - lw), Math.max(54, y - 40), 10, hexA(col, 0.85), 'center', 'normal');   // never cut off at the screen edge
   }
 }
 function finUnlocked() { return (SAVE.progress.w1 || 0) >= 4 && (SAVE.progress.w2 || 0) >= 4 && (SAVE.progress.w3 || 0) >= 4; }

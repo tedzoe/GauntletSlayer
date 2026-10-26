@@ -294,7 +294,9 @@ function camTarget() {
 function updateCamera(snap, dt = 1 / 60) {
   const alive = G.heroes.filter(h => !h.dead); const list = alive.length ? alive : G.heroes;
   if (!list.length) return;
-  const C = SPEC.cam, tg = camTarget();
+  const C = SPEC.cam;
+  if (G.mode === 'hub') { const f = hubFit(); G.cam.z = f.z; G.cam.x = f.x; G.cam.y = f.y; G.cam.room = -1; return; }   // the whole camp is always in view
+  const tg = camTarget();
   if (snap || !G.cam.z) G.cam.z = tg.z; else G.cam.z += (tg.z - G.cam.z) * Math.min(1, dt * C.rate);
   G.cam.room = tg.room;
   const vw = viewW(), vh = viewH(), mw = G.map.w * T, mh = G.map.h * T;
@@ -302,5 +304,9 @@ function updateCamera(snap, dt = 1 / 60) {
   const ty = mh <= vh - 60 / camZ() ? (mh - vh) / 2 - 30 / camZ() : clamp(tg.cy - vh / 2 - 20, -64, mh - vh + C.hud / camZ());
   if (snap) { G.cam.x = tx; G.cam.y = ty; } else { G.cam.x += (tx - G.cam.x) * C.follow; G.cam.y += (ty - G.cam.y) * C.follow; }
 }
+// camp framing: the whole hub fits between the top bar and the player panels, centred, at every window size (the game draws in
+// a fixed W x H logical space, so this holds at 1280x720, 1920x1080 and smaller windows alike)
+function hubFit() { const top = 44, bot = H - DEV.hud.panelH - 14, mw = G.map.w * T, mh = G.map.h * T, z = Math.min(1, (bot - top) / mh, (W - 16) / mw);
+  return { z, x: -((W - mw * z) / 2) / z, y: -(top + (bot - top - mh * z) / 2) / z, top, bot }; }
 const onScreen = (x, y, m = 40) => x > G.cam.x - m && x < G.cam.x + viewW() + m && y > G.cam.y - m && y < G.cam.y + viewH() + m;
 const toScreen = (x, y) => ({ x: (x - G.cam.x) * camZ(), y: (y - G.cam.y) * camZ() });
