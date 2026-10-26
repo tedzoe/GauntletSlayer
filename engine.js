@@ -249,7 +249,17 @@ function burst(x, y, col, n = 10, spd = 140, size = 3, life = 0.5, grav = 0) {
 }
 function sparkDir(x, y, a, col, n = 8, spd = 260) { for (let i = 0; i < n; i++) { const b = a + R(-0.6, 0.6), s = R(spd * 0.4, spd); G.parts.push({ x, y, vx: Math.cos(b) * s, vy: Math.sin(b) * s, life: R(0.15, 0.35), max: 0.35, col, size: R(1.5, 3), grav: 0 }); } }
 function ring(x, y, r, col, life = 0.4, w = 4) { G.rings.push({ x, y, r, col, life, max: life, w }); }
-function text(x, y, s, col = '#fff', big) { G.texts.push({ x, y, s, col, life: big ? 1.4 : 0.9, max: big ? 1.4 : 0.9, big }); }
+// floating text. Words (spell, relic and status pops) are deduped (the same word near the same spot refreshes instead of stacking)
+// and nudged up a line when another word is already there; damage and gold numbers keep their own spot.
+function text(x, y, s, col = '#fff', big) {
+  s = String(s); const label = !/^[-+]?\d/.test(s), y0 = y;
+  if (label) {
+    const same = G.texts.find(t => t.label && t.s === s && Math.abs(t.x - x) < 48 && Math.abs(t.y0 - y0) < 48 && t.life > t.max * 0.3);
+    if (same) { same.life = same.max; same.x = x; same.col = col; return same; }
+    for (let k = 0; k < 4 && G.texts.some(t => t.label && Math.abs(t.x - x) < 70 && Math.abs(t.y - y) < 13); k++) y -= 14;
+  }
+  const t = { x, y, y0, s, col, life: big ? 1.4 : 0.9, max: big ? 1.4 : 0.9, big, label }; G.texts.push(t); return t;
+}
 function msg(s, col = '#fff', dur = 3) { G.msgs.push({ s, col, t: dur, max: dur }); if (G.msgs.length > 4) G.msgs.shift(); }
 function decal(x, y, r, col, life = 20) { if (G.decals.length > 120) G.decals.shift(); G.decals.push({ x, y, r, col, life, max: life }); }
 function updateFx(dt) {

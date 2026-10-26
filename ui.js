@@ -148,9 +148,10 @@ function drawHUD() {
   // messages
   G.msgs.forEach((m, i) => { ctx.globalAlpha = Math.min(1, m.t); txt(m.s, 16, 66 + i * 20, 13, m.col, 'left'); ctx.globalAlpha = 1; });
   // banner
-  if (G.banner) { const b = G.banner, a = Math.min(1, b.t * 2, (b.max || 3) - b.t + 0.3); ctx.globalAlpha = clamp(a, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, H * 0.3 - 40, W, 74); txt(b.sub || '', W / 2, H * 0.3 - 16, 13, '#d8b070', 'center'); txt(b.s, W / 2, H * 0.3 + 18, 30, '#fff4dc', 'center'); ctx.globalAlpha = 1; }
+  if (G.banner) { const b = G.banner, a = Math.min(1, b.t * 2, (b.max || 3) - b.t + 0.3), r = bannerRect(); ctx.globalAlpha = clamp(a, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(r.x, r.y, r.w, r.h);
+    if (r.compact) { txt(b.sub || '', W / 2, r.y + 15, 11, '#d8b070', 'center'); txt(b.s, W / 2, r.y + 38, 20, '#fff4dc', 'center'); } else { txt(b.sub || '', W / 2, r.y + 24, 13, '#d8b070', 'center'); txt(b.s, W / 2, r.y + 58, 30, '#fff4dc', 'center'); } ctx.globalAlpha = 1; }
   // solo revive offer
-  if (G.reviveOffer && G.heroes.every(h => h.dead)) { panel(W / 2 - 220, H / 2 - 50, 440, 92, 0.9, '#9fffe0'); txt('You have fallen', W / 2, H / 2 - 18, 22, '#ffb0a0', 'center'); txt(`Press confirm to spend a rez coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, H / 2 + 10, 14, '#9fffe0', 'center'); txt('(or wait to accept defeat)', W / 2, H / 2 + 30, 11, '#aaa', 'center', 'normal'); }
+  if (reviveBoxUp()) { const r = reviveRect(); panel(r.x, r.y, r.w, r.h, 0.9, '#9fffe0'); txt('You have fallen', W / 2, H / 2 - 18, 22, '#ffb0a0', 'center'); txt(`Press confirm to spend a rez coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, H / 2 + 10, 14, '#9fffe0', 'center'); txt('(or wait to accept defeat)', W / 2, H / 2 + 30, 11, '#aaa', 'center', 'normal'); }
   // hub station prompts
   if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sp0 = toScreen(s.x, s.y), sx = sp0.x, sy = sp0.y - 44; panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
 }
@@ -506,3 +507,9 @@ function drawControls() {
   notes.forEach((n2, i) => wrapText(n2, 60, 404 + i * 27, W - 120, 14, 12, '#cfc2a8'));
   txt('Esc / B / Enter: back', W / 2, H - 14, 11, '#887a66', 'center', 'normal');
 }
+
+// banner and solo revive box geometry: while the revive box is up, the banner (boss phase, waves) moves to a compact strip under
+// the boss bar so the two never pile up in the middle of the screen
+function reviveBoxUp() { return !!(G.reviveOffer && G.heroes.length && G.heroes.every(h => h.dead)); }
+function reviveRect() { return { x: W / 2 - 220, y: H / 2 - 50, w: 440, h: 92 }; }
+function bannerRect() { return reviveBoxUp() ? { x: 0, y: 88, w: W, h: 50, compact: true } : { x: 0, y: H * 0.3 - 40, w: W, h: 74, compact: false }; }

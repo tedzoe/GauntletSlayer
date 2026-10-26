@@ -541,7 +541,7 @@ const KITS = {
       if (h.runeT <= 0) h.runes = [];
       h.runes.push(idx); h.runeT = 1.4; Snd.play('rune' + idx);
       burst(h.x, h.y - 30, RUNE_COL[h.schools[idx]], 6, 60, 2, 0.4);
-      if (h.runes.length === 2) { h.spell = h.runes.slice(); h.runes = []; const sp = spellOf(h); Snd.play('prime'); text(h.x, h.y - 40, sp.name, RUNE_COL[h.schools[h.spell[0]]]); h.channel = null; }
+      if (h.runes.length === 2) { h.spell = h.runes.slice(); h.runes = []; const sp = spellOf(h); Snd.play('prime'); ring(h.x, h.y, 26, RUNE_COL[h.schools[h.spell[0]]], 0.25, 3); h.channel = null; }
     }
     const castHeld = pad ? (inp.aim === 'stick' && inp.aimFire) || inp.down.defend : inp.down.primary;
     const castPressed = pad ? (inp.aim === 'stick' && inp.aimFire && !h.wasAimFire) || inp.pressed.defend : inp.pressed.primary;
