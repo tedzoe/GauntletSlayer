@@ -83,6 +83,7 @@ function scaleFor(mode, n) {
 }
 function placeHeroes() {
   const st = G.map.starts.length ? G.map.starts : [{ x: G.map.w * T / 2, y: G.map.h * T / 2 }];
+  G.battle = null;
   G.heroes.forEach((h, i) => { const s = st[i % st.length]; h.x = s.x + (st.length > 1 ? 0 : i * 26); h.y = s.y; h.kx = h.ky = 0; h.dash = null; h.charging = null; h.spin = 0; h.souls = 0; h.shieldOut = false; h.blocking = false; h.inv = Math.max(h.inv, 1.5); });
   if (G.allies) for (const a of G.allies) if (a.owner) { a.x = a.owner.x + R(-30, 30); a.y = a.owner.y + R(-30, 30); }
   updateCamera(true);
@@ -98,7 +99,7 @@ function waveFoe(world) {
   return pick(world.foes);
 }
 function populate(world) {
-  const m = G.map;
+  const m = G.map; G.stageWorld = world;
   for (const it of m.items) {
     const { x, y, c } = it;
     switch (c) {
@@ -214,6 +215,7 @@ function updateMode(dt) {
   if (G.gimmick === 'dark' || G.map.dark) { G.gimmickT -= dt; if (G.gimmickT <= 0) { G.gimmickT = 3.5; if (G.foes.length < 60) { const h = pick(G.heroes.filter(x => !x.dead)); if (h) for (let k = 0; k < 3; k++) { const a = R(0, 6.28), x = h.x + Math.cos(a) * 300, y = h.y + Math.sin(a) * 300; if (!collide(x, y, 9)) mkFoe('spiderling', x, y, { spawned: true }); } } } }
   // arena waves
   if (G.arena) updateArena(dt);
+  updateBattleRooms(dt);
   // exit
   if (G.exitOpen && G.map.exit) {
     const alive = G.heroes.filter(h => !h.dead), on = alive.filter(h => tileAt(Math.floor(h.x / T), Math.floor(h.y / T)) === TL.EXIT);
@@ -226,6 +228,80 @@ function updateMode(dt) {
     if (G.reviveOffer && !canRevive()) G.reviveOffer = false;
     if (!G.reviveOffer || G.heroes.length > 1 && !canRevive()) { G.defeatT = (G.defeatT || 0) + dt; if (G.defeatT > 2.2) defeat(); }
   } else { G.defeatT = 0; G.reviveOffer = false; }
+}
+// ---------------------------------------------------------------- battle rooms (Slayer match, Oct 25 2026; numbers in SPEC.battle)
+// A large room locks once it is awake and a hero is well inside: iron gates slam on every doorway, any partner outside is pulled
+// in, and waves come (some rise out of the dirt, some step out of the room's obelisks). When the waves are spent and every foe
+// and obelisk in the room is gone, the gates open. Safety valves: Death showing up, every living hero ending up outside, or 25s
+// with no progress all open the gates, so a locked room can never trap the party.
+function battleRoomOk(r) { const m = G.map, rr = m && m.rooms && m.rooms[r]; return !!rr && SPEC.battle.kinds.includes(rr.kind) && !rr.arena && !rr.side && (G.mode === 'campaign' || G.mode === 'endless') && !G.boss && !G.arena && !(m.cleared && m.cleared[r]) && !m.noLock; }
+function roomTileSet(r) { const m = G.map; m._roomSets = m._roomSets || {}; if (!m._roomSets[r]) { const s = new Set(); for (let i = 0; i < m.roomOf.length; i++) if (m.roomOf[i] === r) s.add(i); m._roomSets[r] = s; } return m._roomSets[r]; }
+function roomDoors(r) {   // the first walkable tile outside the room on every opening
+  const m = G.map, set = roomTileSet(r), out = new Set();
+  for (const i of set) { const x = i % m.w, y = (i / m.w) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue; const j = ny * m.w + nx; if (set.has(j)) continue; const t = m.t[j]; if (t === TL.FLOOR || t === TL.SPIKE) out.add(j); } }
+  return [...out];
+}
+const battleFoes = B => G.foes.filter(f => ALIVE(f) && f.type !== 'reaper' && f.charm <= 0 && (f.room === B.r || B.set.has(Math.floor(f.y / T) * G.map.w + Math.floor(f.x / T))));
+const battleSpawners = B => G.spawners.filter(s => s.hp > 0 && s.room === B.r);
+function lockBattle(r) {
+  const m = G.map, S = SPEC.battle, doors = roomDoors(r); if (!doors.length) { (m.cleared = m.cleared || {})[r] = true; return; }
+  const set = roomTileSet(r);
+  for (const i of doors) { m.t[i] = TL.AGATE; redrawTile(i % m.w, (i / m.w) | 0); burst((i % m.w + 0.5) * T, (((i / m.w) | 0) + 0.5) * T, '#9a9aa4', 10, 160, 3, 0.5); }
+  flowT = 0; sealInside(set);
+  Snd.play('gateslam'); addTrauma(0.5); msg('The gates slam shut!', '#ff9a5a', 2);
+  const n = G.mode === 'endless' && G.endless >= S.deepEndless ? S.wavesDeep : S.waves;
+  G.battle = { r, set, doors, waves: n, wave: 0, queue: [], t: S.firstDelay, gap: 0, stall: 0, sig: '', pullT: 0 };
+  G.battleLog = (G.battleLog || []).concat([{ r, t: G.time, ev: 'lock', doors: doors.length }]);
+}
+function unlockBattle(why) {
+  const B = G.battle, m = G.map; if (!B) return;
+  for (const i of B.doors) if (m.t[i] === TL.AGATE) { m.t[i] = TL.FLOOR; redrawTile(i % m.w, (i / m.w) | 0); burst((i % m.w + 0.5) * T, (((i / m.w) | 0) + 0.5) * T, '#ffd27a', 12, 180, 3, 0.6); }
+  flowT = 0; Snd.play('gate'); addTrauma(0.3);
+  if (why === 'clear') { (m.cleared = m.cleared || {})[B.r] = true; msg('Room cleared! The gates open.', '#ffd27a', 2.2); Snd.play('wavedone'); const rr = m.rooms[B.r]; ring((rr.x + rr.w / 2) * T, (rr.y + rr.h / 2) * T, 160, '#ffd27a', 0.6, 6); }
+  else if (why === 'death') { m.noLock = true; msg('Death comes... the gates give way!', '#ff6a5a', 2.2); }
+  else (m.cleared = m.cleared || {})[B.r] = true;   // left / stalled: never re-locks
+  G.battleLog = (G.battleLog || []).concat([{ r: B.r, t: G.time, ev: 'open', why }]);
+  G.battle = null;
+}
+function battleSpawn(B, type) {
+  const m = G.map, S = SPEC.battle, tiles = [...B.set], sp = battleSpawners(B), rise = !sp.length || Math.random() < S.riseShare;
+  for (let k = 0; k < 40; k++) {
+    let x, y; if (rise) { const i = pick(tiles); x = (i % m.w + 0.5) * T; y = (((i / m.w) | 0) + 0.5) * T; } else { const s = pick(sp), a = R(0, 6.28); x = s.x + Math.cos(a) * (s.r + 18); y = s.y + Math.sin(a) * (s.r + 18); }
+    if (!B.set.has(Math.floor(y / T) * m.w + Math.floor(x / T)) || collide(x, y, 14) || G.heroes.some(h => !h.dead && hyp(h.x - x, h.y - y) < S.minHeroDist)) continue;
+    const tier = G.mode === 'endless' ? Math.min(3, 1 + Math.floor(G.endless / 25)) : 1;
+    if (rise) G.hazards.push({ kind: 'tele', x, y, r: 22, delay: S.riseTime, t: 0, col: '#8a6a40', waveSpawn: true, battle: true, onFire: hz => { const f = mkFoe(type, hz.x, hz.y, { tier, spawned: true }); f.room = B.r; f.stag = Math.max(f.stag || 0, S.riseStun); f.risen = 0.6; burst(hz.x, hz.y, '#6a5030', 18, 140, 4, 0.7); decal(hz.x, hz.y, 16, 'rgba(40,25,10,0.45)', 20); } });   // rises out of the dirt
+    else { const f = mkFoe(type, x, y, { tier, spawned: true }); f.room = B.r; burst(x, y, '#c9b08a', 10, 120, 3, 0.5); }
+    return true;
+  }
+  return false;
+}
+function updateBattleRooms(dt) {
+  const m = G.map; if (!m || !m.rooms || !m.rooms.length || G.mode === 'hub' || !(G.mode === 'campaign' || G.mode === 'endless')) return;
+  const S = SPEC.battle, reaper = G.foes.some(f => f.type === 'reaper' && ALIVE(f) && !roomAsleep(f.room));
+  let B = G.battle;
+  if (!B) {
+    if (reaper) return;
+    for (const h of G.heroes) { if (h.dead) continue; const r = roomAt(h.x, h.y); if (r < 0 || roomAsleep(r) || !battleRoomOk(r)) continue;
+      const doors = roomDoors(r); if (doors.some(i => hyp((i % m.w + 0.5) * T - h.x, (((i / m.w) | 0) + 0.5) * T - h.y) < S.doorClear * T + T)) continue;   // wait until the hero is past the doorway
+      lockBattle(r); break; }
+    return;
+  }
+  if (reaper) { unlockBattle('death'); return; }
+  const alive = G.heroes.filter(h => !h.dead), inside = alive.filter(h => B.set.has(Math.floor(h.y / T) * m.w + Math.floor(h.x / T)));
+  if (!alive.length) return;   // everyone down: the normal revive / defeat flow decides
+  if (!inside.length) { unlockBattle('left'); return; }
+  if (inside.length < alive.length) { B.pullT -= dt; if (B.pullT <= 0) { B.pullT = S.pullEvery; sealInside(B.set); } }   // a revived or lagging partner is pulled in
+  const foes = battleFoes(B), sps = battleSpawners(B), pend = G.hazards.filter(z => z.battle && z.t < z.delay).length;
+  const sig = foes.length + ':' + Math.round(foes.reduce((a, f) => a + f.hp, 0)) + ':' + sps.map(s => s.hp).join(',') + ':' + B.wave + ':' + B.queue.length;
+  if (sig !== B.sig) { B.sig = sig; B.stall = 0; } else if ((B.stall += dt) > S.stall) { unlockBattle('stall'); return; }
+  B.t -= dt;
+  if (B.queue.length) { B.gap -= dt; if (B.gap <= 0) { B.gap = S.spawnGap; if (battleSpawn(B, B.queue[0])) B.queue.shift(); } return; }
+  if (B.wave < B.waves) {
+    if (B.t <= 0 && foes.length + pend <= S.nextAt) { B.wave++; const n = Math.round((S.waveBase + S.wavePer * (B.wave - 1)) * ENDLESS.coopCount(Math.max(1, G.heroes.length)));
+      for (let k = 0; k < n; k++) B.queue.push(waveFoe(G.stageWorld || WORLDS[0])); msg(`Wave ${B.wave} of ${B.waves}`, '#ff9a5a', 1.4); Snd.play('windup'); B.t = 1.0; }
+    return;
+  }
+  if (!foes.length && !sps.length && !pend) unlockBattle('clear');
 }
 function updateArena(dt) {
   const A = G.arena;

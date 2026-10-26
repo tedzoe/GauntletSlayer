@@ -467,9 +467,9 @@ function hitSpawner(s, dmg, src, o = {}) {
   if (hero && hero.isHero && hero.mods.spawnerDmg) hits *= 1 + hero.mods.spawnerDmg;
   s.hp -= hits; s.flash = 0.1; Snd.play('stonehit'); burst(s.x, s.y, '#c9b08a', 5, 120, 3, 0.4);
   const per = s.maxHp / SPAWNER_HITS[Math.max(0, (s.baseTier || s.tier) - 1)], nt = s.hp <= 3 * per ? 1 : s.hp <= 6 * per ? 2 : 3;
-  if (!s.pylon && nt < s.tier && s.hp > 0) { s.tier = nt; ring(s.x, s.y, 40, '#ffd27a', 0.3); text(s.x, s.y - 24, 'Tier ' + nt, '#ffd27a'); }
+  if (!s.pylon && nt < s.tier && s.hp > 0) { s.tier = nt; s.cracks = (s.cracks || 0) + 1; ring(s.x, s.y, 40, '#ffd27a', 0.3); text(s.x, s.y - 24, 'Tier ' + nt, '#ffd27a'); Snd.play('crumble'); addTrauma(0.2); burst(s.x, s.y - 8, '#9a8a70', 14, 180, 3, 0.6); }   /* the obelisk cracks */
   if (s.hp <= 0) {
-    Snd.play('spawnerdie'); addTrauma(0.35); hitstop(0.06);
+    Snd.play('spawnerdie'); addTrauma(0.7); hitstop(0.1); for (let k = 0; k < 10; k++) G.parts.push({ x: s.x + R(-8, 8), y: s.y - R(0, 20), vx: R(-260, 260), vy: R(-320, -80), life: R(0.6, 1.1), max: 1.1, col: '#b8a888', size: R(4, 8), grav: 600 });   /* the obelisk shatters: big shake, flying shards */
     burst(s.x, s.y, '#e0d0b0', 30, 240, 4, 0.9); ring(s.x, s.y, 70, '#ffd27a', 0.45);
     dropGold(s.x, s.y, RI(30, 60), 'chest'); G.stats.spawners++;
     const hero = src && (src.isHero ? src : src.owner); if (hero && hero.isHero) { mastery(hero, 'spawners', 1); if (hero.id === 'vesper' && !hero.dead) addEssence(hero, SPEC.vesper.soulSpawner, true); }   /* the last hit gets the spawner souls */

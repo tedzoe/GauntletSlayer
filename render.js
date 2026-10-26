@@ -191,6 +191,7 @@ function drawSpawner(s) {
   else if (s.style === 'w2') { const p = 1 + Math.sin(G.time * 3 + s.x) * 0.06; ell(0, 2, 15 * p, 12 * p, fl ? '#fff' : '#d8d0b0'); ctx.strokeStyle = '#8a7a5a'; ctx.lineWidth = 1.5; for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(0, 2, 6 + k * 2.5, k, k + 2); ctx.stroke(); } for (let k = 0; k < s.tier + 2; k++) circ(Math.cos(k * 2) * 7, 2 + Math.sin(k * 2) * 5, 2.5, 'rgba(120,200,80,0.7)'); }
   else { ctx.fillStyle = fl ? '#fff' : '#3a3036'; poly([-15, 14, 15, 14, 11, -6, -11, -6], fl ? '#fff' : '#4a3a3a', '#1a1010', 2); const c = s.style === 'w3' ? '#ff7a2a' : '#b07aff'; for (let k = 0; k < 4; k++) { const t = G.time * 8 + k; circ(Math.sin(t) * 6, -8 - k * 4 - (t % 1) * 4, 5 - k, c); } }
   for (let k = 0; k < s.tier; k++) circ(-8 + k * 8, 22, 2.6, '#ffd27a');
+  if (s.cracks && !s.pylon) { ctx.strokeStyle = 'rgba(20,10,0,0.85)'; ctx.lineWidth = 1.5; for (let c = 0; c < s.cracks * 2; c++) { const a = c * 2.4 + 0.5; ctx.beginPath(); ctx.moveTo(Math.cos(a) * 3, Math.sin(a) * 3 - 6); ctx.lineTo(Math.cos(a + 0.3) * 9, Math.sin(a + 0.3) * 9 - 6); ctx.lineTo(Math.cos(a - 0.2) * 15, Math.sin(a - 0.2) * 15 - 6); ctx.stroke(); } }   // cracks after each tier lost
   ctx.restore();
 }
 function drawProp(p) {

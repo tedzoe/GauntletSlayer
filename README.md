@@ -17,7 +17,7 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
 
 - Up to **4 players on one screen**: keyboard and mouse, a second keyboard player, and any gamepads.
 - **Six heroes**, each with their own combos, charged attacks, a dash and a signature ability.
-- Big battle rooms full of monsters, spawners, traps and treasure. Smash the spawners, grab the gold and find the exit.
+- Big battle rooms full of monsters, spawners, traps and treasure. Step inside and the iron gates slam shut until you beat every wave. Smash the spawners, grab the gold and find the exit.
 - Three worlds with bosses and a final showdown, plus an Endless descent and a daily arena.
 
 <p align="center"><img src="docs/images/large-room-fight.jpg" alt="Two heroes fighting a crowd of skeletons in a large battle room" width="820"></p>
