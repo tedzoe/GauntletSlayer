@@ -147,7 +147,7 @@ const DEV = {
     paladin: { move: 'Righteous Advance', cdKey: 'advance', cd: 5 },     // SPEC.paladin.advanceCd (no longer needs the shield raised)
   },
   // 2. COOLDOWN HUD: ready flash length (s) and pip size (px)
-  hud: { readyFlash: 0.45, pipR: 12, pipGap: 29 },
+  hud: { readyFlash: 0.45, pipR: 12, pipGap: 29, panelH: 62, sq: 22, sqGap: 4, minW: 200, gap: 8 },
   // 4. ENEMY PROJECTILES: every foe missile (bosses too) is slowed, then capped. Range is kept (life is stretched to match).
   //    Dodge budget at the cap: reaction 0.35s + sidestep (hero r 13 + missile r 7 + 4 px margin) / 133 px/s = 0.53s,
   //    and a missile at the cap needs 0.80s to cross even the closest firing distance (160 px). Shockwave rings use the same cap.

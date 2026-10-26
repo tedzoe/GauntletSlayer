@@ -95,7 +95,7 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
 - **Zoey on a gamepad:** Y = Ember, X = Rime, B = Storm. Cast with the right stick or a trigger.
 - **Joining:** to join, press confirm on the hero select screen or at camp.
 - **Other keys:** M toggles sound. F toggles fullscreen on menus.
-- **Cooldown bar:** every hero's moves sit in a bar under their health. Each one shows a countdown while it recharges and flashes when it's ready.
+- **Player panels:** each player gets a compact panel at the bottom of the screen with their portrait, health bar and a square icon for every move. Potion, relic and weapon ability come first, as in Slayer. A dark sweep and a seconds count show each recharge, and the icon flashes when it's ready. Linda's weapon ability shows her Soul Power meter instead.
 
 <p align="center"><img src="docs/images/cooldown-hud.jpg" alt="Four-player HUD showing each hero's ability cooldowns" width="820"></p>
 

@@ -327,7 +327,8 @@ Every number lives in `DEV` in tuning.js. tests/devtest.js checks all of it.
    | David | Righteous Advance (no longer needs the shield up) | 5s |
 
    The dash goes in the steered direction, or the facing direction when standing still.
-2. **Cooldown HUD.** The original shows one big ability icon. Each player panel now has a move bar instead: main, secondary, special, dash, extra abilities (Gela Bash, David Consecration), relic, and potions.
+2. **Cooldown HUD.** Slayer layout: compact player panels side by side at the bottom center (1-4 players). Each has a player-colour frame and strip, the hero portrait, the name, keys, and a horizontal health bar. Below the bar sit square icons. The three Slayer ones come first in gold frames: Potion (with its count), Relic (dim when none is equipped) and Weapon Ability, each with a clockwise dark radial sweep. The deviation: the secondary, the dash and the hero extras (Gela and David's shield, Gela's Bash, David's Consecration) get squares too, and every cooling square also prints the seconds left. The main attack has no square, as in Slayer. Mirelle's runes and spell name, Isaac's EXPLOSIVE, the hub bank total and the rez-coin prompt show as a small caption above the panel.
+   - **Guesses:** the square size (22px), the order after the Slayer three, and the panel size. The portrait sits on the left of the health bar.
    - **Cooling:** a radial sweep with a seconds countdown.
    - **Unavailable:** greyed out (no essence, no potion, shield thrown).
    - **Ready:** lit, with a 0.45s flash on becoming ready.
@@ -493,7 +494,7 @@ Sources: `docs/slayer_necromancer_reference_from_david.md` (Steam guide) and the
 - **Hungering Heart** (replaces Dread Mist as her base talisman):
   - A 0.8s rooted, vulnerable cast; the weapon ability cuts it short and the drain still starts. Ghostwalk can't cancel it (FAQ).
   - Then for 6s, an 80 px ring that follows her: 8 DPS, slows, heals her 4 HP/s per foe inside, and kills ghosts on contact. She is not immune.
-- **HUD**: her weapon-ability pip is the Soul meter (5 segments, then a tier-2 fill, white at FULL, with the soul count), never a cooldown sweep. Smash and dash keep their sweeps.
+- **HUD**: her Weapon Ability square is the Soul meter, never a cooldown sweep. Five segments along the bottom fill first, then the tier-2 fill rises up the square, and it turns white at FULL. It shows the bar count, or MAX. Smash and dash keep their sweeps.
 - **Removed (ours, not in Slayer)**: the Bone Golem hold, Sacrificial Detonation, essence from slash hits, the 4s Ghostwalk cooldown with 2s of i-frames, and the starting 30 essence.
 - **Guesses and differences**:
   - All soul gain amounts, the slash and smash ranges, the hammer life, the Dominate radius, the Hunger ring radius and the minion cap.

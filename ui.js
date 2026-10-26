@@ -59,39 +59,78 @@ function movePip(h, m, x, y, r) {
   else txt(m.count ? String(m.count()) : m.lab, x, y + (m.lab.length > 3 ? 3 : 4), m.lab.length > 3 && !m.count ? 8 : 10, lit ? '#111' : '#8a8070', 'center');
   if (big) txt(m.lab, x, y + r + 9, 8, '#bba88a', 'center', 'normal');
 }
-function drawMoveBar(h, x, y, pw) {
-  const ms = heroMoves(h), R = DEV.hud.pipR, gap = Math.min(DEV.hud.pipGap, (pw - 20) / ms.length);
-  const x0 = x + pw / 2 - (ms.length - 1) * gap / 2;
-  ms.forEach((m, i) => movePip(h, m, x0 + i * gap, y, R));
+// ---------------------------------------------------------------- bottom-center player panels (Slayer layout)
+// Slayer shows Potion, Relic and Weapon Ability as square icons beside the health bar, each with a clockwise dark sweep.
+// David's deviation: the dash, secondary and hero extras get squares too, with the sweep plus a seconds number.
+function panelMoves(h) {
+  const ms = heroMoves(h).filter(m => !m.main), pot = ms.find(m => m.lab === 'POT');
+  const rel = ms.find(m => m.lab === 'REL') || { lab: 'REL', col: '#d8a0ff', cd: () => 0, ok: () => false, empty: true };
+  const abl = ms.find(m => m.soul) || ms.find(m => /^(SPIN|SPC|SLAM|MRT)$/.test(m.lab));
+  const core = [pot, rel, abl].filter(Boolean).map(m => Object.assign({ slayer: true }, m));
+  return [...core, ...ms.filter(m => m !== pot && m !== rel && m !== abl)];
+}
+function tiny(t, x, y, size, col, edge) { ctx.font = FONT(size, 'bold'); ctx.textAlign = 'center'; if (edge) { ctx.strokeStyle = '#000'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeText(t, x, y); } ctx.fillStyle = col; ctx.fillText(t, x, y); }   // no drop shadow: it smears at icon size
+function sqPip(h, m, x, y, s) {
+  if (!h._cdm) h._cdm = {}; if (!h._rdy) h._rdy = {};
+  const key = m.lab, c = Math.max(0, m.cd()); if (c <= 0) h._cdm[key] = 0; else if (c > (h._cdm[key] || 0)) h._cdm[key] = c;
+  const cooling = c > 0.02, ok = !h.dead && !m.empty && (!m.ok || m.ok()), act = m.act && m.act(), lit = !cooling && ok;
+  if (cooling) h._rdy[key] = 0; else if (h._rdy[key] === 0) h._rdy[key] = G.time; else if (h._rdy[key] === undefined) h._rdy[key] = -9;
+  const fl = lit && G.time - (h._rdy[key] || -9) < DEV.hud.readyFlash ? 1 - (G.time - h._rdy[key]) / DEV.hud.readyFlash : 0;
+  ctx.fillStyle = '#000'; ctx.fillRect(x - 1, y - 1, s + 2, s + 2);
+  ctx.fillStyle = lit || (cooling && !h.dead) ? m.col : '#1a1612'; ctx.fillRect(x, y, s, s);
+  if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y, s, s / 3); }
+  const cx = x + s / 2, cy = y + s / 2;
+  if (m.soul) { const v = (h.souls || 0) / SPEC.vesper.essenceMax, t1 = Math.min(1, v * 2), t2 = Math.max(0, v * 2 - 1), full = v >= 1;   /* Soul Power meter, never a sweep */
+    ctx.fillStyle = full ? '#fff' : '#2a2038'; ctx.fillRect(x, y, s, s);
+    if (t2 > 0) { ctx.fillStyle = full ? '#fff' : 'rgba(200,154,255,0.75)'; ctx.fillRect(x, y + s * (1 - t2), s, s * t2); }
+    const sw = (s - 6) / 5; for (let k = 0; k < 5; k++) { ctx.fillStyle = full ? '#b07aff' : t1 * 5 > k + 0.999 ? '#e0c8ff' : '#4a3d5e'; ctx.fillRect(x + 1 + k * (sw + 1), y + s - 5, sw, 4); }
+    tiny(full ? 'MAX' : String(soulBars(h)), cx, cy + 2, full ? 9 : 11, full ? '#2a1a3a' : '#fff'); }
+  else {
+    if (cooling) { const k = c / (h._cdm[key] || 1); ctx.save(); ctx.beginPath(); ctx.rect(x, y, s, s); ctx.clip();   /* dark wedge shrinks clockwise from 12 o'clock */
+      ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, s, -1.5708 + 6.2832 * (1 - k), -1.5708 + 6.2832); ctx.closePath(); ctx.fill(); ctx.restore(); }
+    if (!ok && !cooling) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y, s, s); }
+    const ink = lit ? '#111' : cooling ? '#fff' : '#7a7060';
+    if (cooling) tiny(c < 1 ? c.toFixed(1) : String(Math.ceil(c)), cx, cy + 2, 11, '#fff', true);
+    else if (m.count) tiny(String(m.count()), cx, cy + 2, 12, ink);
+    tiny(m.lab, cx, y + s - 2, 6, cooling ? '#bba88a' : ink);
+  }
+  ctx.lineWidth = m.slayer ? 2 : 1; ctx.strokeStyle = m.slayer ? '#c8a24a' : '#5a4a32'; ctx.strokeRect(x - 0.5, y - 0.5, s + 1, s + 1);
+  if (act) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2.5, y - 2.5, s + 5, s + 5); }
+  if (fl > 0) { const g = (1 - fl) * 5; ctx.strokeStyle = `rgba(255,255,220,${fl})`; ctx.lineWidth = 2; ctx.strokeRect(x - 2 - g, y - 2 - g, s + 4 + 2 * g, s + 4 + 2 * g); }
+}
+function playerPanelW(h) { const S = DEV.hud; return Math.max(S.minW, 56 + panelMoves(h).length * (S.sq + S.sqGap) + 6); }
+function drawPlayerPanel(h, x, y, pw, n) {
+  const S = DEV.hud, ph = S.panelH;
+  panel(x, y, pw, ph, 0.82, PCOL[h.pi]);
+  ctx.fillStyle = PCOL[h.pi]; ctx.fillRect(x + 2, y + 2, pw - 4, 3);   // player colour strip
+  const px = x + 26, py = y + ph / 2 + 1;
+  circ(px, py, 20, '#0c0a08', PCOL[h.pi], 3);
+  if (!drawPortrait(h.def, px, py, 18)) { ctx.save(); ctx.beginPath(); ctx.arc(px, py, 18, 0, 6.28); ctx.clip(); drawHeroSprite(h.def, px, py + 8, 1.57, 1.25, { noShadow: true, weapon: h.weapon }); ctx.restore(); }
+  if (h.dead) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.arc(px, py, 18, 0, 6.28); ctx.fill(); txt('✝', px, py + 8, 20, '#c33', 'center'); }
+  if (n > 1) txt('P' + (h.pi + 1), x + 7, y + ph - 5, 9, PCOL[h.pi]);
+  const bx = x + 52, bw = pw - 60;
+  txt(h.def.name, bx, y + 15, 10, h.def.accent);
+  for (let k = 0; k < h.keys && k < 4; k++) { const kx = bx + bw - 6 - k * 11, ky = y + 11; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(kx - 2, ky - 1, 2.5, 0, 6.28); ctx.moveTo(kx + 0.5, ky - 1); ctx.lineTo(kx + 6, ky - 1); ctx.stroke(); }
+  if (h.id === 'mirelle') for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k], rx = bx + bw - 40 - k * 12; circ(rx, y + 11, 4, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); }
+  bar(bx, y + 19, bw, 8, h.hp / h.maxHp, h.hp < h.maxHp * 0.25 ? '#ff3a2a' : '#d43a2a', '#3a0806');
+  const ms = panelMoves(h), sq = S.sq;
+  ms.forEach((m, i) => sqPip(h, m, bx + i * (sq + S.sqGap), y + 33, sq));
   h._lastMoves = ms.map(m => m.lab);
+  h._panel = { x, y, w: pw, h: ph, sq: ms.map((m, i) => ({ lab: m.lab, x: bx + i * (sq + S.sqGap), y: y + 33, s: sq, soul: !!m.soul, slayer: !!m.slayer })) };
+  // little captions above the panel
+  let cap = null, cc = '#bba88a';
+  if (h.dead && n > 1) { cap = `Confirm: rez coin (${isFinite(G.rez) ? G.rez + ' left' : 'unlimited'})`; cc = canRevive() ? '#9fffe0' : '#f88'; }
+  else if (G.mode === 'hub') { cap = `Bank ${bankOf(h.id)} gold`; cc = '#ffd84a'; }
+  else if (h.id === 'mirelle' && h.spell && h.spell.length === 2) { cap = spellOf(h).name; cc = RUNE_COL[h.schools[h.spell[0]]]; }
+  else if (h.id === 'kestrel' && h.explosiveArrow) { cap = 'EXPLOSIVE'; cc = '#ff8a2a'; }
+  if (cap) txt(cap, x + pw / 2, y - 4, 10, cc, 'center');
 }
 
 // ---------------------------------------------------------------- HUD
 function drawHUD() {
-  const n = G.heroes.length, pw = n > 2 ? 280 : 300;
-  G.heroes.forEach((h, i) => {
-    const x = n === 1 ? 14 : i * (W - pw - 28) / Math.max(1, n - 1) + 14, y = H - 120;
-    panel(x, y, pw, 110, 0.8, PCOL[h.pi]);
-    // portrait
-    circ(x + 38, y + 40, 28, '#0c0a08', h.def.color, 3);
-    if (!drawPortrait(h.def, x + 38, y + 40, 26)) { ctx.save(); ctx.beginPath(); ctx.arc(x + 38, y + 40, 26, 0, 6.28); ctx.clip(); drawHeroSprite(h.def, x + 38, y + 50, 1.57, 1.7, { noShadow: true, weapon: h.weapon }); ctx.restore(); }
-    if (h.dead) { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.beginPath(); ctx.arc(x + 38, y + 40, 26, 0, 6.28); ctx.fill(); txt('✝', x + 38, y + 50, 26, '#c33', 'center'); }
-    txt(`${n > 1 ? 'P' + (h.pi + 1) + ' ' : ''}${h.def.name}`, x + 74, y + 20, 14, h.def.accent);
-    bar(x + 74, y + 27, pw - 90, 12, h.hp / h.maxHp, h.hp < h.maxHp * 0.25 ? '#ff3a2a' : '#d43a2a', '#3a0806');
-    txt(`${Math.ceil(Math.max(0, h.hp))} / ${h.maxHp}`, x + 74 + (pw - 90) / 2, y + 37, 10, '#fff', 'center');
-    // potions & keys
-    for (let k = 0; k < Math.max(h.potions, 0) && k < 6; k++) { const px = x + 80 + k * 13, py = y + 53; circ(px, py + 2, 5, '#4a8cff', '#cfe0ff', 1); ctx.fillStyle = '#ddd'; ctx.fillRect(px - 1.5, py - 6, 3, 4); }
-    for (let k = 0; k < h.keys && k < 5; k++) { const kx = x + 80 + k * 12, ky = y + 70; ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(kx - 2, ky - 3, 3, 0, 6.28); ctx.moveTo(kx + 1, ky - 3); ctx.lineTo(kx + 8, ky - 3); ctx.stroke(); }
-    // class resource
-    const rx = x + pw - 162;
-    if (h.id === 'vesper') { for (let k = 0; k < 10; k++) circ(rx + 4 + (k % 5) * 11, y + 52 + Math.floor(k / 5) * 11, 4, k < Math.floor(h.souls / 10) ? (soulFull(h) ? '#ffffff' : '#b07aff') : '#1f1a2a', '#000', 1); }
-    if (h.id === 'mirelle') { for (let k = 0; k < 2; k++) { const r = (h.runes || [])[k]; circ(rx + 6 + k * 16, y + 56, 6, '#111', r !== undefined ? RUNE_COL[h.schools[r]] : '#333', 2); if (r !== undefined) circ(rx + 6 + k * 16, y + 56, 3, RUNE_COL[h.schools[r]]); } if (h.spell && h.spell.length === 2) { const sp = spellOf(h); txt(sp.name, rx - 2, y + 71, 10, RUNE_COL[h.schools[h.spell[0]]]); } }
-    if (h.id === 'kestrel' && h.explosiveArrow) txt('EXPLOSIVE', rx - 2, y + 71, 10, '#ff8a2a');
-    // cooldown pips: defend / ability / relic
-    drawMoveBar(h, x, y + 88, pw);
-    if (G.mode === 'hub') txt(`Bank ${bankOf(h.id)} gold`, x + 150, y + 71, 10, '#ffd84a');
-    if (h.dead) txt(n > 1 ? `Confirm: rez coin (${isFinite(G.rez) ? G.rez + ' left' : 'unlimited'})` : '', x + 74, y + 71, 10, canRevive() ? '#9fffe0' : '#f88');
-  });
+  const n = G.heroes.length, S = DEV.hud, ws = G.heroes.map(playerPanelW), tot = ws.reduce((a, b) => a + b, 0) + (n - 1) * S.gap;
+  let x = Math.round(W / 2 - tot / 2); const y = H - S.panelH - 8;
+  G.heroes.forEach((h, i) => { drawPlayerPanel(h, x, y, ws[i], n); x += ws[i] + S.gap; });
   // top bar: location, purse, mode status
   const top = G.mode === 'hub' ? `${G.floorName}` : `${G.worldName} — ${G.floorName}`;
   panel(W / 2 - 230, 6, 460, 34, 0.7);
@@ -182,7 +221,7 @@ function rebuildHero(h, heroId) {
   nh.x = h.x; nh.y = h.y; nh.fa = h.fa; G.heroes[i] = nh; PARTY[h.pi].hero = nh.id;
   G.allies = G.allies.filter(a => a.owner !== h); return nh;
 }
-function beginRun() { G.purse = 0; G.secured = 0; G.bankedRun = 0; G.deathsRun = 0; G.rez = diff().rez; G.victory = false; G.newMasteries = []; for (const h of G.heroes) { h.goldRun = 0; h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 30; h.cd = {}; h.buff = {}; } G.allies = []; }
+function beginRun() { G.purse = 0; G.secured = 0; G.bankedRun = 0; G.deathsRun = 0; G.rez = diff().rez; G.victory = false; G.newMasteries = []; for (const h of G.heroes) { h.goldRun = 0; h.dead = false; h.hp = h.maxHp; h.potions = 2; h.keys = 0; h.souls = 0; h.cd = {}; h.buff = {}; } G.allies = []; }
 function openStation(st, h) {
   const dev = h.dev;
   if ('QWZY'.includes(st.id)) {
