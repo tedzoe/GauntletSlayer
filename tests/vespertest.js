@@ -41,7 +41,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       h.souls = 70; placeHeroes(); const floorReset = h.souls === 0; h.souls = 50; h.dead = true; reviveHero(h, true); const reviveReset = h.souls === 0;
       out.souls = { grunt: s1, heavy: s2, elite: s3, spawner: spw, floorReset, reviveReset }; }
     // 6. Bloated-mummy blast kills count for her
-    { const h = setup(); h.souls = 0; const bl = foe('bloater', 200, 0), v = foe('shambler', 215, 0); v.hp = v.maxhp = 1; killFoe(bl, h, {}); out.bloater = { victimDead: v.hp <= 0, souls: h.souls }; run(0.3); }
+    { const h = setup(); h.souls = 0; const bl = foe('bloater', 200, 0), v = foe('shambler', 215, 0); v.hp = v.maxhp = 1; killFoe(bl, h, {}); run(DEATH_FX.delay + 0.3); out.bloater = { victimDead: v.hp <= 0, souls: h.souls }; }   // the burst waits DEATH_FX.delay
     // 7. summons by souls and FULL: soldiers in front, shades x2 (20 at full), archers behind (20s, fragile, stack, stun as they rise, fire at full)
     { const sum = (w, souls) => { const h = setup(); G.allies = []; h.weapon = w; h.souls = souls; tap('ability'); const al = G.allies.filter(a => a.owner === h && !a.d.passive); return { h, al, souls: h.souls }; };
       const s3 = sum('base', 30), s10 = sum('base', 100), l3 = sum('lantern', 30), l10 = sum('lantern', 100);

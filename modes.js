@@ -402,7 +402,7 @@ function startWave() {
 }
 function dropWaveSupplies() {
   const tiles = arenaTiles(), m = G.map;
-  const drop = kind => { const i = pick(tiles); G.pickups.push({ kind, x: (i % m.w + 0.5) * T, y: (Math.floor(i / m.w) + 0.5) * T }); };
+  const drop = kind => { const i = pick(tiles); G.pickups.push({ kind, x: (i % m.w + 0.5) * T, y: (Math.floor(i / m.w) + 0.5) * T, dropped: true }); };
   if (!G.mods.famine) { drop('ration'); if (G.arena.wave % 2 === 0) drop('feast'); }
   if (G.arena.wave % 2 === 1) drop('potion');
   for (let k = 0; k < 4; k++) { const i = pick(tiles); dropGold((i % m.w + 0.5) * T, (Math.floor(i / m.w) + 0.5) * T, RI(20, 40)); }

@@ -745,7 +745,7 @@ function usePotion(h) {
   if (id === 'brannoc' && tal === 'base') { // Quartermaster's Horn: 0 damage, food appears around every hero (works past the floor-37 cutoff)
     Snd.play('horn'); ring(h.x, h.y, 90, '#ffcf7a', 0.5, 6); let n = 0;
     for (const o of G.heroes) if (!o.dead) for (let k = 0; k < TS.feastFood + TS.feastFeast; k++) { const a = R(0, 6.28), d = R(30, 60); let x = o.x + Math.cos(a) * d, y = o.y + Math.sin(a) * d; if (collide(x, y, 6)) { x = o.x; y = o.y + 20; }
-      G.pickups.push({ kind: k < TS.feastFood ? 'ration' : 'feast', x, y, talisman: true, invT: 0.5 }); n++; burst(x, y, '#ffcf7a', 6, 80, 2, 0.4); }
+      G.pickups.push({ kind: k < TS.feastFood ? 'ration' : 'feast', x, y, talisman: true, invT: 0.5, dropped: true }); n++; burst(x, y, '#ffcf7a', 6, 80, 2, 0.4); }
     h.lastFeast = n; msg('A feast for the party!', '#ffcf7a', 1.5); repelAll(h.x, h.y, 200); }
   else if (id === 'brannoc') { h.buff.titan = 7; h.titanRoot = SPEC.theo.titanRoot; h.moveMul = 0; msg('TITAN!', '#ffcf7a', 1.5); Snd.play('titan'); ring(h.x, h.y, 120, '#ffcf7a', 0.5, 8); repelAll(h.x, h.y, 260); }
   else if (id === 'sela' && tal === 'base') { // Valkyrie's Call: summon spectral valkyries; raven wings also lift the fallen and heal

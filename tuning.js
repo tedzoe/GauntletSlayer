@@ -377,3 +377,6 @@ Object.assign(FOE_SPRITE, {
   thrall: 'thrall', assassin: 'assassin', bulwark: 'bulwark', chanter: 'chanter', abyssal: 'abyssal', alpha: 'alpha', hag: 'hag', pharaohq: 'pharaohq', boneknight: 'boneknight', succubus: 'succubus',
   ancient: 'ancient', colossus: 'colossus', sunpharaoh: 'sunpharaoh', frosttitan: 'frosttitan', deathknight: 'deathknight' });
 ENDLESS.worldFor = n => { const a = ENDLESS.area(n); return a < 3 ? WORLDS[a] : XAREAS[a - 3]; };
+// ---- enemy death effects (David, Oct 2026: "they go off too soon"). A bursting, freezing or rotting corpse swells and flashes for
+// `delay` seconds with a ring showing the reach before it goes off (Slayer's bloated mummy), and the Ember Thrall's fuse is as long.
+const DEATH_FX = { delay: 0.8, fuse: 0.75, flashFrom: 0.5 };

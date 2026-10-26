@@ -44,10 +44,11 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     return out; }, types);
   for (const t of types) chk(`smoke ${t} (${smoke[t].name})`, smoke[t], g => g.sprite && (g.alive || t === 'wraith') && g.hurtHero);
   const beh = await ev(() => { const out = {};
+    const popFx = () => { const L = G.hazards.filter(z => z.deathFx); G.hazards = G.hazards.filter(z => !z.deathFx); for (const z of L) z.onFire(z); };   // death effects wait DEATH_FX.delay: skip the wait
     // Blightwrapped: poison pool on death
-    TT.setup(['paladin']); TT.testRoom(); let h = G.heroes[0]; let f = mkFoe('blight', h.x + 60, h.y, { awake: true }); killFoe(f, h); out.blightPool = G.hazards.some(z => z.kind === 'miasma' && z.team === 'foe');
+    TT.setup(['paladin']); TT.testRoom(); let h = G.heroes[0]; let f = mkFoe('blight', h.x + 60, h.y, { awake: true }); killFoe(f, h); popFx(); out.blightPool = G.hazards.some(z => z.kind === 'miasma' && z.team === 'foe');
     // Swollen Embalmed: bursts on death
-    TT.testRoom(); h = G.heroes[0]; f = mkFoe('bloater', h.x + 40, h.y, { awake: true }); const hp0 = h.hp; killFoe(f, h); out.bloaterBlast = h.hp < hp0;
+    TT.testRoom(); h = G.heroes[0]; f = mkFoe('bloater', h.x + 40, h.y, { awake: true }); const hp0 = h.hp; killFoe(f, h); popFx(); out.bloaterBlast = h.hp < hp0;
     // Crypt Warden: blocks frontal hits
     TT.testRoom(); h = G.heroes[0]; f = mkFoe('warden', h.x + 40, h.y, { awake: true }); f.fa = Math.PI; const w0 = f.hp; hitFoe(f, 10, { x: h.x, y: h.y, src: h, tier: 1 }); const front = w0 - f.hp; const g = mkFoe('warden', h.x + 40, h.y + 90, { awake: true }); g.fa = 0; const w1 = g.hp; hitFoe(g, 10, { x: h.x, y: h.y + 90, src: h, tier: 1 }); out.wardenBlocks = { front: +front.toFixed(1), back: +(w1 - g.hp).toFixed(1) };
     // Bone Marshal: hastes skeletons, rallies two more

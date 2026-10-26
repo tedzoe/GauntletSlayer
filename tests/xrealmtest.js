@@ -62,14 +62,14 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       out[t] = { name: FOES[t].name, sprite: foeSprReady(FOE_SPRITE[t]), acted: h.hp < 1e6 || shots > 0, hp: Math.round(f.maxhp) }; }
     return out; }, X);
   for (const t of X) chk(`smoke ${t} (${smoke[t].name})`, smoke[t], g => g.sprite && g.acted);
-  const beh = await ev(() => { const out = {}; const room = () => { TT.setup(['paladin']); TT.testRoom(); const h = G.heroes[0]; h.maxHp = h.hp = 1e5; return h; };
+  const beh = await ev(() => { const out = {}; const popFx = () => { const L = G.hazards.filter(z => z.deathFx); G.hazards = G.hazards.filter(z => !z.deathFx); for (const z of L) z.onFire(z); }; const room = () => { TT.setup(['paladin']); TT.testRoom(); const h = G.heroes[0]; h.maxHp = h.hp = 1e5; return h; };
     let h = room(); let f = mkFoe('ftroll', h.x + 300, h.y, { awake: true }); f.hp = f.maxhp * 0.5; const t0 = f.hp; for (let i = 0; i < 60; i++) { f.atkT = 9; __game.tick(); } out.trollRegen = f.hp > t0;
     h = room(); f = mkFoe('strangler', h.x + 200, h.y, { awake: true }); let slowed = false; for (let i = 0; i < 60 * 4; i++) { __game.tick(); h.hp = 1e5; if (h.slowT > 0) slowed = true; } out.stranglerSnares = { slowed, x0: Math.round(h.x + 200), x: Math.round(f.x), shots: G.shots.length };
     h = room(); f = mkFoe('spitter', h.x + 220, h.y, { awake: true }); let pool = false; for (let i = 0; i < 60 * 5; i++) { __game.tick(); h.hp = 1e5; if (G.hazards.some(z => z.kind === 'miasma')) pool = true; } out.spitterPool = pool;
-    h = room(); f = mkFoe('bogtroll', h.x + 60, h.y, { awake: true }); killFoe(f, h); out.bogPool = G.hazards.some(z => z.kind === 'miasma');
+    h = room(); f = mkFoe('bogtroll', h.x + 60, h.y, { awake: true }); killFoe(f, h); popFx(); out.bogPool = G.hazards.some(z => z.kind === 'miasma');
     h = room(); f = mkFoe('sentinel', h.x + 40, h.y, { awake: true }); f.fa = Math.PI; const s0 = f.hp; hitFoe(f, 10, { x: h.x, y: h.y, src: h, tier: 1, freeze: 2 }); out.sentinel = { blocked: s0 - f.hp < 3, noFreeze: !(f.frz > 0) };
     h = room(); f = mkFoe('sprite', h.x + 100, h.y, { awake: true }); let fr = false; for (let i = 0; i < 120; i++) { __game.tick(); h.hp = 1e5; if (h.frz > 0) fr = true; } out.spriteFreezes = fr;
-    h = room(); f = mkFoe('igolem', h.x + 60, h.y, { awake: true }); h.inv = 0; killFoe(f, h); out.golemShatterFreeze = h.frz > 0;
+    h = room(); f = mkFoe('igolem', h.x + 60, h.y, { awake: true }); h.inv = 0; killFoe(f, h); popFx(); out.golemShatterFreeze = h.frz > 0;
     h = room(); f = mkFoe('chanter', h.x + 250, h.y, { awake: true }); let bar = false, c0 = G.foes.length; for (let i = 0; i < 60 * 14; i++) { __game.tick(); h.hp = 1e5; h.frz = 0; if (f.barrier > 0) bar = true; } out.chanter = { barrier: bar, summoned: G.foes.filter(q => q.type === 'thrall').length };
     h = room(); f = mkFoe('croaker', h.x + 250, h.y, { awake: true }); for (let i = 0; i < 60 * 9; i++) { __game.tick(); h.hp = 1e5; } out.croakerGhouls = G.foes.filter(q => q.type === 'ghoul').length;
     h = room(); f = mkFoe('alpha', h.x + 200, h.y, { awake: true }); const wolves = new Set(); for (let i = 0; i < 60 * 10; i++) { __game.tick(); h.hp = 1e5; h.frz = 0; G.foes.forEach(q => { if (q.type === 'wolf') wolves.add(q); }); } out.alphaWolves = wolves.size; __game.draw(); out.miniBar = !!G.miniBar;

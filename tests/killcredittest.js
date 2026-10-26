@@ -26,7 +26,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     trial('raised minion (Vesper)', () => { const f = foe(ve); f.hp = 1; const a = mkAlly('warrior', f.x - 20, f.y, ve); hitFoe(f, 50, { src: a, x: a.x, y: a.y }); return f; }, 2);
     trial('relic pet (Isaac gargoyle)', () => { const f = foe(is); f.hp = 1; const g = mkAlly('gargoyle', f.x - 20, f.y, is, { life: 5 }); hitFoe(f, 50, { src: g, x: g.x, y: g.y }); return f; }, 3);
     trial('charmed foe (Vesper)', () => { const c = foe(ve, 'shambler', 60), f = foe(ve, 'shambler', 140); c.charm = 5; c.charmBy = ve; f.hp = 1; hitFoe(f, 50, { src: c, x: c.x, y: c.y }); return f; }, 2);
-    trial("bloater blast (Isaac killed the bloater)", () => { const bl = foe(is, 'bloater', 80); const f = mkFoe('shambler', bl.x + 20, bl.y, { awake: true }); f.hp = 1; f.spd = 0; hitFoe(bl, 1e4, { src: is, x: is.x, y: is.y }); run(0.3); return f; }, 3, 2);   // the bloater and the foe its blast killed
+    trial("bloater blast (Isaac killed the bloater)", () => { const bl = foe(is, 'bloater', 80); const f = mkFoe('shambler', bl.x + 20, bl.y, { awake: true }); f.hp = 1; f.spd = 0; hitFoe(bl, 1e4, { src: is, x: is.x, y: is.y }); run(DEATH_FX.delay + 0.3); return f; }, 3, 2);   // the bloater and the foe its blast killed (the burst waits DEATH_FX.delay)
     trial('trap finishes a foe Theo wounded', () => { const f = foe(th); hitFoe(f, 1, { src: th, quiet: true }); run(1); f.hp = 0.5; hitFoe(f, 14, { quiet: false }); return f; }, 0);
     trial('kill with no hero involved earns nobody credit', () => { const f = foe(th, 'shambler', 200); f.hp = 1; hitFoe(f, 14, {}); return f; }, -1);
     // boss: Theo lands the killing blow; the tally shows it

@@ -171,13 +171,19 @@ function killFoe(f, src, o = {}) {
   }
   { const cred = hero || G.blastCredit; for (const h of G.heroes) if (h.id === 'vesper' && !h.dead && cred === h && !(src && src.charm > 0)) { const S = SPEC.vesper; addEssence(h, f.boss ? S.soulBoss : f.elite ? S.essenceElite : f.heavy ? S.soulHeavy : S.essenceGrunt, true); } }   /* Soul Power: bigger foes give more; last hit only */
   if (Math.random() < (f.elite ? 1 : 0.18)) dropGold(f.x, f.y, Math.round(f.d.gold * (f.elite ? 3 : 1) * R(0.8, 1.3)));
-  if (f.elite && Math.random() < 0.4) G.pickups.push({ kind: 'shard', x: f.x - 8, y: f.y });
-  if (f.elite && Math.random() < 0.35) G.pickups.push({ kind: Math.random() < 0.6 ? 'ration' : 'potion', x: f.x + 8, y: f.y });
-  if (f.d.deathFreeze) { const Z = f.d.deathFreeze; ring(f.x, f.y, Z.r, '#dff8ff', 0.5, 8); Snd.play('freeze'); for (const h of G.heroes) if (!h.dead && hyp(h.x - f.x, h.y - f.y) < Z.r + h.r && !(h.inv > 0)) h.frz = Math.max(h.frz || 0, Z.t); }
-  if (f.d.deathPool) { const P = f.d.deathPool; G.hazards.push({ kind: 'miasma', x: f.x, y: f.y, r: P.r, life: P.time, t: 0, dps: P.dps * (G.scale.dmg || 1), team: 'foe' }); }
-  if (f.d.deathBlast) { const pc = G.blastCredit; if (hero) G.blastCredit = hero; explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch' }); G.blastCredit = pc; }   /* her Bloated-Mummy kills: the blast's kills count for Vesper */
-  if (f.d.beh === 'exploder') explode(f.x, f.y, 60, 12, { team: 'all', col: '#ff7a2a', src: null });
+  if (f.elite && Math.random() < 0.4) G.pickups.push({ kind: 'shard', x: f.x - 8, y: f.y, dropped: true });
+  if (f.elite && Math.random() < 0.35) G.pickups.push({ kind: Math.random() < 0.6 ? 'ration' : 'potion', x: f.x + 8, y: f.y, dropped: true });
+  // death effects go off after a readable swell (DEATH_FX), never on the frame the foe dies
+  if (f.d.deathFreeze) { const Z = f.d.deathFreeze; deathFx(f, Z.r, '#dff8ff', 'freeze', () => { ring(f.x, f.y, Z.r, '#dff8ff', 0.5, 8); for (const h of G.heroes) if (!h.dead && hyp(h.x - f.x, h.y - f.y) < Z.r + h.r && !(h.inv > 0)) h.frz = Math.max(h.frz || 0, Z.t); }); }
+  if (f.d.deathPool) { const P = f.d.deathPool; deathFx(f, P.r, '#8aa03a', 'squelch', () => G.hazards.push({ kind: 'miasma', x: f.x, y: f.y, r: P.r, life: P.time, t: 0, dps: P.dps * (G.scale.dmg || 1), team: 'foe' })); }
+  if (f.d.deathBlast) deathFx(f, 75, '#9ab04a', 'squelch', () => explode(f.x, f.y, 75, f.d.deathBlast * (G.scale.dmg || 1), { team: 'all', col: '#9ab04a', src: null, sound: 'squelch', noFood: true }), hero);   /* a Bloated Mummy's blast kills count for whoever burst it */
+  if (f.d.beh === 'exploder') deathFx(f, 60, '#ff7a2a', 'boom', () => explode(f.x, f.y, 60, 12, { team: 'all', col: '#ff7a2a', src: null, noFood: true }), hero);
   if (G.mods.volatile) G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 55, delay: 0.9, t: 0, col: '#ff6a3a', onFire: hz => explode(hz.x, hz.y, 55, 14, { team: 'hero', col: '#ff6a3a' }) });
+}
+function deathFx(f, r, col, sound, fire, credit) {   // swell + flash + reach ring, then the effect
+  Snd.play('fuse'); const x = f.x, y = f.y;
+  G.hazards.push({ kind: 'tele', x, y, r, delay: DEATH_FX.delay, t: 0, col, swell: { r: f.r, col: f.d.col || col }, deathFx: true, credit,
+    onFire: () => { const pc = G.blastCredit; if (credit) G.blastCredit = credit; fire(); G.blastCredit = pc; } });
 }
 function dropGold(x, y, v, src = 'mob') { if (v > 0) G.pickups.push({ kind: 'gold', x: x + R(-8, 8), y: y + R(-8, 8), val: v, src, lockT: src === 'chest' ? 15 / 60 : 0 }); }   // chest/jar gold: 15-frame pickup lock
 function repelReaper(f) { f.repel = 5; f.drained = 0; text(f.x, f.y - 30, 'REPELLED', '#9ff'); burst(f.x, f.y, '#9ff', 20, 220, 3, 0.8); }
@@ -395,7 +401,7 @@ function updateFoes(dt) {
     if (f.state === 'windup') {
       f.st -= dt;
       if (beh === 'charger') { if (f.st <= 0) { f.state = 'charge'; f.st = DEV.ground.chargeTime; Snd.play('roar'); } continue; }
-      if (beh === 'exploder') { if (f.st <= 0) { f.dead = true; f.hp = 0; G.stats.kills++; explode(f.x, f.y, 70, f.dmg, { team: 'all', col: '#ff7a2a' }); } continue; }
+      if (beh === 'exploder') { if (f.st <= 0) { f.dead = true; f.hp = 0; G.stats.kills++; explode(f.x, f.y, 70, f.dmg, { team: 'all', col: '#ff7a2a', noFood: true }); } continue; }   // its fuse was the telegraph
       if (f.aim) { f.fa = ang; if (f.st <= 0) { f.aim = false; foeFire(f, t); f.state = 'recover'; f.st = DEV.shooter.recover; f.aimRec = true; } continue; }   // rooted while aiming
       if (f.st <= 0) foeStrike(f, t);
       continue;
@@ -428,7 +434,7 @@ function updateFoes(dt) {
       }
       case 'exploder': {
         f.fa = ang;
-        if (d < f.r + t.r + 18) { f.state = 'windup'; f.st = 0.45; Snd.play('fuse'); continue; }
+        if (d < f.r + t.r + 18) { f.state = 'windup'; f.st = DEATH_FX.fuse; Snd.play('fuse'); G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 70, delay: DEATH_FX.fuse, t: 0, col: '#ff7a2a', follow: f, swell: { r: f.r, col: '#ff7a2a', onFoe: true }, visualOnly: true }); continue; }
         dir = navDir(f, t);
         break;
       }
@@ -594,13 +600,14 @@ function hitProp(p, dmg, o = {}) {
   if (p.hp > 0) return;
   { const hh = o.src && (o.src.isHero ? o.src : o.src.owner); if (hh && hh.isHero) mastery(hh, 'props', 1); }
   burst(p.x, p.y, p.kind === 'barrel' ? '#a05a2a' : p.kind === 'chest' ? '#8a5a2a' : '#b09070', 14, 160, 3, 0.6);
-  if (p.kind === 'urn') { const r = Math.random(); if (r < 0.55) dropGold(p.x, p.y, RI(8, 22), 'chest'); else if (r < 0.63) G.pickups.push({ kind: 'ration', x: p.x, y: p.y }); Snd.play('pot'); }
-  if (p.kind === 'urn' && Math.random() < 0.12) G.pickups.push({ kind: 'shard', x: p.x + 6, y: p.y });
-  if (p.kind === 'chest') { G.pickups.push({ kind: Math.random() < 0.4 ? 'cache' : 'shard', x: p.x, y: p.y + 10 }); for (let k = 0; k < RI(4, 6); k++) dropGold(p.x + R(-16, 16), p.y + R(-16, 16), RI(25, 50), 'chest'); Snd.play('chest'); }
+  if (p.kind === 'urn') { const r = Math.random(); if (r < 0.55) dropGold(p.x, p.y, RI(8, 22), 'chest'); else if (r < 0.63) G.pickups.push({ kind: 'ration', x: p.x, y: p.y, dropped: true }); Snd.play('pot'); }
+  if (p.kind === 'urn' && Math.random() < 0.12) G.pickups.push({ kind: 'shard', x: p.x + 6, y: p.y, dropped: true });
+  if (p.kind === 'chest') { G.pickups.push({ kind: Math.random() < 0.4 ? 'cache' : 'shard', x: p.x, y: p.y + 10, dropped: true }); for (let k = 0; k < RI(4, 6); k++) dropGold(p.x + R(-16, 16), p.y + R(-16, 16), RI(25, 50), 'chest'); Snd.play('chest'); }
   if (p.kind === 'barrel') G.hazards.push({ kind: 'tele', x: p.x, y: p.y, r: 95, delay: 0.12, t: 0, col: '#ff8a2a', silent: true, onFire: hz => explode(hz.x, hz.y, 95, 40, { team: 'all', col: '#ff9a3a', src: o.src }) });
 }
 function smashFood(it, src) {
   if (it.invT > 0) return;   // potion shockwave briefly protects floor food
+  if (it.dropped) return;   // loot that dropped (from a foe, a pot, a chest or a boss) is never destroyed: only food placed in the level can be
   it.dead = true; Snd.play('smash'); burst(it.x, it.y, it.kind === 'potion' ? '#6aa0ff' : '#c08040', 12, 140, 3, 0.5);
   text(it.x, it.y - 10, it.kind === 'potion' ? 'Potion smashed!' : 'Food destroyed!', '#f88');
   G.stats.foodSmashed++;
@@ -716,7 +723,7 @@ function shotCollide(s) {
     }
     for (const sp of G.spawners) if (sp.hp > 0 && !s.hit.has(sp) && hyp(sp.x - s.x, sp.y - s.y) < sp.r + s.r) { s.hit.add(sp); hitSpawner(sp, s.spawnerDmg ?? s.dmg, s.owner, { tier: s.tier, spawnerHits: s.spawnerHits }); if (s.pierce-- <= 0) { s.dead = true; s.onEnd && s.onEnd(s); return; } }
     for (const p of G.props) if (p.hp > 0 && p.kind !== 'legend' && hyp(p.x - s.x, p.y - s.y) < p.r + s.r) { hitProp(p, s.dmg, { src: s.owner }); s.dead = true; s.onEnd && s.onEnd(s); return; }
-    if (!s.noFood) for (const it of G.pickups) if (!it.dead && (it.kind === 'ration' || it.kind === 'feast' || it.kind === 'potion') && hyp(it.x - s.x, it.y - s.y) < 10 + s.r) { smashFood(it, s.owner); if (!s.big) { s.dead = true; return; } }
+    if (!s.noFood) for (const it of G.pickups) if (!it.dead && !it.dropped && !(it.invT > 0) && (it.kind === 'ration' || it.kind === 'feast' || it.kind === 'potion') && hyp(it.x - s.x, it.y - s.y) < 10 + s.r) { smashFood(it, s.owner); if (!s.big) { s.dead = true; return; } }
     for (const hz of G.hazards) if (hz.kind === 'bomb' && !hz.done && s.owner && s.owner.id === 'kestrel' && hyp(hz.x - s.x, hz.y - s.y) < 16) { hz.boost = true; hz.t = hz.delay; s.dead = true; return; }
   } else {
     for (const hz of G.hazards) if ((hz.kind === 'ward' || hz.kind === 'bubble') && hyp(hz.x - s.x, hz.y - s.y) < hz.r) { s.dead = true; burst(s.x, s.y, '#bfefff', 6, 100, 2, 0.3); Snd.play('tink'); return; }
