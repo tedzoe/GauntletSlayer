@@ -1,4 +1,52 @@
 'use strict';
+// ---------------------------------------------------------------- hurtboxes (Oct 2026)
+// A foe is hit anywhere on its drawn body, head included. Sprites are drawn anchored at the feet (f.x, f.y) and extend upward, so the
+// hurtbox is a box fitted to the opaque pixels of the foe's sheet (every idle + walk frame, mirrored with facing, the flyer bob and the
+// boss draw offset included), joined with the old ground circle. Vector-drawn foes get a box from their art (body circle plus the head).
+const HURT = { pad: 2, alpha: 40 };
+const _hbCache = {};
+function sprBounds(key) {   // opaque bounds in frame pixels relative to the sprite anchor; null until the sheets have loaded
+  if (_hbCache[key] !== undefined) return _hbCache[key];
+  const set = typeof SPR !== 'undefined' && SPR.foes; if (!set) return null;
+  let B = null;
+  for (const an of ['_idle', '_walk']) {
+    const A = set.man.anims[key + an]; if (!A) continue; const img = set.img[A.file.replace('{dir}', 'down')]; if (!sprReady(img)) return null;
+    const m = set.man, fw = A.frameW || m.frameW, fh = A.frameH || m.frameH, footY = A.footY ?? m.footY ?? fh, ox = A.originX ?? m.originX ?? fw / 2;
+    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight; const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+    let d; try { d = cx.getImageData(0, 0, c.width, c.height).data; } catch (e) { return null; }
+    const n = A.frames === 'auto' || !A.frames ? Math.max(1, Math.floor(img.naturalWidth / fw)) : A.frames;
+    for (let fr = 0; fr < n; fr++) for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+      if (d[(y * c.width + fr * fw + x) * 4 + 3] <= HURT.alpha) continue;
+      const px = x - ox, py = y - footY; if (!B) B = { x0: px, x1: px + 1, y0: py, y1: py + 1 }; else { if (px < B.x0) B.x0 = px; if (px + 1 > B.x1) B.x1 = px + 1; if (py < B.y0) B.y0 = py; if (py + 1 > B.y1) B.y1 = py + 1; } }
+  }
+  return (_hbCache[key] = B);
+}
+function hurtBox(f) {   // world-space box {l, r, t, b}
+  const sk = FOE_SPRITE[f.boss ? f.kind : f.type], under = f.boss && f.kind === 'rootmaw' && f.state !== 'surface';
+  let l = -f.r, r = f.r, t = -f.r, b = f.r;
+  const B = sk && !f.sub && !under && foeSprReady(sk) ? sprBounds(sk) : null;
+  if (B) { const s = SPR.foes.man.scale * (f.d.sprScale || 1), fly = f.d.beh === 'wraith' || f.d.fly || (f.boss && f.kind === 'sovereign'), oy = 4 + (fly ? -8 : 0) + (f.boss ? f.r * 0.5 : 0), left = Math.cos(f.fa) < -0.15;
+    const x0 = (left ? -B.x1 : B.x0) * s, x1 = (left ? -B.x0 : B.x1) * s;
+    l = Math.min(l, x0); r = Math.max(r, x1); t = Math.min(t, oy + B.y0 * s - (fly ? 3 : 0)); b = Math.max(b, oy + B.y1 * s + (fly ? 3 : 0)); }
+  else if (!f.sub) t = Math.min(t, -f.r * 1.5);   // vector art: the head sits above the body circle
+  const P = HURT.pad; return { l: f.x + l - P, r: f.x + r + P, t: f.y + t - P, b: f.y + b + P };
+}
+function hurtPt(f, x, y) { const B = hurtBox(f); return { x: clamp(x, B.l, B.r), y: clamp(y, B.t, B.b) }; }   // nearest body point to (x, y)
+function hurtD(f, x, y) { const B = hurtBox(f), dx = Math.max(B.l - x, 0, x - B.r), dy = Math.max(B.t - y, 0, y - B.b); return dx || dy ? hyp(dx, dy) : 0; }   // 0 inside the body
+function hurtSeg(f, x1, y1, x2, y2) {   // distance from a segment (beam, lance, thrust) to the body; 0 when it crosses it
+  const B = hurtBox(f); let t0 = 0, t1 = 1; const dx = x2 - x1, dy = y2 - y1;
+  const clip = (p, q) => { if (p === 0) return q >= 0; const r = q / p; if (p < 0) { if (r > t1) return false; if (r > t0) t0 = r; } else { if (r < t0) return false; if (r < t1) t1 = r; } return true; };
+  if (clip(-dx, x1 - B.l) && clip(dx, B.r - x1) && clip(-dy, y1 - B.t) && clip(dy, B.b - y1)) return 0;
+  const ps = (px, py) => { const L = dx * dx + dy * dy, k = L ? clamp(((px - x1) * dx + (py - y1) * dy) / L, 0, 1) : 0; return hyp(px - x1 - dx * k, py - y1 - dy * k); };
+  return Math.min(hurtD(f, x1, y1), hurtD(f, x2, y2), ps(B.l, B.t), ps(B.r, B.t), ps(B.l, B.b), ps(B.r, B.b));
+}
+function hurtRay(f, x, y, ang, len, w = 0) { return hurtSeg(f, x, y, x + Math.cos(ang) * len, y + Math.sin(ang) * len) <= w; }
+function hurtInCone(f, x, y, R, ang, arc) {   // melee arcs: reach is measured to the whole drawn body (heads count);
+  // direction is taken where the body stands (its width at foot level), so a tall foe behind the hero doesn't poke its head into a front swing
+  if (hurtD(f, x, y) > R) return false; if (arc >= Math.PI * 2 - 1e-6) return true;
+  const B = hurtBox(f); for (const px of [B.l, (B.l + B.r) / 2, B.r, clamp(x, B.l, B.r)]) { if (Math.abs(px - x) < 1 && Math.abs(f.y - y) < 1) return true; if (Math.abs(angDiff(Math.atan2(f.y - y, px - x), ang)) <= arc / 2) return true; }
+  return false;
+}
 // ---------------------------------------------------------------- foes
 function mkFoe(type, x, y, o = {}) {
   const d = FOES[type], sc = G.scale || { hp: 1, dmg: 1, spd: 1 };
@@ -105,8 +153,8 @@ function areaHit(x, y, r, dmg, o = {}) {
   if (team !== 'foe') {
     for (const f of G.foes) {
       if (!ALIVE(f) || (set && set.has(f))) continue;
-      const d = hyp(f.x - x, f.y - y); if (d > r + f.r) continue;
-      if (o.cone !== undefined && d > 4 && Math.abs(angDiff(Math.atan2(f.y - y, f.x - x), o.cone)) > o.arc / 2 + Math.atan2(f.r, d)) continue;
+      const d = hurtD(f, x, y); if (d > r) continue;   // the whole drawn body counts (hurtBox)
+      if (o.cone !== undefined && d > 4 && !hurtInCone(f, x, y, r, o.cone, o.arc)) continue;
       if (o.needLos && !los(x, y, f.x, f.y)) continue;
       set && set.add(f);
       const a = Math.atan2(f.y - y, f.x - x);
@@ -180,7 +228,7 @@ function hurtHero(h, dmg, o = {}) {
   if (h.stunImmune > 0) o = Object.assign({}, o, { knock: 0, freeze: 0, slow: 0 });
   else if (dmg <= 24 * HP_SCALE && !o.raw) { h.hitLog = (h.hitLog || []).filter(t => G.time - t < STUN_BREAK.window); h.hitLog.push(G.time);
     if (h.hitLog.length >= STUN_BREAK.hits) { h.hitLog = []; h.stunImmune = STUN_BREAK.immune; o = Object.assign({}, o, { knock: 0 }); ring(h.x, h.y, STUN_BREAK.pulseR, '#ffffff', 0.25, 4); text(h.x, h.y - 36, 'BREAK FREE', '#fff');
-      for (const f of G.foes) if (ALIVE(f) && !f.boss && hyp(f.x - h.x, f.y - h.y) < STUN_BREAK.pulseR + f.r + h.r) { const a = Math.atan2(f.y - h.y, f.x - h.x); f.kx += Math.cos(a) * 360; f.ky += Math.sin(a) * 360; } } }
+      for (const f of G.foes) if (ALIVE(f) && !f.boss && hurtD(f, h.x, h.y) < STUN_BREAK.pulseR + h.r) { const a = Math.atan2(f.y - h.y, f.x - h.x); f.kx += Math.cos(a) * 360; f.ky += Math.sin(a) * 360; } } }
   h.hp -= dmg; h.hurtT = 0.22; mastery(h, 'dmgTaken', dmg); h.lastCause = o.cause || null;
   if (o.freeze) h.frz = Math.max(h.frz || 0, o.freeze);
   if (o.knock && o.x !== undefined) { const a = Math.atan2(h.y - o.y, h.x - o.x); h.kx += Math.cos(a) * o.knock; h.ky += Math.sin(a) * o.knock; }
@@ -618,7 +666,7 @@ function shotCollide(s) {
   if (s.team === 'hero') {
     for (const f of G.foes) {
       if (!ALIVE(f) || s.hit.has(f) || f.charm > 0) continue;
-      if (Math.abs(f.x - s.x) > f.r + s.r || Math.abs(f.y - s.y) > f.r + s.r || hyp(f.x - s.x, f.y - s.y) > f.r + s.r) continue;
+      if (hurtD(f, s.x, s.y) > s.r) continue;   // head to feet: the shot hits anywhere on the drawn body
       s.hit.add(f);
       const a = Math.atan2(s.vy, s.vx);
       hitFoe(f, s.dmg, Object.assign({ x: s.x - Math.cos(a) * 20, y: s.y - Math.sin(a) * 20, kx: Math.cos(a) * (s.knock || 60), ky: Math.sin(a) * (s.knock || 60), src: s.owner, sigKill: s.sig, shot: s.kind, tier: s.tier, lethal: s.lethal }, s.fx || {}));
@@ -660,7 +708,7 @@ function updateBoomer(s, dt) { // returning missiles (shield throw, hatchets)
     if (b.resetOnReturn && !b.reset) { b.reset = true; s.hit = new Set(); }
   }
   for (const f of G.foes) {
-    if (!ALIVE(f) || s.hit.has(f) || f.charm > 0 || hyp(f.x - s.x, f.y - s.y) > f.r + s.r) continue;
+    if (!ALIVE(f) || s.hit.has(f) || f.charm > 0 || hurtD(f, s.x, s.y) > s.r) continue;
     s.hit.add(f); b.hits++;
     const a = Math.atan2(s.vy, s.vx);
     hitFoe(f, s.dmg, { x: s.x, y: s.y, kx: Math.cos(a) * 180, ky: Math.sin(a) * 180, stagger: Math.max(0.35, (s.fx && s.fx.stagger) || 0), tier: s.tier, lethal: s.lethal, src: owner, hitstop: 0.03, sigKill: s.sig, shot: s.kind });
@@ -694,7 +742,7 @@ function updateHazards(dt) {
         if (!tick) break; hz.ticks = (hz.ticks || 0) + 1;
         if (hz.kind !== 'dread') for (const o of G.heroes) if (!o.dead && hyp(o.x - hz.x, o.y - hz.y) < hz.r) healHero(o, (hz.kind === 'consecrate' ? SPEC.paladin.consHeal : SPEC.talisman.aegisHeal) / HP_SCALE);
         if (hz.kind === 'consecrate') { hz.hits = (hz.hits || 0) + areaHit(hz.x, hz.y, hz.r, heroDmg(own, DMG.light), { src: own, tier: 1, quiet: true, light: true, knock: 0, stagger: 0.05 }); }
-        if (hz.kind === 'dread') for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper' || hyp(f.x - hz.x, f.y - hz.y) > hz.r + f.r) continue; f.fearT = Math.max(f.fearT || 0, SPEC.talisman.dreadFear); f.aiFreeze = 0; f.fearX = hz.x; f.fearY = hz.y; if (hitFoe(f, heroDmg(own, SPEC.talisman.dreadDps * 0.5), { quiet: true, src: own, tier: 1, knock: 0, stagger: 0 })) hz.dotHits = (hz.dotHits || 0) + 1; }
+        if (hz.kind === 'dread') for (const f of G.foes) { if (!ALIVE(f) || f.boss || f.type === 'reaper' || hurtD(f, hz.x, hz.y) > hz.r) continue; f.fearT = Math.max(f.fearT || 0, SPEC.talisman.dreadFear); f.aiFreeze = 0; f.fearX = hz.x; f.fearY = hz.y; if (hitFoe(f, heroDmg(own, SPEC.talisman.dreadDps * 0.5), { quiet: true, src: own, tier: 1, knock: 0, stagger: 0 })) hz.dotHits = (hz.dotHits || 0) + 1; }
         break;
       }
       case 'fire': case 'frost': case 'root': case 'smoke': case 'ward': case 'bubble': case 'whirl': case 'hunger': case 'darkHunger': case 'gloom': case 'miasma': {
@@ -704,7 +752,7 @@ function updateHazards(dt) {
         if (hz.team === 'foe') { if (tick) for (const h of G.heroes) if (!h.dead && hyp(h.x - hz.x, h.y - hz.y) < hz.r + h.r * 0.5) hurtHero(h, hz.dps * 0.25, {}); break; }
         for (const f of G.foes) {
           if (!ALIVE(f) || f.charm > 0) continue;
-          const d = hyp(f.x - hz.x, f.y - hz.y); if (d > hz.r + f.r) continue;
+          const d = hyp(f.x - hz.x, f.y - hz.y); if (hurtD(f, hz.x, hz.y) > hz.r) continue;
           if (hz.cap) { if (!hz.caught.has(f)) { if (hz.caught.size >= hz.cap) continue; hz.caught.add(f); } }   // slow orb: first 30 foes in, the rest move freely
           if (hz.kind === 'frost' || hz.kind === 'smoke' || hz.kind === 'gloom') { f.slowT = Math.max(f.slowT, 0.3); f.slowM = Math.min(f.slowM, hz.kind === 'frost' ? 0.35 : 0.6); }
           if (hz.kind === 'root' && !f.boss) f.root = Math.max(f.root, 0.3);
@@ -764,7 +812,7 @@ function updateAllies(dt) {
     if (a.life <= 0 || (a.owner && a.owner.dead && !['warrior', 'archer', 'spear', 'guard', 'mage', 'golem'].includes(a.kind))) { a.hp = 0; burst(a.x, a.y, a.d.col, 10, 100, 2, 0.5); continue; }
     if (a.orbit) {
       a.ang = (a.ang || 0) + dt * 3.2; a.x = a.owner.x + Math.cos(a.ang) * 52; a.y = a.owner.y + Math.sin(a.ang) * 52;
-      for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && hyp(f.x - a.x, f.y - a.y) < f.r + a.r && (a.hitCd.get(f) || 0) < G.time) { a.hitCd.set(f, G.time + 0.4); hitFoe(f, a.dmg, { x: a.x, y: a.y, knock: 120, src: a.owner }); }
+      for (const f of G.foes) if (ALIVE(f) && f.charm <= 0 && hurtD(f, a.x, a.y) < a.r && (a.hitCd.get(f) || 0) < G.time) { a.hitCd.set(f, G.time + 0.4); hitFoe(f, a.dmg, { x: a.x, y: a.y, knock: 120, src: a.owner }); }
       for (const s of G.spawners) if (s.hp > 0 && hyp(s.x - a.x, s.y - a.y) < s.r + a.r + 4 && (a.hitCd.get(s) || 0) < G.time) { a.hitCd.set(s, G.time + 0.4); hitSpawner(s, a.dmg, a); }   // orbiting sprites grind generators too
       continue;
     }

@@ -413,6 +413,7 @@ function drawWorld() {
   for (const p of G.parts) { const k = p.life / p.max; ctx.globalAlpha = Math.min(1, k * 1.5); ctx.fillStyle = p.col; ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size); } ctx.globalAlpha = 1;
   for (const r of G.rings) { const k = 1 - r.life / r.max; ctx.globalAlpha = 1 - k; ctx.strokeStyle = r.col; ctx.lineWidth = r.w * (1 - k) + 1; ctx.beginPath(); ctx.arc(r.x, r.y, Math.max(1, r.r * (0.3 + 0.7 * k)), 0, 6.28); ctx.stroke(); } ctx.globalAlpha = 1;
   for (const hz of G.hazards) if (hz.kind === 'tele' && !hz.r) {} // invisible delay timers
+  if (DEBUG.hurt) DEBUG.drawHurt();   // H: hurtbox overlay (world space)
   ctx.textAlign = 'center';
   for (const t of G.texts) { ctx.globalAlpha = Math.min(1, t.life / t.max * 2); ctx.font = t.big ? 'bold 18px sans-serif' : 'bold 12px sans-serif'; ctx.fillStyle = '#000'; ctx.fillText(t.s, t.x + 1, t.y + 1); ctx.fillStyle = t.col; ctx.fillText(t.s, t.x, t.y); } ctx.globalAlpha = 1;
   ctx.restore();

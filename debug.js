@@ -2,7 +2,14 @@
 // Hidden debug overlay: F3 or ` (backtick) toggles. Shows recent damage numbers with tiers, hero cooldowns,
 // floor scaling, and essence / shard / stamina meters. Off by default; no effect on gameplay.
 const DEBUG = {
-  on: false, log: [],
+  on: false, hurt: false, log: [],
+  drawHurt() {   // green = hurtbox (the whole drawn body), yellow = ground circle (movement / contact), cyan = live hero shots
+    ctx.save(); ctx.lineWidth = 1;
+    for (const f of G.foes) { if (f.hp <= 0) continue; const b = hurtBox(f); ctx.fillStyle = 'rgba(80,255,120,0.16)'; ctx.fillRect(b.l, b.t, b.r - b.l, b.b - b.t); ctx.strokeStyle = '#5f8'; ctx.strokeRect(b.l + 0.5, b.t + 0.5, b.r - b.l - 1, b.b - b.t - 1);
+      ctx.strokeStyle = '#ff4'; ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.strokeStyle = '#4ff'; for (const s of G.shots) if (s.team === 'hero') { ctx.beginPath(); ctx.arc(s.x, s.y, s.r || 3, 0, Math.PI * 2); ctx.stroke(); }
+    ctx.restore();
+  },
   hit(f, dmg, o) { this.log.push({ t: G.time, who: (FOES[f.type] && FOES[f.type].name) || f.type, dmg, tier: (o && o.tier) || dmgTier(dmg, o && o.src && (o.src.isHero ? o.src : o.src.owner)), by: o && o.src && o.src.def ? o.src.def.name : (o && o.tag) || '' }); if (this.log.length > 10) this.log.shift(); },
   draw() {
     if (!this.on || typeof G === 'undefined' || !G.heroes) return;
@@ -29,4 +36,5 @@ const DEBUG = {
     ctx.restore();
   },
 };
-addEventListener('keydown', e => { if (e.code === 'F3' || e.code === 'Backquote') { e.preventDefault(); if (!e.repeat) DEBUG.on = !DEBUG.on; } });
+addEventListener('keydown', e => { if (e.code === 'F3' || e.code === 'Backquote') { e.preventDefault(); if (!e.repeat) DEBUG.on = !DEBUG.on; }
+  if (e.code === 'KeyH' && !e.repeat && typeof scene !== 'undefined' && scene === 'game') DEBUG.hurt = !DEBUG.hurt; });   // H: draw hurtboxes

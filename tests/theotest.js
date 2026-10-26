@@ -32,10 +32,10 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     { const h = setup(); const hv = foe('barrow', 110, 0); hv.hp = hv.maxhp = 9999; rush(); let n = 0; while (!h.dash && n++ < 20) run(1 / 60); n = 0; while (h.dash && n++ < 120) run(1 / 60);
       out.rushHeavy = { stoppedBefore: h.x < hv.x, heavyStag: hv.stag > 0.5, recover: h.lock > 0.1 }; run(0.6); }
     // 4. Super Slash during the Rush: stops it, brief root, white-trail hit 4 stuns a heavy, chain continues from hit 5
-    { const h = setup(); const hv = foe('barrow', 300, 0); hv.hp = hv.maxhp = 9999; rush(); let n = 0; while (!h.dash && n++ < 20) run(1 / 60); run(3 / 60); hv.x = h.x + 44; hv.y = h.y;
+    { const h = setup(); const hv = foe('barrow', 300, 0); hv.hp = hv.maxhp = 9999; rush(); let n = 0; while (!h.dash && n++ < 20) run(1 / 60); run(3 / 60); hv.x = h.x + 72; hv.y = h.y;   // just outside Rush contact with the barrow's drawn body (its arms reach 38px)
       hold.add('primary'); run(1 / 60); hold.delete('primary'); out.superSlash = { stopped: !h.dash, rooted: h.lock > 0.05, combo: h.combo + 1, heavyStun: hv.stag >= SPEC.theo.heavyStun - 0.05 }; run(0.6); }
     // 5. Leap (Rush + smash): jumps over a heavy, invincibility runs on through the landing, lands a stunning Lethal Smash
-    { const h = setup(); const hv = foe('barrow', 300, 0); hv.hp = hv.maxhp = 9999; rush(); let n = 0; while (!h.dash && n++ < 20) run(1 / 60); run(2 / 60); hv.x = h.x + 60; hv.y = h.y; const hx = hv.x;
+    { const h = setup(); const hv = foe('barrow', 300, 0); hv.hp = hv.maxhp = 9999; rush(); let n = 0; while (!h.dash && n++ < 20) run(1 / 60); run(2 / 60); hv.x = h.x + 76; hv.y = h.y; const hx = hv.x;
       hold.add('secondary'); run(1 / 60); hold.delete('secondary'); let allInv = true; n = 0; while (h.dash && n++ < 60) { run(1 / 60); if (h.inv <= 0 && h.dash) allInv = false; }
       out.leap = { over: h.x > hx, heavyStill: Math.abs(hv.x - hx) < 30, allInv, heavyStun: hv.stag >= SPEC.theo.heavyStun - 0.05 }; run(0.5); }
     // 6. Rush cancels into the weapon ability

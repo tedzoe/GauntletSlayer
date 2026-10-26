@@ -41,7 +41,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // Theo: spin 8 x 20 over 2.5s, invulnerable; Super Slash after Rush
     { const h = setup('brannoc'); dummy(h, 50); log = []; hold.add('ability'); run(0.05); hold.clear(); let safe = true; for (let i = 0; i < 140; i++) { run(1 / 60); if (h.spin > 0 && i % 20 === 5) { h.inv = 0; const hp = h.hp; hurtHero(h, 20, { x: h.x + 30, y: h.y }); if (h.hp < hp) safe = false; h.inv = 1e9; } } run(1); out.spin = { n: log.length, vals: [...new Set(log)], spinTime: SPEC.theo.spinTime, safe }; }
     { const h = setup('brannoc'); const f = dummy(h, SPEC.theo.chargeDist + 80); log = []; hold.add('dash'); run(0.05); hold.clear(); let k = 0; while (!h.dash && k++ < 30) run(1 / 60); run(3 / 60); const during = !!(h.dash && h.dash.rush);
-      f.x = f.px = h.x + 44; f.y = f.py = h.y; hold.add('primary'); run(1 / 60); const stopped = !h.dash; hold.add('primary'); run(2.5); hold.clear(); run(0.5); out.superSlash = log.slice(0, 4); out.superWin = during && stopped; }
+      f.x = f.px = h.x + 72; f.y = f.py = h.y; hold.add('primary'); run(1 / 60); const stopped = !h.dash; hold.add('primary'); run(2.5); hold.clear(); run(0.5); out.superSlash = log.slice(0, 4); out.superWin = during && stopped; }
     // Lethal: a big non-elite, non-heavy foe dies to Theo's leap, Gela's thrust and a full sniper shot, but not to a 56 fireball or a 42 combo hit
     const lethal = (id, fn, dx, prep) => { const h = setup(id); prep && prep(h); const f = dummy(h, dx, { hp: 5000, heavy: false, type: 'shambler' }); fn(h); run(0.6); return f.hp <= 0; };
     out.lethal = {
