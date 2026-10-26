@@ -120,11 +120,41 @@ function populate(world) {
   }
   for (const s of m.spawns) mkSpawner(s.x, s.y, Math.min(3, s.tier + diff().tier), G.mode === 'endless' && ENDLESS.allEliteSpawners(G.endless) ? world.elite : world.spawn, world.id);
   // one crown per floor, near the first item spot past the start
-  if (G.mode === 'campaign' || G.mode === 'endless') { const spots = m.items.filter(i => i.c === '$' || i.c === 'c'); const sp = spots.length ? spots[Math.floor(spots.length / 2)] : null; if (sp) G.pickups.push({ kind: 'crown', x: sp.x + 20, y: sp.y }); }
+  if (G.mode === 'campaign' || G.mode === 'endless') { const spots = m.items.filter(i => i.c === '$' || i.c === 'c'); const sp = spots.length ? spots[Math.floor(spots.length / 2)] : null; if (sp) { const off = [[20, 0], [-20, 0], [0, 20], [0, -20]].find(([dx, dy]) => !blocksWalk(tileAt(Math.floor((sp.x + dx) / T), Math.floor((sp.y + dy) / T)), false)) || [0, 8]; G.pickups.push({ kind: 'crown', x: sp.x + off[0], y: sp.y + off[1] }); } }   // beside the item spot, on a walkable tile (it used to be +20px blind, sometimes inside a wall or pit)
   // endless: a skull-coin podium every 3rd floor
   if (G.mode === 'endless' && ENDLESS.coinFloor(G.endless) && m.starts.length) { const st = m.starts[0]; G.pickups.push({ kind: 'coin', x: st.x + 60, y: st.y }); }
   for (const r of m.reapers) mkFoe('reaper', r.x, r.y);
   m.arenaSet = new Set(m.arenaTiles);
+}
+// ---------------------------------------------------------------- never-stuck guarantee
+// After a floor is built, everything needed to finish it (the exit, every key) and the crown must be reachable on foot from the start.
+// Gates and cracked walls count as passable (keys or the rusted-lock fallback open gates; hits break cracks); walls, void and pits do not.
+// Repairs: an unreachable key or crown moves to the nearest reachable floor tile; an unreachable start joins the first start; an exit cut off
+// by walls or pits gets a corridor carved to it. Every repair is logged in G.floorRepairs.
+function floorReach(m, from) {
+  const seen = new Uint8Array(m.w * m.h), q = [from]; seen[from] = 1;
+  for (let k = 0; k < q.length; k++) { const i = q[k], x = i % m.w, y = (i / m.w) | 0;
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue; const j = ny * m.w + nx, t = m.t[j]; if (seen[j] || t === TL.WALL || t === TL.VOID || t === TL.PIT) continue; seen[j] = 1; q.push(j); } }
+  return seen;
+}
+function ensureFinishable() {
+  const m = G.map, log = G.floorRepairs = []; if (!m || !m.starts.length) return log;
+  const tIdx = e => Math.floor(e.y / T) * m.w + Math.floor(e.x / T);
+  let S = floorReach(m, tIdx(m.starts[0]));
+  // the exit: carve the shortest corridor (through walls and pits, never void or the map edge) from the reachable area
+  if (m.exit && !S[m.exit.i]) {
+    const prev = new Int32Array(m.w * m.h).fill(-1), q = [m.exit.i]; prev[m.exit.i] = m.exit.i; let hit = -1;
+    for (let k = 0; k < q.length && hit < 0; k++) { const i = q[k], x = i % m.w, y = (i / m.w) | 0;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (nx < 1 || ny < 1 || nx >= m.w - 1 || ny >= m.h - 1) continue; const j = ny * m.w + nx; if (prev[j] >= 0 || m.t[j] === TL.VOID) continue; prev[j] = i; if (S[j]) { hit = j; break; } q.push(j); } }
+    if (hit >= 0) { let n = 0; for (let i = prev[hit]; i !== m.exit.i; i = prev[i]) if (m.t[i] === TL.WALL || m.t[i] === TL.PIT) { m.t[i] = TL.FLOOR; n++; } log.push({ what: 'exitCorridor', tiles: n }); S = floorReach(m, tIdx(m.starts[0])); }
+  }
+  const spots = []; for (let i = 0; i < S.length; i++) if (S[i] && m.t[i] === TL.FLOOR) spots.push(i);
+  const nearest = (x, y) => { let best = -1, bd = Infinity; for (const i of spots) { const d = hyp((i % m.w + 0.5) * T - x, (((i / m.w) | 0) + 0.5) * T - y); if (d < bd) { bd = d; best = i; } } return best; };
+  for (const it of G.pickups) { if ((it.kind !== 'key' && it.kind !== 'crown') || S[tIdx(it)]) continue; const j = nearest(it.x, it.y); if (j < 0) continue;
+    log.push({ what: it.kind, from: [Math.round(it.x), Math.round(it.y)] }); it.x = (j % m.w + 0.5) * T; it.y = (((j / m.w) | 0) + 0.5) * T; }
+  for (let k = 1; k < m.starts.length; k++) if (!S[tIdx(m.starts[k])]) { log.push({ what: 'start', k }); m.starts[k] = { x: m.starts[0].x + 24 * k, y: m.starts[0].y }; if (!S[tIdx(m.starts[k])]) m.starts[k] = { x: m.starts[0].x, y: m.starts[0].y }; }
+  if (log.length) console.warn('floor repaired', JSON.stringify(log));
+  return log;
 }
 function startCampaignFloor(wi, fi) {
   resetLists();
@@ -134,7 +164,7 @@ function startCampaignFloor(wi, fi) {
   const rows = fl.map === 'maze' ? genMaze(world) : MAPS[fl.map];
   G.map = parseMap(rows, world.theme, { dark: fl.gimmick === 'dark' });
   G.floorName = fl.name; G.worldName = world.name;
-  populate(world);
+  populate(world); ensureFinishable();
   renderMapCanvas(); placeHeroes();
   G.gimmick = fl.gimmick || null; G.gimmickT = 6;
   if (fl.arena) { G.exitOpen = false; G.arena = { kind: 'floor', wave: 0, waves: 3, state: 'idle', world }; }
@@ -164,7 +194,7 @@ function startEndlessFloor(n) {
   G.scale = scaleFor('endless', n); G.mods = {}; G.goldMul = ENDLESS.goldMul(n);
   G.map = parseMap(genDungeon(n, world), world.theme, { dark: n % 6 === 4 });
   G.floorName = `Endless Depth ${n}`; G.worldName = world.name;
-  populate(world); renderMapCanvas(); placeHeroes();
+  populate(world); ensureFinishable(); renderMapCanvas(); placeHeroes();
   if (world.miniboss && ((n - 1) % 6) + 1 === CRYPT.lichEndlessFloor) spawnMiniboss(world.miniboss);
   if (world.boss && ((n - 1) % 6) + 1 === XAREA_RULES.bossFloor) spawnAreaBoss(world.boss);
   if (n % 6 === 0) { G.gimmick = 'reaper'; G.gimmickT = 12; msg('Depth ' + n + ': the Pale Collector hunts this floor!', '#9ff', 3.5); }
