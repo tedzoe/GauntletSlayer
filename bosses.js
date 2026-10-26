@@ -45,7 +45,7 @@ const BOSS_AI = {
     if (d < 150 && B.acts.includes('slam') && Math.random() < 0.5) a = 'slam';
     if (a === 'slam') { f.act = 'slam'; f.st = 0.85 / rage; Snd.play('windup'); G.hazards.push({ kind: 'tele', x: f.x, y: f.y, r: 150, delay: f.st, t: 0, col: B.slamCol, follow: f, visualOnly: true, silent: true, onFire: () => { } }); }
     else if (a === 'charge') { f.act = 'charge'; f.st = 0.5 + DEV.ground.bossChargeTime; f.hitSet = new Set(); Snd.play('windup'); G.swings.push({ x: f.x, y: f.y, a: ang, arc: 0.4, r: GROUND_CAP() * DEV.ground.bossChargeTime + f.r, life: 0.6, max: 0.6, col: 'rgba(255,80,60,0.3)', w: 3, tele: true }); }
-    else if (a === 'volley') { f.act = 'volley'; f.waves = rage > 1 ? 4 : 3; f.st = 1.2; f.vt = 0.3; }
+    else if (a === 'volley') { f.act = 'volley'; f.waves = rage > 1 ? 4 : 3; f.vt = DEV.shooter.bossWindup; f.st = f.vt + (f.waves - 1) * 0.45 / rage + DEV.shooter.bossRecover; ring(f.x, f.y, 80, B.projCol || '#fff', f.vt, 5); Snd.play('windup'); }   // stands still: wind-up, the waves, a short recovery
     else if (a === 'rain') { for (const h of heroTargets()) for (let k = 0; k < (rage > 1 ? 4 : 3); k++) tele(h.x + R(-40, 40) * k, h.y + R(-40, 40) * k, 64, 0.9 + k * 0.35, f.dmg, B.slamCol, hz => { for (const q of heroTargets()) if (hyp(q.x - hz.x, q.y - hz.y) < 64 + q.r) hitFx(q); }); Snd.play('bossroar'); }
     else if (a === 'summon' && G.foes.length < 40) { const n = rage > 1 ? 5 : 3; for (let k = 0; k < n; k++) { const aa = k / n * 6.283, x = f.x + Math.cos(aa) * (f.r + 40), y = f.y + Math.sin(aa) * (f.r + 40); if (!collide(x, y, 12)) G.hazards.push({ kind: 'tele', x, y, r: 22, delay: 0.7, t: 0, col: B.slamCol, silent: true, onFire: hz => { burst(hz.x, hz.y, B.slamCol, 14, 140, 3, 0.5); mkFoe(B.summon, hz.x, hz.y, { spawned: true, awake: true }); } }); } Snd.play('summon'); }
   },
@@ -62,7 +62,7 @@ const BOSS_AI = {
     f.actT = R(2.2, 3.2) / rage;
     if (d < 140) { f.act = 'sweep'; f.st = 0.75 / rage; Snd.play('windup'); G.swings.push({ x: f.x, y: f.y, a: f.fa, arc: 3.6, r: 120, life: f.st, max: f.st, col: 'rgba(255,60,40,0.25)', w: 3, tele: true }); return; }
     const r = Math.random();
-    if (r < 0.35) { f.act = 'volley'; f.waves = rage > 1 ? 4 : 3; f.st = 1.2; f.vt = 0.4; }
+    if (r < 0.35) { f.act = 'volley'; f.waves = rage > 1 ? 4 : 3; f.vt = DEV.shooter.bossWindup; f.st = f.vt + (f.waves - 1) * 0.4 / rage + DEV.shooter.bossRecover; ring(f.x, f.y, 80, '#e8dcc0', f.vt, 5); Snd.play('windup'); }   // stands still: wind-up, the waves, a short recovery
     else if (r < 0.65) { for (const h of heroTargets()) for (let k = 0; k < (rage > 1 ? 4 : 3); k++) tele(h.x + R(-40, 40) * k, h.y + R(-40, 40) * k, 70, 0.9 + k * 0.35, f.dmg, '#e8dcc0'); Snd.play('bossroar'); }
     else { const n = G.foes.length < 40 ? (rage > 1 ? 6 : 4) : 0; G.map.graves.slice(0, n).forEach((g, i) => G.hazards.push({ kind: 'tele', x: g.x, y: g.y, r: 22, delay: 0.8, t: 0, col: '#7aff9a', visualOnly: false, silent: true, onFire: hz => { burst(hz.x, hz.y, '#d8d0b0', 16, 140, 3, 0.6); mkFoe(i % 3 === 2 ? 'bonearcher' : 'bonesoldier', hz.x, hz.y, { tier: rage > 1 ? 2 : 1, spawned: true }); } })); Snd.play('summon'); msg('The dead answer their king!', '#d8d0b0', 2); }
   },
@@ -117,6 +117,13 @@ const BOSS_AI = {
     const ang = Math.atan2(t.y - f.y, t.x - f.x);
     if (!shielded && !f.exposed) { f.exposed = 14; G.banner = { s: 'The Sovereign is exposed!', sub: 'STRIKE NOW', t: 2 }; Snd.play('shatter'); addTrauma(0.5); if (f.phase === 2 && !f.reaperCalled) { f.reaperCalled = true; const rp = mkFoe('reaper', f.x, f.y + 60, { awake: true }); msg('The Sovereign calls a Reaper to its side!', '#9ff', 3); } }
     if (f.exposed) { f.exposed -= dt; if (f.exposed <= 0 && f.hp > 0) { f.exposed = 0; f.cycle = (f.cycle || 1) + 1; raisePylons(f, f.cycle); } }
+    if (f.cast) {   // volleys: hover still for a wind-up (glow), release, a short recovery, then drift again
+      f.fa = ang; f.cast.t -= dt; if (f.cast.t > 0) return;
+      if (!f.cast.done) { f.cast.done = true; f.cast.t = DEV.shooter.bossRecover;
+        if (f.cast.k === 'ring') { const n = 20, off = R(0, 1); for (let i = 0; i < n; i++) bossProj(f, (i + off) / n * 6.283, 200, { kind: 'void', col: '#b07aff' }); }
+        else for (const h of heroTargets()) for (let k = 0; k < 3; k++) bossProj(f, ang + (k - 1) * 0.25, 170, { kind: 'skull', col: '#c080ff', homing: 1.4, r: 9 });
+        Snd.play('hex'); return; }
+      f.cast = null; return; }
     // drift around the throne room
     f.orbitA = (f.orbitA || 0) + dt * 0.4; const cx = G.map.w * T / 2, cy = G.map.h * T / 2 - 40;
     const tx = cx + Math.cos(f.orbitA) * 160, ty = cy + Math.sin(f.orbitA * 1.3) * 70;
@@ -124,8 +131,7 @@ const BOSS_AI = {
     f.actT -= dt; if (f.actT > 0) return;
     f.actT = (shielded ? 2.6 : 1.4) / rage;
     const r = Math.random();
-    if (r < 0.4) { const n = 20, off = R(0, 1); for (let i = 0; i < n; i++) bossProj(f, (i + off) / n * 6.283, 200, { kind: 'void', col: '#b07aff' }); Snd.play('hex'); }
-    else if (r < 0.7) { for (const h of heroTargets()) for (let k = 0; k < 3; k++) bossProj(f, ang + (k - 1) * 0.25, 170, { kind: 'skull', col: '#c080ff', homing: 1.4, r: 9 }); Snd.play('hex'); }
+    if (r < 0.7) { f.cast = { k: r < 0.4 ? 'ring' : 'skulls', t: DEV.shooter.bossWindup, done: false }; ring(f.x, f.y, 70, '#b07aff', DEV.shooter.bossWindup, 5); Snd.play('windup'); }   // telegraphed, then released from a standstill
     else { for (const h of heroTargets()) tele(h.x, h.y, 80, 1.0, f.dmg, '#b07aff'); Snd.play('meteorcall'); }
   },
 };

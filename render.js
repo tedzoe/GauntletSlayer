@@ -124,7 +124,7 @@ function drawFoe(f) {
   const fl = f.flash > 0, wb = Math.sin(f.walk || 0) * 1.5;
   if (f.d.style !== 'wraith' && f.d.style !== 'imp' && !f.sub) shadow(0, 0, r);
   if (f.charm > 0) circ(0, 0, r + 6, 'rgba(255,140,220,0.25)');
-  if (f.state === 'windup') { const k = 1 - f.st / (f.d.windup || 0.5); circ(0, 0, r + 4 + k * 6, `rgba(255,60,40,${0.25 + 0.3 * k})`); }
+  if (f.state === 'windup') { const k = 1 - f.st / ((f.aim && f.windT) || f.d.windup || 0.5); circ(0, 0, r + 4 + k * 6, `rgba(255,60,40,${0.25 + 0.3 * k})`); }
   if (f.state === 'charge') { for (let i = 1; i < 4; i++) circ(-Math.cos(f.fa) * i * 10, -Math.sin(f.fa) * i * 10, r * (1 - i * 0.2), 'rgba(255,200,150,0.15)'); }
   ctx.translate(0, wb * 0.5);
   const sk = FOE_SPRITE[f.boss ? f.kind : f.type];

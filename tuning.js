@@ -156,6 +156,10 @@ const DEV = {
   // slowest hero (133 px/s): cap 86 px/s (65%). Arrows and fire bolts sit at the cap; skulls 66, webs 78, Sovereign blades 51-60.
   // A shot from 260px away takes 3s to arrive; sidestepping it (shot radius + hero radius + margin ~ 24px) takes 0.35s reaction + 0.18s at 133 px/s.
   // Lobbed rocks fly long enough that their ground speed obeys the same cap; their landing circle is still telegraphed for the whole flight.
+  // Shooting foes (David, Oct 26 2026): they move slower than melee foes and never move while shooting.
+  // Every ranged / caster / brood / lobber / lurker foe's speed x spdMul (the old value stays in d.spd0). To shoot they stop:
+  // a rooted wind-up (red ring telegraph), the release, then a rooted recovery. Hollowfang hovers still the same way for its volleys.
+  shooter: { spdMul: 0.65, beh: ['ranged', 'caster', 'brood', 'lobber', 'lurker'], windup: 0.45, recover: 0.3, bossWindup: 0.55, bossRecover: 0.35 },
   proj: { mul: 0.3, capMul: 0.65, react: 0.35, sidestepPx: 24, minRange: 160 },   // was mul 0.65, cap 1.5 x slowest hero (200 px/s)
   // 5. ENEMY WALK SPEED: ground foes never move faster than 90% of the slowest hero (= 120 px/s), after every multiplier
   //    (Endless x1.15, totem haste, frenzy, lurker dive, boss rage) and for charges/dashes too.
@@ -354,6 +358,7 @@ const XAREAS = [
     theme: { floor: [40, 34, 44], wall: '#3a3040', top: '#544860', dark: '#141018', moss: '#8a2a3a', pit: '#0a0610', pitGlow: '#a03aff', fog: 'rgba(150,60,200,0.06)', detail: 'rune' } },
 ];
 Object.assign(FOES, XFOE_STATS);
+for (const k in FOES) { const d = FOES[k]; if (DEV.shooter.beh.includes(d.beh) && d.spd0 === undefined) { d.spd0 = d.spd; d.spd = Math.round(d.spd * DEV.shooter.spdMul); } }   // shooters are slower than melee foes
 Object.assign(FOE_FAMILY, { fskel: 'bones', boneknight: 'bones', thrall: 'bones', ghoul: 'shrouds', dmummy: 'shrouds', wolf: 'gobs', fscout: 'gobs', leech: 'gobs', scarab: 'gobs', assassin: 'cult', chanter: 'cult', suncult: 'cult', abyssal: 'fiends', succubus: 'fiends' });
 Object.assign(FOE_SPRITE, {
   fscout: 'fscout', wolf: 'wolf', ftroll: 'ftroll', wisp: 'wisp', strangler: 'strangler', ghoul: 'ghoul', leech: 'leech', bogtroll: 'bogtroll', croaker: 'croaker', spitter: 'spitter',

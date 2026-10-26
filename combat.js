@@ -360,6 +360,7 @@ function updateFoes(dt) {
       f.st -= dt;
       if (beh === 'charger') { if (f.st <= 0) { f.state = 'charge'; f.st = DEV.ground.chargeTime; Snd.play('roar'); } continue; }
       if (beh === 'exploder') { if (f.st <= 0) { f.dead = true; f.hp = 0; G.stats.kills++; explode(f.x, f.y, 70, f.dmg, { team: 'all', col: '#ff7a2a' }); } continue; }
+      if (f.aim) { f.fa = ang; if (f.st <= 0) { f.aim = false; foeFire(f, t); f.state = 'recover'; f.st = DEV.shooter.recover; f.aimRec = true; } continue; }   // rooted while aiming
       if (f.st <= 0) foeStrike(f, t);
       continue;
     }
@@ -372,7 +373,7 @@ function updateFoes(dt) {
       else if (f.st <= 0) { f.state = 'move'; f.atkT = 2.5; f.hitSet = null; }
       continue;
     }
-    if (f.state === 'recover') { f.st -= dt; if (f.st <= 0) f.state = 'move'; spd *= 0.3; }
+    if (f.state === 'recover') { f.st -= dt; if (f.st <= 0) { f.state = 'move'; f.aimRec = false; } else if (f.aimRec) { f.fa = ang; continue; } spd *= 0.3; }   // shooters stay rooted through their short recovery
     switch (beh) {
       case 'melee': case 'shield': case 'swarm': {
         const reach = f.d.reach + f.r + t.r;
@@ -400,16 +401,8 @@ function updateFoes(dt) {
         if (sees && d < f.d.keep * 0.7) dir = [-Math.cos(ang), -Math.sin(ang)];
         else if (!sees || d > f.d.range) dir = sees ? [Math.cos(ang), Math.sin(ang)] : flowDir(f);
         else { const s = Math.sin(G.time * 0.7 + f.seed) > 0 ? 1 : -1; dir = [-Math.sin(ang) * s, Math.cos(ang) * s]; spd *= 0.45; }
-        if (sees && d < f.d.range + 40 && f.atkT <= 0) {
-          f.atkT = f.d.rate * R(0.85, 1.2);
-          if (beh === 'lobber') {
-            const tx = t.x + (t.vx || 0) * 0.3, ty = t.y + (t.vy || 0) * 0.3;
-            lob({ team: 'foe', x: f.x, y: f.y, tx, ty, time: 1.0, r: 10, kind: 'rock', col: '#8a8a7a', onLand: s => { explode(s.tx, s.ty, 42, f.dmg, { team: 'foe', col: f.d.lobPool ? '#9ab04a' : '#a09080', sound: 'thud' }); if (f.d.lobPool) G.hazards.push({ kind: 'miasma', x: s.tx, y: s.ty, r: f.d.lobPool.r, life: f.d.lobPool.time, t: 0, team: 'foe', dps: f.d.lobPool.dps * (G.scale.dmg || 1) }); }, tele: 42 });
-            Snd.play('throw');
-          } else if (beh === 'brood') { foeShoot(f, ang, { kind: 'web', col: '#e8e8f0', dmg: f.dmg * 0.5, slow: 2, r: 8, spd: 260 }); Snd.play('spit'); }
-          else if (beh === 'caster') { foeShoot(f, ang, { kind: 'skull', col: f.d.shotCol || '#9fd8ff', homing: 1.6, spd: 220, r: 8, life: 3, freeze: f.d.freezeShot ?? 1.2 }); Snd.play('hex'); }
-          else if (f.d.shot) { foeShoot(f, ang, Object.assign({}, f.d.shot)); Snd.play('spit'); }
-          else { foeShoot(f, ang + R(-0.05, 0.05), { kind: f.d.style === 'skelarcher' ? 'arrow' : f.d.style === 'pyro' || f.d.style === 'imp' ? 'fire' : 'orb', col: f.d.style === 'skelarcher' ? '#e0d8c0' : '#ff8a3a', pool: !!f.d.firePool }); Snd.play(f.d.style === 'skelarcher' ? 'bow' : 'fireshot'); }
+        if (sees && d < f.d.range + 40 && f.atkT <= 0) {   // shooters stop to shoot: rooted wind-up (red ring), release, rooted recovery (DEV.shooter)
+          f.atkT = f.d.rate * R(0.85, 1.2); f.state = 'windup'; f.aim = true; f.st = f.windT = DEV.shooter.windup; dir = null; break;
         }
         if ((beh === 'caster' || beh === 'brood') && f.d.summon && FOES[f.d.summon] && f.summonT <= 0 && G.foes.length < 120) {
           f.summonT = beh === 'brood' ? 5 : 7.5;
@@ -426,7 +419,7 @@ function updateFoes(dt) {
       case 'lurker': {   // submerged: untouchable and fast; surfaces near a hero, spits a 3-shot fan, then dives again
         const L = f.d.lurk; f.subT = (f.subT ?? R(L.under[0], L.under[1])) - dt; if (f.sub === undefined) f.sub = true;
         if (f.sub) { dir = !sees ? flowDir(f) : d > L.keep ? [Math.cos(ang), Math.sin(ang)] : [-Math.sin(ang), Math.cos(ang)]; spd *= 1.25; if (f.subT <= 0 && d < L.rise) { f.sub = false; f.subT = L.up; f.atkT = 0.45; burst(f.x, f.y, '#7ad0e0', 14, 140, 3, 0.5); Snd.play('splash'); } }
-        else { dir = [0, 0]; f.fa = ang; if (sees && f.atkT <= 0) { f.atkT = L.rate; for (let k = -1; k <= 1; k++) foeShoot(f, ang + k * L.spread, { kind: 'orb', col: '#6ad0c0', slow: 1.2, r: 6 }); Snd.play('spit'); } if (f.subT <= 0) { f.sub = true; f.subT = R(L.under[0], L.under[1]); burst(f.x, f.y, '#7ad0e0', 10, 100, 3, 0.4); } }
+        else { dir = null; f.fa = ang; if (sees && f.atkT <= 0) { f.atkT = L.rate; for (let k = -1; k <= 1; k++) foeShoot(f, ang + k * L.spread, { kind: 'orb', col: '#6ad0c0', slow: 1.2, r: 6 }); Snd.play('spit'); } if (f.subT <= 0) { f.sub = true; f.subT = R(L.under[0], L.under[1]); burst(f.x, f.y, '#7ad0e0', 10, 100, 3, 0.4); } }
         break;
       }
       case 'wraith': {
@@ -453,6 +446,17 @@ function updateFoes(dt) {
     for (const h of G.heroes) if (!h.dead && !h.ethereal) { const dx = a.x - h.x, dy = a.y - h.y, d = hyp(dx, dy) || 0.01, rr = a.r + h.r; if (d < rr) moveEnt(a, dx / d * (rr - d) * 0.6, dy / d * (rr - d) * 0.6, a.fly); }
   }
   G.foes = G.foes.filter(f => !f.dead || f.boss && f.dying);
+}
+function foeFire(f, t) {   // a ranged foe's shot, released at the end of its wind-up (aimed at where the target is now)
+  const beh = f.d.beh, ang = Math.atan2(t.y - f.y, t.x - f.x); f.fa = ang;
+  if (beh === 'lobber') {
+    const tx = t.x + (t.vx || 0) * 0.3, ty = t.y + (t.vy || 0) * 0.3;
+    lob({ team: 'foe', x: f.x, y: f.y, tx, ty, time: 1.0, r: 10, kind: 'rock', col: '#8a8a7a', onLand: s => { explode(s.tx, s.ty, 42, f.dmg, { team: 'foe', col: f.d.lobPool ? '#9ab04a' : '#a09080', sound: 'thud' }); if (f.d.lobPool) G.hazards.push({ kind: 'miasma', x: s.tx, y: s.ty, r: f.d.lobPool.r, life: f.d.lobPool.time, t: 0, team: 'foe', dps: f.d.lobPool.dps * (G.scale.dmg || 1) }); }, tele: 42 });
+    Snd.play('throw');
+  } else if (beh === 'brood') { foeShoot(f, ang, { kind: 'web', col: '#e8e8f0', dmg: f.dmg * 0.5, slow: 2, r: 8, spd: 260 }); Snd.play('spit'); }
+  else if (beh === 'caster') { foeShoot(f, ang, { kind: 'skull', col: f.d.shotCol || '#9fd8ff', homing: 1.6, spd: 220, r: 8, life: 3, freeze: f.d.freezeShot ?? 1.2 }); Snd.play('hex'); }
+  else if (f.d.shot) { foeShoot(f, ang, Object.assign({}, f.d.shot)); Snd.play('spit'); }
+  else { foeShoot(f, ang + R(-0.05, 0.05), { kind: f.d.style === 'skelarcher' ? 'arrow' : f.d.style === 'pyro' || f.d.style === 'imp' ? 'fire' : 'orb', col: f.d.style === 'skelarcher' ? '#e0d8c0' : '#ff8a3a', pool: !!f.d.firePool }); Snd.play(f.d.style === 'skelarcher' ? 'bow' : 'fireshot'); }
 }
 function foeStrike(f, t) {
   f.state = 'recover'; f.st = 0.35; f.atkT = f.d.beh === 'swarm' ? 0.6 : 1.1;
