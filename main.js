@@ -47,6 +47,7 @@ function startParty() {
   newRun(); startHub(); scene = 'game'; sceneT = 0; menuGuard = 0.3; SAVE.stats.runs++; persist();
 }
 function tickResults() {
+  if (RESULTS.tally && RESULTS.tally.open) return tickTally(DT);
   const opts = resultOpts(), devs = PARTY.map(p => p.dev);
   if (sceneT < 0.6) return;
   for (const d of devs) { const inp = Input.read(d);

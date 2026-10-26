@@ -414,14 +414,66 @@ function drawSelect() {
   if (SEL.slots.length && SEL.slots.every(s => s.ready)) { if (Math.floor(sceneT * 3) % 2) txt('All ready — press START / Enter (or P1 confirm) to enter camp', W / 2, 640, 14, '#9fffe0', 'center'); }
   txt('Esc / B: back', W - 60, 40, 11, '#887a66', 'center', 'normal');
 }
+// ---------------------------------------------------------------- end-of-floor gold tally (Slayer): a glass tube per player fills with the gold they banked this floor
+function tallyTimes(TL) { const S = SPEC.tally, crown = TL.heroes.some(x => x.crown > 0); const stampAt = crown ? S.stampAt : S.stampAt - S.crownTime; return { S, crown, stampAt, mastAt: stampAt + S.mastAt - S.stampAt, promptAt: stampAt + S.promptAt - S.stampAt }; }
+function tallyDone(TL) { return TL.t >= tallyTimes(TL).promptAt; }
+function drawTally() {
+  const TL = RESULTS.tally, { S, crown, stampAt, mastAt, promptAt } = tallyTimes(TL), t = TL.t, n = TL.heroes.length;
+  drawWorld(); ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.fillRect(0, 0, W, H);
+  txt(RESULTS.title, W / 2, 50, 30, '#ffe6b0', 'center');
+  txt('GOLD BANKED THIS FLOOR', W / 2, 74, 12, '#d8b070', 'center');
+  const maxG = Math.max(1, ...TL.heroes.map(x => x.gold)), colW = Math.min(230, (W - 160) / n), x0 = W / 2 - colW * n / 2, tw = 46, th = S.tubeH, ty = 120;
+  const baseK = clamp((t - S.delay) / S.fill, 0, 1), easeB = 1 - Math.pow(1 - baseK, 3), crownK = clamp((t - S.crownAt) / S.crownTime, 0, 1);
+  TL.heroes.forEach((x, i) => {
+    const cx = x0 + colW * (i + 0.5), base = x.gold - x.crown, shown = Math.floor(base * easeB + x.crown * (crown ? crownK : 1) * (baseK >= 1 ? 1 : 0)), fillK = shown / maxG;
+    x.shown = shown;
+    // portrait + name
+    circ(cx, ty - 14, 16, '#0c0a08', PCOL[x.pi], 3); if (!drawPortrait(x.def, cx, ty - 14, 14)) circ(cx, ty - 14, 10, x.col);
+    // glass tube
+    const lx = cx - tw / 2, top = ty + 12, bot = top + th;
+    ctx.fillStyle = 'rgba(20,30,40,0.55)'; ctx.fillRect(lx, top, tw, th);
+    const lh = (th - 8) * fillK, ly = bot - 4 - lh;
+    if (lh > 0) { const g = ctx.createLinearGradient(lx, 0, lx + tw, 0); g.addColorStop(0, '#8a5a10'); g.addColorStop(0.45, '#ffd84a'); g.addColorStop(1, '#a8700f'); ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(lx + 4, bot - 4); ctx.lineTo(lx + 4, ly); for (let k = 0; k <= 8; k++) ctx.lineTo(lx + 4 + (tw - 8) * k / 8, ly + Math.sin(G.time * 6 + k + i) * (baseK < 1 || crownK < 1 ? 2 : 0.8)); ctx.lineTo(lx + tw - 4, bot - 4); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,250,200,0.6)'; for (let k = 0; k < 5; k++) { const by = bot - 8 - ((G.time * 40 + k * 37 + i * 13) % Math.max(4, lh - 6)); circ(lx + 10 + ((k * 11 + i * 7) % (tw - 20)), by, 1.6, 'rgba(255,250,200,0.6)'); } }
+    ctx.strokeStyle = 'rgba(200,230,255,0.75)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(lx, top - 4); ctx.lineTo(lx, bot - 8); ctx.quadraticCurveTo(lx, bot, lx + 8, bot); ctx.lineTo(lx + tw - 8, bot); ctx.quadraticCurveTo(lx + tw, bot, lx + tw, bot - 8); ctx.lineTo(lx + tw, top - 4); ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,230,255,0.75)'; ctx.beginPath(); ctx.moveTo(lx - 5, top - 4); ctx.lineTo(lx + tw + 5, top - 4); ctx.stroke();   // lip
+    ctx.fillStyle = 'rgba(255,255,255,0.18)'; ctx.fillRect(lx + 6, top + 4, 5, th - 16);   // glass shine
+    // numbers under the tube
+    txt(String(shown), cx, bot + 26, 20, '#ffd84a', 'center');
+    txt(`${n > 1 ? 'P' + (x.pi + 1) + ' ' : ''}${x.name}`, cx, bot + 44, 11, x.accent, 'center');
+    txt(`Kills ${x.kills}`, cx, bot + 60, 11, '#d8ccb0', 'center', 'normal');
+    if (x.crown > 0 && t >= S.crownAt) { ctx.globalAlpha = clamp((t - S.crownAt) * 4, 0, 1); txt(`Crown bonus ${x.crown}`, cx, bot + 76, 11, '#ffd84a', 'center'); ctx.globalAlpha = 1; }
+    // Greediest Hero! stamp
+    if (TL.greedy === x.pi && t >= stampAt) { const k = clamp((t - stampAt) / 0.18, 0, 1), sc = 2.2 - 1.2 * k;
+      if (!TL.stamped) { TL.stamped = true; Snd.play('thud'); addTrauma(0.15); }
+      ctx.save(); ctx.translate(cx, top + th * 0.42); ctx.rotate(-0.22); ctx.scale(sc, sc); ctx.globalAlpha = k;
+      ctx.strokeStyle = '#ff4a3a'; ctx.lineWidth = 3; ctx.strokeRect(-62, -18, 124, 34); ctx.fillStyle = 'rgba(40,0,0,0.55)'; ctx.fillRect(-62, -18, 124, 34);
+      ctx.font = FONT(16, 'bold'); ctx.textAlign = 'center'; ctx.fillStyle = '#ff6a5a'; ctx.fillText('GREEDIEST HERO!', 0, 5); ctx.restore(); ctx.globalAlpha = 1; }
+  });
+  const by = ty + 12 + th + 96;
+  txt(`Party total ${TL.heroes.reduce((a, x) => a + (x.shown || 0), 0)}`, W / 2, by, 14, '#ffe6b0', 'center');
+  if (TL.masteries.length && t >= mastAt) { ctx.globalAlpha = clamp((t - mastAt) * 4, 0, 1); txt('MASTERIES UNLOCKED', W / 2, by + 26, 13, '#ffd27a', 'center');
+    TL.masteries.slice(0, 4).forEach((m, i) => txt('★ ' + m, W / 2, by + 44 + i * 16, 11, '#ffe6b0', 'center', 'normal')); if (TL.masteries.length > 4) txt(`and ${TL.masteries.length - 4} more`, W / 2, by + 44 + 64, 10, '#bba', 'center', 'normal'); ctx.globalAlpha = 1; }
+  if (t >= promptAt && (G.time * 2 | 0) % 2 === 0) txt('Press any button to continue', W / 2, H - 14, 13, '#9fffe0', 'center');
+}
+function tickTally(dt) {
+  const TL = RESULTS.tally; TL.t += dt; if (TL.t < 0.35) return;
+  let any = false;
+  for (const d of PARTY.map(p => p.dev)) { const inp = Input.read(d); if (Object.values(inp.pressed).some(Boolean)) any = true; }
+  if (!any) return;
+  if (!tallyDone(TL)) { TL.t = tallyTimes(TL).promptAt; return; }   // first press skips the count-up
+  TL.open = false; sceneT = 0; menuGuard = 0.3; Snd.play('confirm');
+}
 function drawResults() {
+  if (RESULTS.tally && RESULTS.tally.open) return drawTally();
   drawWorld(); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, W, H);
   const R2 = RESULTS, w = 560, x = (W - w) / 2, y = 90;
   panel(x, y, w, 430, 0.94, R2.defeat ? '#a03a2a' : '#a08a3a');
   txt(R2.title, W / 2, y + 48, 30, R2.defeat ? '#ff9a8a' : '#ffe6b0', 'center');
   const rows = [...(R2.loot ? [['Floor loot (' + R2.lootNote + ')', '+' + R2.loot]] : []), ['Foes slain', R2.kills], ['Spawners destroyed', R2.spawners], ['Time', `${Math.floor(R2.time / 60)}:${String(Math.floor(R2.time % 60)).padStart(2, '0')}`], [R2.defeat ? 'Gold kept (secured)' : 'Gold gathered this floor', R2.defeat ? Math.floor(R2.purse) : Math.floor(R2.gained)], ['Party purse', Math.floor(R2.purse)]];
   rows.forEach(([a, b], i) => { txt(a, x + 50, y + 100 + i * 28, 15, '#d8ccb0'); txt(String(b), x + w - 50, y + 100 + i * 28, 15, '#ffd84a', 'right'); });
-  (R2.masteries || []).slice(0, 3).forEach((m, i) => txt('★ ' + m, W / 2, y + 255 + i * 18, 12, '#ffd27a', 'center'));
+  (R2.tally ? [] : R2.masteries || []).slice(0, 3).forEach((m, i) => txt('★ ' + m, W / 2, y + 255 + i * 18, 12, '#ffd27a', 'center'));
   const opts = resultOpts();
   opts.forEach((o, i) => { const oy = y + 320 + i * 38; if (i === R2.sel) { ctx.fillStyle = 'rgba(255,210,120,0.16)'; ctx.fillRect(x + 60, oy - 22, w - 120, 32); ctx.strokeStyle = '#ffd27a'; ctx.strokeRect(x + 60.5, oy - 21.5, w - 121, 31); } o._r = [x + 60, oy - 22, w - 120, 32]; txt(o.label, W / 2, oy, 16, i === R2.sel ? '#fff' : '#cbb', 'center'); });
 }

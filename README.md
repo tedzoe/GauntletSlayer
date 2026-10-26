@@ -47,7 +47,7 @@ Gauntlet Slayer is a fast co-op action dungeon crawler in the spirit of the clas
   Beat all three to unlock **The Hollow Throne**.
 - **Rooms wake up:** monsters in a room stay still until you walk in, until one of them spots you (walls block their view), or until you hit something in the room. Then the whole room comes for you.
 - **Keys, gates and secrets:** keys open locked gates. Cracked walls hide side rooms with treasure. Look out for legendary chests, food and potions.
-- **Gold banks at gates and exits:** gold you pick up is only safe once the party opens or walks through a gate, or crosses the floor's exit. Each hero banks their own share and sees a "+N banked" popup. If you retreat, quit or fall, you lose only the gold picked up since the last gate. Each potion you still hold at the exit is worth +500 gold.
+- **Gold banks at gates and exits:** gold you pick up is only safe once the party opens or walks through a gate, or crosses the floor's exit. Each hero banks their own share and sees a "+N banked" popup. If you retreat, quit or fall, you lose only the gold picked up since the last gate. Each potion you still hold at the exit is worth +500 gold. At the end of each floor a tally fills a glass tube per player with the gold they banked, shows their kills, and stamps the top earner Greediest Hero.
 - **The crown:** each floor has one crown hidden somewhere.
   - Whoever wears it gets **double gold**, but moves 10% slower and nearby enemies go after them first.
   - Any hit knocks it loose, and it vanishes if nobody grabs it within 5 seconds.

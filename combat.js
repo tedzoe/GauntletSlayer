@@ -75,6 +75,7 @@ function killFoe(f, src, o = {}) {
   decal(f.x, f.y, f.r * 0.9, 'rgba(0,0,0,0.25)', 25);
   const hero = src && (src.isHero ? src : src.owner);
   if (hero && hero.isHero) {
+    const hk = G.stats.hk || (G.stats.hk = {}); hk[hero.pi] = (hk[hero.pi] || 0) + 1;   // per-player kills for the floor tally
     mastery(hero, 'kills', 1); if (o.sigKill) mastery(hero, 'signature', 1);
     const fam = FOE_FAMILY[f.type]; if (fam) mastery(hero, 'fam_' + fam, 1);
     const tag = o.tag || o.shot;

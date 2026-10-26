@@ -125,6 +125,7 @@ const SPEC = {
   cam: { battleKinds: ['L', 'A'], margin: 1.5 * 32, hud: 96, min: 0.58, coopPad: 120, rate: 2.2, follow: 0.14, maxDpr: 2.5 },
   splash: { fadeIn: 0.6, hold: 2.0, fadeOut: 0.6, maxWait: 1.5, logo: 400 },   // Tezois Studio splash on page load (seconds, logo px)   // gate crossings bank carried gold (min amount to trigger, HUD flash seconds)
   crown: { goldMul: 2, floatTime: 5, endBonus: 500, slow: 0.1, aggroR: 10 * MTR },
+  tally: { delay: 0.4, fill: 2.0, crownAt: 2.7, crownTime: 0.8, stampAt: 3.8, mastAt: 4.3, promptAt: 4.7, tubeH: 230 },   // end-of-floor gold tally timeline (s)
   coins: { capPerPlayer: 5 },
   bubble: { after: 20 },
   elites: { lichShieldEvery: 12, lichShieldTime: 3, totemHaste: 0.4, totemHp: 1, meteorWindup: 1.6, meteorCdOnCancel: 6 },

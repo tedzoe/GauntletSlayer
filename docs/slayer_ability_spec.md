@@ -283,6 +283,11 @@ HP 200 (bar shows 100), speed 0.95, all attacks light-element, same button layou
   - Dying, being defeated or retreating keeps everything banked at gates. A dying hero drops 20% of the *unbanked* gold only.
   - The crown's +500 stays exit-only, because the crown rule above ties it to crossing a floor exit. Potion gold (+500 per potion) and end-of-floor loot are also paid only at the exit.
   - Numbers are in `SPEC.gateBank` (tuning.js). The checks are in `tests/gatebanktest.js`.
+- **End-of-floor gold tally (built, Oct 2026):** clearing a floor opens a tally screen before the results menu. Each player gets a glass tube that fills over 2s with the gold *they* banked this floor (every gate bank plus their exit share), so the tube equals exactly what reached their bank. Under each tube: the number, the hero, and their kills this floor.
+  - When the crown holder crosses the exit, their tube gets a "Crown bonus 500" line, and the 500 pours into their tube afterwards. The crown and held-potion bonuses now go to the hero who earned them. The base exit loot is still split evenly.
+  - In co-op a red "Greediest Hero!" stamp slams onto the top earner's tube (ties go to more kills). "Masteries Unlocked" lists the masteries earned on the floor, and only appears if there were any. Then "Press any button to continue". The first press skips the count-up and the next one opens the results menu (Continue or Return to camp). A defeat shows no tally. The gate "+N banked" popups are unchanged.
+  - Timeline: `SPEC.tally`. Checks: `tests/tallytest.js`.
+  - Guesses: the timings, the stamp showing only in co-op, ties going to kills, skip-then-continue, and the crown and potion bonuses going to their owner.
 
 # Enemy art reference (David, inspiration only; art/enemy-reference/)
 - Sheets: skeleton (sword/spear/archer/shield guard/robed/elite, plus rise-from-ground summon), goblin (grunt/spearman/archer/shaman/brute/scout), mummy, a 9-boss sheet, and an 8-biome roster.

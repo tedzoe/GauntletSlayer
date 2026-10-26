@@ -26,7 +26,8 @@ function bankSecured(amount) {
   const shares = [];
   amount = Math.floor(amount || 0); if (amount <= 0 || !G.heroes.length) return [];
   const tot = G.heroes.reduce((a, h) => a + (h.goldRun || 0), 0); let left = amount;
-  G.heroes.forEach((h, i) => { const share = i === G.heroes.length - 1 ? left : Math.floor(amount * (tot > 0 ? (h.goldRun || 0) / tot : 1 / G.heroes.length)); SAVE.banks[h.id] = bankOf(h.id) + share; left -= share; h.goldRun = 0; shares.push(share); });
+  const hg = G.stats && (G.stats.hg || (G.stats.hg = {}));   // per-player gold banked this floor (gates + exit), shown by the tally
+  G.heroes.forEach((h, i) => { const share = i === G.heroes.length - 1 ? left : Math.floor(amount * (tot > 0 ? (h.goldRun || 0) / tot : 1 / G.heroes.length)); SAVE.banks[h.id] = bankOf(h.id) + share; left -= share; h.goldRun = 0; shares.push(share); if (hg) hg[h.pi] = (hg[h.pi] || 0) + share; });
   return shares;
 }
 // gate crossing (spec: 'gold banks only when you cross an exit or gate'): opening a gate or walking through an opened one banks
@@ -144,7 +145,7 @@ function startCampaignFloor(wi, fi) {
   G.banner = G.banner || { s: fl.name, sub: world.name.toUpperCase() + ` · ${fi < 3 ? 'FLOOR ' + (fi + 1) : 'BOSS'}`, t: 3 };
   computeFlow(); G.startTime = G.time; G.stats = newStats();
 }
-function newStats() { return { kills: 0, gold: 0, spawners: 0, foodSmashed: 0, start: G.time, purseStart: G.purse }; }
+function newStats() { return { kills: 0, gold: 0, spawners: 0, foodSmashed: 0, start: G.time, purseStart: G.purse, hk: {}, hg: {} }; }
 function spawnAreaBoss(kind) {   // Extended Realms: the area boss guards the far end of its floor; the exit stays sealed until it falls
   const st = G.map.starts[0] || { x: 0, y: 0 }; let best = null, bd = -1;
   for (const s of [...(G.map.spawns || []), ...(G.map.items || []).filter(i => i.c === 'E' || i.c === 'e')]) { const d = hyp(s.x - st.x, s.y - st.y); if (d > bd && !collide(s.x, s.y, 40)) { bd = d; best = s; } }
@@ -367,8 +368,9 @@ function floorComplete() {
   const depth = G.mode === 'campaign' ? G.worldIdx + 1 : G.mode === 'endless' ? 1 + Math.floor(G.endless / 4) : 2;
   const D = diff(), deathCut = Math.max(0.25, 1 - 0.2 * (G.deathsFloor || 0));
   const potionsHeld = G.heroes.reduce((a, h) => a + (h.dead ? 0 : h.potions), 0);
-  const loot = Math.round((150 * depth + (isFinite(G.rez) ? G.rez * 60 : 0) ) * D.gold * deathCut) + (G.heroes.some(h => h.crown && !h.dead) ? SPEC.crown.endBonus : 0) + potionsHeld * SPEC.potion.exitGold;   // +500 per potion held at the exit
-  G.purse += loot; for (const h of G.heroes) h.goldRun = (h.goldRun || 0) + loot / G.heroes.length;
+  const king = G.heroes.find(h => h.crown && !h.dead), crownB = king ? SPEC.crown.endBonus : 0, base = Math.round((150 * depth + (isFinite(G.rez) ? G.rez * 60 : 0) ) * D.gold * deathCut);
+  const loot = base + crownB + potionsHeld * SPEC.potion.exitGold;   // +500 per potion held at the exit
+  G.purse += loot; for (const h of G.heroes) h.goldRun = (h.goldRun || 0) + base / G.heroes.length + (h.dead ? 0 : h.potions * SPEC.potion.exitGold) + (h === king ? crownB : 0);   /* the crown and potion bonuses go to the hero who earned them */
   if (D.name === 'Unfair' && !G.deathsFloor && G.mode === 'campaign' && !WORLDS[G.worldIdx].floors[G.floorIdx].boss) for (const h of G.heroes) mastery(h, 'flawless_' + WORLDS[G.worldIdx].id, 1);
   const gained = G.purse - (G.stats.purseStart || 0);
   G.secured = G.purse;
@@ -386,7 +388,11 @@ function floorComplete() {
     const n = G.endless + 1; next = { label: `Descend to depth ${n}`, go: () => { startEndlessFloor(n); scene = 'game'; } };
   } else if (G.mode === 'arena') title = 'Arena victory!';
   persist();
-  RESULTS = { title, gained, loot, lootNote: `${D.name} x${D.gold}${G.deathsFloor ? `, ${G.deathsFloor} death${G.deathsFloor > 1 ? 's' : ''} -${Math.round((1 - deathCut) * 100)}%` : ''}`, kills: G.stats.kills, spawners: G.stats.spawners, time: G.time - G.stats.start, purse: G.purse, next, masteries: G.newMasteries.splice(0), defeat: false };
+  const hg = G.stats.hg || {}, hk = G.stats.hk || {}, masteries = G.newMasteries.splice(0);
+  const tally = { t: 0, open: true, masteries, crownB, heroes: G.heroes.map(h => ({ pi: h.pi, name: h.def.name, col: h.def.color, accent: h.def.accent, gold: hg[h.pi] || 0, kills: hk[h.pi] || 0, crown: h === king ? crownB : 0, def: h.def, weapon: h.weapon })) };
+  { const top = tally.heroes.slice().sort((a, b) => b.gold - a.gold || b.kills - a.kills)[0]; if (G.heroes.length > 1 && top && top.gold > 0) tally.greedy = top.pi; }
+  tally.total = tally.heroes.reduce((a, x) => a + x.gold, 0);
+  RESULTS = { title, gained, loot, lootNote: `${D.name} x${D.gold}${G.deathsFloor ? `, ${G.deathsFloor} death${G.deathsFloor > 1 ? 's' : ''} -${Math.round((1 - deathCut) * 100)}%` : ''}`, kills: G.stats.kills, spawners: G.stats.spawners, time: G.time - G.stats.start, purse: G.purse, next, masteries, tally, defeat: false };
   for (const h of G.heroes) if (h.dead) { h.dead = false; h.hp = h.maxHp * 0.5; }
   scene = 'results'; RESULTS.sel = 0; sceneT = 0;
 }
