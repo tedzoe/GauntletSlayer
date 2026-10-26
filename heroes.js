@@ -320,10 +320,13 @@ const KITS = {
         h.lastTurbo = areaHit(h.x, h.y, W.turboR, heroDmg(h, D.turbo * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.turboArc, stagger: W.turboStun, knock: 300, heavy: true, sigKill: true, tier: 3 });
         areaHit(h.x, h.y, W.turboR * 1.4, heroDmg(h, D.turboAoe), { src: h, stagger: 0.3, knock: 160, tier: 1 });   // Turbo-Slam 140 + 14 AoE
       } else if (h.weapon === 'demonic') { // Demonic Cleave: rooted and invincible; a strong forward cleave whose sides reach almost all the way round (not mid-back), tiny stun ring on every side
-        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.35); hitstop(0.06); h.cleaveT = W.cleaveRoot; h.moveMul = 0; h.inv = Math.max(h.inv, W.cleaveRoot + 0.1); h.slamT = 0.35;
+        setCd(h, 'ability', abilityCd(h, cd)); Snd.play('quake'); addTrauma(0.12); hitstop(0.06); h.cleaveT = W.cleaveRoot; h.moveMul = 0; h.inv = Math.max(h.inv, W.cleaveRoot + 0.1); h.slamT = 0.35;
         for (const f of G.foes) if (ALIVE(f) && !f.boss && f.type !== 'reaper' && hurtD(f, h.x, h.y) < W.cleaveStunR) f.stag = Math.max(f.stag, 0.6);
-        swingFx(h, h.fa, W.cleaveArc, W.cleaveR, 'rgba(255,90,40,0.95)', 12, 0.3); ring(h.x, h.y, W.cleaveStunR, 'rgba(255,120,60,0.7)', 0.25, 4);
-        h.lastCleave = areaHit(h.x, h.y, W.cleaveR, heroDmg(h, D.demonic * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.cleaveArc, knock: 300, stagger: 1.0, heavy: true, sigKill: true, tier: 3, burn: W.demonicBurn });
+        ring(h.x, h.y, 30, 'rgba(255,255,255,0.95)', 0.18, 10); ring(h.x, h.y, W.cleaveStunR, 'rgba(255,235,220,0.6)', 0.2, 3);   // white radial flash + touch-stun ring
+        const fa = h.fa, R = W.cleaveR;   // white swirl: several streaks, the full one wraps all but mid-back, inner ones weighted forward
+        swingFx(h, fa, W.cleaveArc, R, 'rgba(255,255,255,0.95)', 7, 0.45); swingFx(h, fa, W.cleaveArc - 1.4, R * 0.86, 'rgba(255,250,240,0.8)', 5, 0.4); swingFx(h, fa, 2.2, R * 1.02, 'rgba(255,255,255,0.7)', 9, 0.35);
+        G.swings.push({ x: h.x + Math.cos(fa) * R * 1.05, y: h.y + Math.sin(fa) * R * 1.05, a: fa, arc: 1.6, r: 16, life: 0.4, max: 0.4, col: 'rgba(255,240,200,0.85)', w: 4 });   // small wisp flying off
+        h.lastCleave = areaHit(h.x, h.y, W.cleaveR, heroDmg(h, D.demonic * (1 + h.mods.ability)), { src: h, cone: h.fa, arc: W.cleaveArc, knock: 300, stagger: 1.0, heavy: true, sigKill: true, tier: 3 });
       } else { h.spin = S.spinTime; h.spinTick = 0; Snd.play('spinstart'); }   // Destructo-Spin (cooldown starts when the spin ends)
     }
   },

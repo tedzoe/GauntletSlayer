@@ -49,7 +49,7 @@ const WEAPONS = {   // shop lineup (David). Each weapon swaps the hero's signatu
     { id: 'base', name: 'Ashwood Halberd', ability: 'Destructo-Spin', desc: 'Spin through the crowd: T3 hits around you (2m), untouchable for 3.5s. 12s cooldown.' },
     { id: 'axe', name: 'Bearded Throwing Axe', ability: 'Thrown Axe', desc: 'Hurl an axe straight ahead: T2, no splash. 5s cooldown.' },
     { id: 'turbo', name: 'Quakehammer', ability: 'Turbo-Slam', desc: 'Slam a 90-degree cone out to 3m: T3 + hard stun, cancels elite wind-ups. 7s cooldown.' },
-    { id: 'demonic', name: 'Hellforged Cleaver', ability: 'Demonic Cleave', desc: 'A 1m x 6m shockwave: T2, leaves burning ground for 4s. 8s cooldown.' },
+    { id: 'demonic', name: 'Hellforged Cleaver', ability: 'Demonic Cleave', desc: 'Planted, invincible swing: a swirl that hits nearly all the way round you (open only behind), stuns heavies and briefly stuns anything touching you. 6s cooldown.' },
   ],
   sela: [
     { id: 'base', name: 'Knotwork Roundshield', ability: 'Extreme Prejudice', desc: 'A 180-degree, 2.5m sweep that hurls foes back. No direct damage; a foe slammed into a wall takes T4 and a 2s stun. 9s.' },

@@ -36,6 +36,7 @@ function heroBody(def) {
     rollTime: mv.rollTime || 1, rollDist: mv.rollDist || 1, rollCd: mv.rollCd || 1 };
 }
 // draw one frame. t = seconds into the animation (frame = t*fps), or o.frame overrides.
+const TINT_CV = typeof document !== 'undefined' ? document.createElement('canvas') : { width: 0, height: 0 };
 function drawSpriteFrame(name, anim, dir, t, x, y, scale, o = {}) {
   const set = SPR[name]; if (!set) return false;
   let A = set.man.anims[anim]; if (!A) { A = set.man.anims.idle; anim = 'idle'; }
@@ -47,7 +48,9 @@ function drawSpriteFrame(name, anim, dir, t, x, y, scale, o = {}) {
   f = A.loop === false ? clamp(f, 0, n - 1) : ((f % n) + n) % n;
   const prev = ctx.imageSmoothingEnabled; ctx.imageSmoothingEnabled = !!(A.smooth ?? m.smooth); if (ctx.imageSmoothingEnabled) ctx.imageSmoothingQuality = 'high';
   ctx.save(); ctx.translate(Math.round(x), Math.round(y)); if (o.rot) ctx.rotate(o.rot); ctx.scale(scale * (o.sx || 1), scale * (o.sy || 1));
-  ctx.drawImage(img, f * fw, 0, fw, fh, -ox, -footY, fw, fh);
+  if (o.tint) { const c = TINT_CV.width === fw && TINT_CV.height === fh ? TINT_CV : Object.assign(TINT_CV, { width: fw, height: fh }), t = c.getContext('2d');   // solid-colour silhouette (Demonic Cleave red)
+    t.globalCompositeOperation = 'source-over'; t.clearRect(0, 0, fw, fh); t.drawImage(img, f * fw, 0, fw, fh, 0, 0, fw, fh); t.globalCompositeOperation = 'source-atop'; t.fillStyle = o.tint; t.fillRect(0, 0, fw, fh); ctx.drawImage(c, -ox, -footY); }
+  else ctx.drawImage(img, f * fw, 0, fw, fh, -ox, -footY, fw, fh);
   ctx.restore(); ctx.imageSmoothingEnabled = prev;
   return true;
 }

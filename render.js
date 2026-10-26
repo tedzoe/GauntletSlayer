@@ -35,6 +35,7 @@ function drawHeroArt(def, x, y, fa, s, o) {
   if (B.glow && pose.anim !== 'death') { const g = ctx.createRadialGradient(x, footY - lift + 2, 0, x, footY - lift + 2, 22 * B.scale * m); g.addColorStop(0, hexA(B.glow, 0.55)); g.addColorStop(1, hexA(B.glow, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, footY - lift + 2, 22 * B.scale * m, 9 * B.scale * m, 0, 0, 6.283); ctx.fill(); }
   const sq = o.roll ? { sx: 1.18, sy: 0.78 } : {};
   if (sway) sq.rot = sway;
+  if (o.tint) sq.tint = o.tint;
   drawSpriteFrame(def.sprite, pose.anim, pose.dir, pose.t, x, footY - lift, k, sq);
   s = s * B.scale; const z = lift;
   if (pose.anim === 'death') return;
@@ -370,7 +371,10 @@ function drawHero(h) {
   const runeCol = h.spell && h.spell.length === 2 && h.id === 'mirelle' ? RUNE_COL[h.schools[h.spell[0]]] : null;
   const spinA = h.spin > 0 ? G.time * 18 : h.fa;
   const art = hasSprite(h.def), pose = art ? heroPose(h) : null;
-  drawHeroSprite(h.def, h.x, h.y, art ? h.fa : spinA, h.scale || 1, { pose, roll: !!(h.dash && h.dash.roll), walk: h.walk, z: h.z, blocking: h.blocking, blockFlash: h.blockFlash > 0, shieldOut: h.shieldOut, weapon: h.weapon, charge: h.charging === 'power' ? h.charge : 0, explosive: h.explosiveArrow, runeCol });
+  if (h.cleaveT > 0) { const g = ctx.createRadialGradient(h.x, h.y - 18, 4, h.x, h.y - 18, 46); g.addColorStop(0, 'rgba(255,70,40,0.55)'); g.addColorStop(1, 'rgba(255,90,40,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(h.x, h.y - 18, 46, 0, 6.283); ctx.fill(); }   // Demonic Cleave: red-orange halo
+  drawHeroSprite(h.def, h.x, h.y, art ? h.fa : spinA, h.scale || 1, { pose, roll: !!(h.dash && h.dash.roll), walk: h.walk, z: h.z, blocking: h.blocking, blockFlash: h.blockFlash > 0, shieldOut: h.shieldOut, weapon: h.weapon, charge: h.charging === 'power' ? h.charge : 0, explosive: h.explosiveArrow, runeCol, tint: h.cleaveT > 0 ? 'rgba(225,25,20,0.92)' : null });
+  if (h.cleaveT > SPEC.wpn.cleaveRoot - 0.3) { const sx = h.x + 4, sy = h.y - 66 * h.body.scale - (h.z || 0), k = (SPEC.wpn.cleaveRoot - h.cleaveT) / 0.3, L = 6 + 10 * Math.sin(Math.PI * k);   // axe straight up: starburst at the tip
+    ctx.strokeStyle = 'rgba(255,255,235,0.95)'; ctx.lineWidth = 2; ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i * 0.785 + G.time * 3, l = i % 2 ? L * 0.5 : L; ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); } ctx.stroke(); circ(sx, sy, 3, '#fff'); }
   if (h.lowFlash > 0 && Math.sin(G.time * 40) > 0) { ctx.fillStyle = 'rgba(255,40,30,0.35)'; ctx.beginPath(); ctx.ellipse(h.x, h.y - 16, 18, 26, 0, 0, 6.28); ctx.fill(); }   // low-health red flash
   if (h.bubble) { ctx.strokeStyle = 'rgba(190,240,255,0.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h.x, h.y - 14, 26, 0, 6.28); ctx.stroke(); }
   if (h.crown) { const cy = h.y - 58 - (h.z || 0); ctx.fillStyle = '#ffd84a'; ctx.strokeStyle = '#7a5a10'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(h.x - 9, cy + 6); ctx.lineTo(h.x - 9, cy - 3); ctx.lineTo(h.x - 4.5, cy + 1); ctx.lineTo(h.x, cy - 6); ctx.lineTo(h.x + 4.5, cy + 1); ctx.lineTo(h.x + 9, cy - 3); ctx.lineTo(h.x + 9, cy + 6); ctx.closePath(); ctx.fill(); ctx.stroke(); }
