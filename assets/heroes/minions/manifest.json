@@ -1,0 +1,83 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "dirs": [
+  "down"
+ ],
+ "anims": {
+  "warrior": {
+   "file": "warrior_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 54,
+   "frameH": 74,
+   "footY": 68,
+   "originX": 27
+  },
+  "spear": {
+   "file": "spear_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 42,
+   "frameH": 73,
+   "footY": 68,
+   "originX": 21
+  },
+  "archer": {
+   "file": "archer_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 52,
+   "frameH": 73,
+   "footY": 68,
+   "originX": 26
+  },
+  "guard": {
+   "file": "guard_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 81,
+   "footY": 76,
+   "originX": 33
+  },
+  "mage": {
+   "file": "mage_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 64,
+   "frameH": 79,
+   "footY": 75,
+   "originX": 32
+  },
+  "wraith": {
+   "file": "wraith_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 56,
+   "frameH": 79,
+   "footY": 74,
+   "originX": 28
+  },
+  "golem": {
+   "file": "golem_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 136,
+   "frameH": 127,
+   "footY": 122,
+   "originX": 68
+  }
+ },
+ "frameW": 64,
+ "frameH": 64,
+ "footY": 60,
+ "originX": 32
+}

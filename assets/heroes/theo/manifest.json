@@ -1,0 +1,86 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "portrait": "portrait.jpg",
+ "dirs": [
+  "down",
+  "up",
+  "left",
+  "right"
+ ],
+ "anims": {
+  "idle": {
+   "file": "idle_{dir}.png",
+   "frames": 4,
+   "fps": 4,
+   "loop": true,
+   "frameW": 84,
+   "frameH": 121,
+   "footY": 116,
+   "originX": 42
+  },
+  "run": {
+   "file": "run_{dir}.png",
+   "frames": 6,
+   "fps": 10,
+   "loop": true,
+   "frameW": 96,
+   "frameH": 127,
+   "footY": 121,
+   "originX": 48
+  },
+  "attack": {
+   "file": "attack_{dir}.png",
+   "frames": 3,
+   "fps": 14,
+   "loop": false,
+   "frameW": 120,
+   "frameH": 116,
+   "footY": 107,
+   "originX": 60
+  },
+  "hurt": {
+   "file": "hurt_{dir}.png",
+   "frames": 2,
+   "fps": 10,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 135,
+   "footY": 125,
+   "originX": 47
+  },
+  "death": {
+   "file": "death_{dir}.png",
+   "frames": 3,
+   "fps": 5,
+   "loop": false,
+   "frameW": 118,
+   "frameH": 105,
+   "footY": 100,
+   "originX": 59
+  },
+  "spin": {
+   "file": "spin_{dir}.png",
+   "frames": 4,
+   "fps": 16,
+   "loop": true,
+   "frameW": 84,
+   "frameH": 121,
+   "footY": 116,
+   "originX": 42
+  }
+ },
+ "frameW": 84,
+ "frameH": 121,
+ "footY": 116,
+ "originX": 42,
+ "bodyScale": 1.25,
+ "hitbox": 15,
+ "movement": {
+  "style": "heavy",
+  "speedMul": 0.94,
+  "animRate": 0.8,
+  "bob": 1.0,
+  "stepDust": true
+ }
+}

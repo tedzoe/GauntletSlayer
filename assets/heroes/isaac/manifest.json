@@ -1,0 +1,78 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "portrait": "portrait.jpg",
+ "dirs": [
+  "down",
+  "up",
+  "left",
+  "right"
+ ],
+ "anims": {
+  "idle": {
+   "file": "idle_{dir}.png",
+   "frames": 4,
+   "fps": 4,
+   "loop": true,
+   "frameW": 78,
+   "frameH": 114,
+   "footY": 109,
+   "originX": 39
+  },
+  "run": {
+   "file": "run_{dir}.png",
+   "frames": 6,
+   "fps": 10,
+   "loop": true,
+   "frameW": 84,
+   "frameH": 120,
+   "footY": 114,
+   "originX": 42
+  },
+  "attack": {
+   "file": "attack_{dir}.png",
+   "frames": 3,
+   "fps": 14,
+   "loop": false,
+   "frameW": 98,
+   "frameH": 124,
+   "footY": 115,
+   "originX": 49
+  },
+  "hurt": {
+   "file": "hurt_{dir}.png",
+   "frames": 2,
+   "fps": 10,
+   "loop": false,
+   "frameW": 92,
+   "frameH": 124,
+   "footY": 114,
+   "originX": 46
+  },
+  "death": {
+   "file": "death_{dir}.png",
+   "frames": 3,
+   "fps": 5,
+   "loop": false,
+   "frameW": 100,
+   "frameH": 81,
+   "footY": 76,
+   "originX": 50
+  }
+ },
+ "frameW": 78,
+ "frameH": 114,
+ "footY": 109,
+ "originX": 39,
+ "bodyScale": 0.8,
+ "hitbox": 11,
+ "movement": {
+  "style": "nimble",
+  "speedMul": 1.06,
+  "animRate": 1.35,
+  "bob": 0.5,
+  "rollTime": 0.72,
+  "rollDist": 1.12,
+  "rollCd": 0.8
+ }
+}

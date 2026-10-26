@@ -1,0 +1,1963 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "dirs": [
+  "down"
+ ],
+ "anims": {
+  "husk_idle": {
+   "file": "husk_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 68,
+   "frameH": 105,
+   "footY": 100,
+   "originX": 34
+  },
+  "husk_walk": {
+   "file": "husk_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 107,
+   "footY": 101,
+   "originX": 38
+  },
+  "husk_attack": {
+   "file": "husk_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 115,
+   "footY": 105,
+   "originX": 47
+  },
+  "barrow_idle": {
+   "file": "barrow_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 122,
+   "frameH": 137,
+   "footY": 132,
+   "originX": 61
+  },
+  "barrow_walk": {
+   "file": "barrow_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 132,
+   "frameH": 140,
+   "footY": 133,
+   "originX": 66
+  },
+  "barrow_attack": {
+   "file": "barrow_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 144,
+   "frameH": 150,
+   "footY": 139,
+   "originX": 72
+  },
+  "blight_idle": {
+   "file": "blight_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 72,
+   "frameH": 108,
+   "footY": 103,
+   "originX": 36
+  },
+  "blight_walk": {
+   "file": "blight_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 78,
+   "frameH": 110,
+   "footY": 104,
+   "originX": 39
+  },
+  "blight_attack": {
+   "file": "blight_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 90,
+   "frameH": 115,
+   "footY": 107,
+   "originX": 45
+  },
+  "swollen_idle": {
+   "file": "swollen_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 90,
+   "frameH": 113,
+   "footY": 108,
+   "originX": 45
+  },
+  "swollen_walk": {
+   "file": "swollen_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 100,
+   "frameH": 118,
+   "footY": 110,
+   "originX": 50
+  },
+  "swollen_attack": {
+   "file": "swollen_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 114,
+   "frameH": 126,
+   "footY": 115,
+   "originX": 57
+  },
+  "ghost_idle": {
+   "file": "ghost_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 60,
+   "frameH": 109,
+   "footY": 104,
+   "originX": 30
+  },
+  "ghost_walk": {
+   "file": "ghost_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 70,
+   "frameH": 110,
+   "footY": 105,
+   "originX": 35
+  },
+  "ghost_attack": {
+   "file": "ghost_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 90,
+   "frameH": 116,
+   "footY": 110,
+   "originX": 45
+  },
+  "hexer_idle": {
+   "file": "hexer_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 92,
+   "frameH": 119,
+   "footY": 115,
+   "originX": 46
+  },
+  "hexer_walk": {
+   "file": "hexer_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 106,
+   "frameH": 123,
+   "footY": 117,
+   "originX": 53
+  },
+  "hexer_attack": {
+   "file": "hexer_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 124,
+   "frameH": 132,
+   "footY": 122,
+   "originX": 62
+  },
+  "sentry_idle": {
+   "file": "sentry_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 70,
+   "frameH": 103,
+   "footY": 98,
+   "originX": 35
+  },
+  "sentry_walk": {
+   "file": "sentry_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 80,
+   "frameH": 106,
+   "footY": 99,
+   "originX": 40
+  },
+  "sentry_attack": {
+   "file": "sentry_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 84,
+   "frameH": 113,
+   "footY": 103,
+   "originX": 42
+  },
+  "warden_idle": {
+   "file": "warden_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 109,
+   "footY": 104,
+   "originX": 38
+  },
+  "warden_walk": {
+   "file": "warden_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 82,
+   "frameH": 111,
+   "footY": 104,
+   "originX": 41
+  },
+  "warden_attack": {
+   "file": "warden_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 96,
+   "frameH": 118,
+   "footY": 108,
+   "originX": 48
+  },
+  "marshal_idle": {
+   "file": "marshal_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 90,
+   "frameH": 137,
+   "footY": 132,
+   "originX": 45
+  },
+  "marshal_walk": {
+   "file": "marshal_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 96,
+   "frameH": 139,
+   "footY": 133,
+   "originX": 48
+  },
+  "marshal_attack": {
+   "file": "marshal_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 112,
+   "frameH": 148,
+   "footY": 139,
+   "originX": 56
+  },
+  "lich_idle": {
+   "file": "lich_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 110,
+   "frameH": 177,
+   "footY": 172,
+   "originX": 55
+  },
+  "lich_walk": {
+   "file": "lich_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 128,
+   "frameH": 181,
+   "footY": 174,
+   "originX": 64
+  },
+  "lich_attack": {
+   "file": "lich_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 136,
+   "frameH": 186,
+   "footY": 175,
+   "originX": 68
+  },
+  "king_idle": {
+   "file": "king_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 164,
+   "frameH": 239,
+   "footY": 234,
+   "originX": 82
+  },
+  "king_walk": {
+   "file": "king_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 190,
+   "frameH": 242,
+   "footY": 234,
+   "originX": 95
+  },
+  "king_attack": {
+   "file": "king_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 200,
+   "frameH": 259,
+   "footY": 243,
+   "originX": 100
+  },
+  "savage_idle": {
+   "file": "savage_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 113,
+   "footY": 108,
+   "originX": 38
+  },
+  "savage_walk": {
+   "file": "savage_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 84,
+   "frameH": 115,
+   "footY": 109,
+   "originX": 42
+  },
+  "savage_attack": {
+   "file": "savage_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 124,
+   "footY": 114,
+   "originX": 47
+  },
+  "shieldwall_idle": {
+   "file": "shieldwall_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 80,
+   "frameH": 115,
+   "footY": 110,
+   "originX": 40
+  },
+  "shieldwall_walk": {
+   "file": "shieldwall_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 88,
+   "frameH": 118,
+   "footY": 111,
+   "originX": 44
+  },
+  "shieldwall_attack": {
+   "file": "shieldwall_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 104,
+   "frameH": 125,
+   "footY": 115,
+   "originX": 52
+  },
+  "juggernaut_idle": {
+   "file": "juggernaut_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 110,
+   "frameH": 143,
+   "footY": 138,
+   "originX": 55
+  },
+  "juggernaut_walk": {
+   "file": "juggernaut_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 120,
+   "frameH": 146,
+   "footY": 140,
+   "originX": 60
+  },
+  "juggernaut_attack": {
+   "file": "juggernaut_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 136,
+   "frameH": 157,
+   "footY": 146,
+   "originX": 68
+  },
+  "scavenger_idle": {
+   "file": "scavenger_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 89,
+   "footY": 84,
+   "originX": 33
+  },
+  "scavenger_walk": {
+   "file": "scavenger_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 72,
+   "frameH": 91,
+   "footY": 84,
+   "originX": 36
+  },
+  "scavenger_attack": {
+   "file": "scavenger_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 82,
+   "frameH": 96,
+   "footY": 88,
+   "originX": 41
+  },
+  "shaman_idle": {
+   "file": "shaman_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 78,
+   "frameH": 101,
+   "footY": 96,
+   "originX": 39
+  },
+  "shaman_walk": {
+   "file": "shaman_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 88,
+   "frameH": 104,
+   "footY": 98,
+   "originX": 44
+  },
+  "shaman_attack": {
+   "file": "shaman_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 106,
+   "frameH": 110,
+   "footY": 102,
+   "originX": 53
+  },
+  "spawn_idle": {
+   "file": "spawn_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 50,
+   "frameH": 42,
+   "footY": 38,
+   "originX": 25
+  },
+  "spawn_walk": {
+   "file": "spawn_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 52,
+   "frameH": 44,
+   "footY": 39,
+   "originX": 26
+  },
+  "spawn_attack": {
+   "file": "spawn_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 56,
+   "frameH": 48,
+   "footY": 41,
+   "originX": 28
+  },
+  "spiderwar_idle": {
+   "file": "spiderwar_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 75,
+   "footY": 70,
+   "originX": 38
+  },
+  "spiderwar_walk": {
+   "file": "spiderwar_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 80,
+   "frameH": 78,
+   "footY": 72,
+   "originX": 40
+  },
+  "spiderwar_attack": {
+   "file": "spiderwar_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 90,
+   "frameH": 83,
+   "footY": 75,
+   "originX": 45
+  },
+  "dweller_idle": {
+   "file": "dweller_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 86,
+   "frameH": 109,
+   "footY": 103,
+   "originX": 43
+  },
+  "dweller_walk": {
+   "file": "dweller_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 86,
+   "frameH": 111,
+   "footY": 104,
+   "originX": 43
+  },
+  "dweller_attack": {
+   "file": "dweller_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 98,
+   "frameH": 115,
+   "footY": 106,
+   "originX": 49
+  },
+  "queen_idle": {
+   "file": "queen_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 130,
+   "frameH": 149,
+   "footY": 144,
+   "originX": 65
+  },
+  "queen_walk": {
+   "file": "queen_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 140,
+   "frameH": 151,
+   "footY": 144,
+   "originX": 70
+  },
+  "queen_attack": {
+   "file": "queen_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 162,
+   "frameH": 160,
+   "footY": 150,
+   "originX": 81
+  },
+  "behemoth_idle": {
+   "file": "behemoth_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 182,
+   "frameH": 240,
+   "footY": 234,
+   "originX": 91
+  },
+  "behemoth_walk": {
+   "file": "behemoth_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 198,
+   "frameH": 242,
+   "footY": 234,
+   "originX": 99
+  },
+  "behemoth_attack": {
+   "file": "behemoth_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 232,
+   "frameH": 257,
+   "footY": 243,
+   "originX": 116
+  },
+  "novice_idle": {
+   "file": "novice_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 105,
+   "footY": 100,
+   "originX": 33
+  },
+  "novice_walk": {
+   "file": "novice_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 108,
+   "footY": 101,
+   "originX": 38
+  },
+  "novice_attack": {
+   "file": "novice_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 84,
+   "frameH": 114,
+   "footY": 104,
+   "originX": 42
+  },
+  "zealot_idle": {
+   "file": "zealot_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 90,
+   "frameH": 113,
+   "footY": 108,
+   "originX": 45
+  },
+  "zealot_walk": {
+   "file": "zealot_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 92,
+   "frameH": 115,
+   "footY": 109,
+   "originX": 46
+  },
+  "zealot_attack": {
+   "file": "zealot_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 108,
+   "frameH": 125,
+   "footY": 114,
+   "originX": 54
+  },
+  "acolyte_idle": {
+   "file": "acolyte_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 74,
+   "frameH": 118,
+   "footY": 113,
+   "originX": 37
+  },
+  "acolyte_walk": {
+   "file": "acolyte_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 80,
+   "frameH": 118,
+   "footY": 112,
+   "originX": 40
+  },
+  "acolyte_attack": {
+   "file": "acolyte_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 126,
+   "footY": 117,
+   "originX": 47
+  },
+  "sorcerer_idle": {
+   "file": "sorcerer_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 90,
+   "frameH": 135,
+   "footY": 130,
+   "originX": 45
+  },
+  "sorcerer_walk": {
+   "file": "sorcerer_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 104,
+   "frameH": 139,
+   "footY": 132,
+   "originX": 52
+  },
+  "sorcerer_attack": {
+   "file": "sorcerer_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 110,
+   "frameH": 145,
+   "footY": 134,
+   "originX": 55
+  },
+  "imp_idle": {
+   "file": "imp_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 82,
+   "footY": 78,
+   "originX": 33
+  },
+  "imp_walk": {
+   "file": "imp_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 74,
+   "frameH": 85,
+   "footY": 80,
+   "originX": 37
+  },
+  "imp_attack": {
+   "file": "imp_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 88,
+   "frameH": 90,
+   "footY": 84,
+   "originX": 44
+  },
+  "fiend_idle": {
+   "file": "fiend_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 100,
+   "frameH": 142,
+   "footY": 136,
+   "originX": 50
+  },
+  "fiend_walk": {
+   "file": "fiend_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 108,
+   "frameH": 144,
+   "footY": 137,
+   "originX": 54
+  },
+  "fiend_attack": {
+   "file": "fiend_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 126,
+   "frameH": 152,
+   "footY": 143,
+   "originX": 63
+  },
+  "horror_idle": {
+   "file": "horror_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 134,
+   "frameH": 169,
+   "footY": 164,
+   "originX": 67
+  },
+  "horror_walk": {
+   "file": "horror_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 144,
+   "frameH": 173,
+   "footY": 166,
+   "originX": 72
+  },
+  "horror_attack": {
+   "file": "horror_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 166,
+   "frameH": 186,
+   "footY": 174,
+   "originX": 83
+  },
+  "demonlord_idle": {
+   "file": "demonlord_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 176,
+   "frameH": 249,
+   "footY": 243,
+   "originX": 88
+  },
+  "demonlord_walk": {
+   "file": "demonlord_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 196,
+   "frameH": 250,
+   "footY": 243,
+   "originX": 98
+  },
+  "demonlord_attack": {
+   "file": "demonlord_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 234,
+   "frameH": 269,
+   "footY": 253,
+   "originX": 117
+  },
+  "sword_idle": {
+   "file": "sword_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 112,
+   "frameH": 240,
+   "footY": 235,
+   "originX": 56
+  },
+  "sword_walk": {
+   "file": "sword_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 132,
+   "frameH": 241,
+   "footY": 234,
+   "originX": 66
+  },
+  "sword_attack": {
+   "file": "sword_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 156,
+   "frameH": 252,
+   "footY": 242,
+   "originX": 78
+  },
+  "fscout_idle": {
+   "file": "fscout_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 94,
+   "footY": 88,
+   "originX": 38
+  },
+  "fscout_walk": {
+   "file": "fscout_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 82,
+   "frameH": 96,
+   "footY": 89,
+   "originX": 41
+  },
+  "fscout_attack": {
+   "file": "fscout_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 100,
+   "footY": 92,
+   "originX": 47
+  },
+  "wolf_idle": {
+   "file": "wolf_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 70,
+   "frameH": 75,
+   "footY": 70,
+   "originX": 35
+  },
+  "wolf_walk": {
+   "file": "wolf_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 77,
+   "footY": 71,
+   "originX": 38
+  },
+  "wolf_attack": {
+   "file": "wolf_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 88,
+   "frameH": 82,
+   "footY": 74,
+   "originX": 44
+  },
+  "ftroll_idle": {
+   "file": "ftroll_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 110,
+   "frameH": 149,
+   "footY": 144,
+   "originX": 55
+  },
+  "ftroll_walk": {
+   "file": "ftroll_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 120,
+   "frameH": 151,
+   "footY": 145,
+   "originX": 60
+  },
+  "ftroll_attack": {
+   "file": "ftroll_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 132,
+   "frameH": 159,
+   "footY": 151,
+   "originX": 66
+  },
+  "wisp_idle": {
+   "file": "wisp_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 50,
+   "frameH": 93,
+   "footY": 88,
+   "originX": 25
+  },
+  "wisp_walk": {
+   "file": "wisp_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 58,
+   "frameH": 93,
+   "footY": 88,
+   "originX": 29
+  },
+  "wisp_attack": {
+   "file": "wisp_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 68,
+   "frameH": 97,
+   "footY": 92,
+   "originX": 34
+  },
+  "strangler_idle": {
+   "file": "strangler_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 98,
+   "frameH": 133,
+   "footY": 128,
+   "originX": 49
+  },
+  "strangler_walk": {
+   "file": "strangler_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 102,
+   "frameH": 135,
+   "footY": 129,
+   "originX": 51
+  },
+  "strangler_attack": {
+   "file": "strangler_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 118,
+   "frameH": 143,
+   "footY": 133,
+   "originX": 59
+  },
+  "ghoul_idle": {
+   "file": "ghoul_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 68,
+   "frameH": 109,
+   "footY": 104,
+   "originX": 34
+  },
+  "ghoul_walk": {
+   "file": "ghoul_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 112,
+   "footY": 105,
+   "originX": 38
+  },
+  "ghoul_attack": {
+   "file": "ghoul_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 88,
+   "frameH": 116,
+   "footY": 109,
+   "originX": 44
+  },
+  "leech_idle": {
+   "file": "leech_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 58,
+   "frameH": 53,
+   "footY": 48,
+   "originX": 29
+  },
+  "leech_walk": {
+   "file": "leech_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 60,
+   "frameH": 54,
+   "footY": 49,
+   "originX": 30
+  },
+  "leech_attack": {
+   "file": "leech_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 64,
+   "frameH": 59,
+   "footY": 51,
+   "originX": 32
+  },
+  "bogtroll_idle": {
+   "file": "bogtroll_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 112,
+   "frameH": 149,
+   "footY": 144,
+   "originX": 56
+  },
+  "bogtroll_walk": {
+   "file": "bogtroll_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 122,
+   "frameH": 151,
+   "footY": 145,
+   "originX": 61
+  },
+  "bogtroll_attack": {
+   "file": "bogtroll_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 134,
+   "frameH": 158,
+   "footY": 149,
+   "originX": 67
+  },
+  "croaker_idle": {
+   "file": "croaker_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 121,
+   "footY": 116,
+   "originX": 38
+  },
+  "croaker_walk": {
+   "file": "croaker_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 90,
+   "frameH": 125,
+   "footY": 118,
+   "originX": 45
+  },
+  "croaker_attack": {
+   "file": "croaker_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 112,
+   "frameH": 131,
+   "footY": 123,
+   "originX": 56
+  },
+  "spitter_idle": {
+   "file": "spitter_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 88,
+   "frameH": 89,
+   "footY": 84,
+   "originX": 44
+  },
+  "spitter_walk": {
+   "file": "spitter_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 94,
+   "frameH": 90,
+   "footY": 84,
+   "originX": 47
+  },
+  "spitter_attack": {
+   "file": "spitter_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 102,
+   "frameH": 96,
+   "footY": 88,
+   "originX": 51
+  },
+  "dmummy_idle": {
+   "file": "dmummy_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 74,
+   "frameH": 109,
+   "footY": 104,
+   "originX": 37
+  },
+  "dmummy_walk": {
+   "file": "dmummy_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 86,
+   "frameH": 112,
+   "footY": 105,
+   "originX": 43
+  },
+  "dmummy_attack": {
+   "file": "dmummy_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 119,
+   "footY": 109,
+   "originX": 47
+  },
+  "scarab_idle": {
+   "file": "scarab_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 38,
+   "frameH": 46,
+   "footY": 42,
+   "originX": 19
+  },
+  "scarab_walk": {
+   "file": "scarab_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 38,
+   "frameH": 48,
+   "footY": 43,
+   "originX": 19
+  },
+  "scarab_attack": {
+   "file": "scarab_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 44,
+   "frameH": 52,
+   "footY": 45,
+   "originX": 22
+  },
+  "sentinel_idle": {
+   "file": "sentinel_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 100,
+   "frameH": 145,
+   "footY": 140,
+   "originX": 50
+  },
+  "sentinel_walk": {
+   "file": "sentinel_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 110,
+   "frameH": 147,
+   "footY": 141,
+   "originX": 55
+  },
+  "sentinel_attack": {
+   "file": "sentinel_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 126,
+   "frameH": 156,
+   "footY": 146,
+   "originX": 63
+  },
+  "jackal_idle": {
+   "file": "jackal_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 70,
+   "frameH": 133,
+   "footY": 128,
+   "originX": 35
+  },
+  "jackal_walk": {
+   "file": "jackal_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 82,
+   "frameH": 136,
+   "footY": 130,
+   "originX": 41
+  },
+  "jackal_attack": {
+   "file": "jackal_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 90,
+   "frameH": 138,
+   "footY": 130,
+   "originX": 45
+  },
+  "suncult_idle": {
+   "file": "suncult_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 86,
+   "frameH": 128,
+   "footY": 124,
+   "originX": 43
+  },
+  "suncult_walk": {
+   "file": "suncult_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 98,
+   "frameH": 132,
+   "footY": 126,
+   "originX": 49
+  },
+  "suncult_attack": {
+   "file": "suncult_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 104,
+   "frameH": 136,
+   "footY": 127,
+   "originX": 52
+  },
+  "fskel_idle": {
+   "file": "fskel_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 72,
+   "frameH": 107,
+   "footY": 102,
+   "originX": 36
+  },
+  "fskel_walk": {
+   "file": "fskel_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 84,
+   "frameH": 110,
+   "footY": 104,
+   "originX": 42
+  },
+  "fskel_attack": {
+   "file": "fskel_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 90,
+   "frameH": 116,
+   "footY": 107,
+   "originX": 45
+  },
+  "icesprite_idle": {
+   "file": "icesprite_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 46,
+   "frameH": 84,
+   "footY": 80,
+   "originX": 23
+  },
+  "icesprite_walk": {
+   "file": "icesprite_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 50,
+   "frameH": 85,
+   "footY": 80,
+   "originX": 25
+  },
+  "icesprite_attack": {
+   "file": "icesprite_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 62,
+   "frameH": 91,
+   "footY": 84,
+   "originX": 31
+  },
+  "yeti_idle": {
+   "file": "yeti_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 100,
+   "frameH": 143,
+   "footY": 138,
+   "originX": 50
+  },
+  "yeti_walk": {
+   "file": "yeti_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 108,
+   "frameH": 144,
+   "footY": 138,
+   "originX": 54
+  },
+  "yeti_attack": {
+   "file": "yeti_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 126,
+   "frameH": 155,
+   "footY": 144,
+   "originX": 63
+  },
+  "rimemage_idle": {
+   "file": "rimemage_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 130,
+   "footY": 124,
+   "originX": 38
+  },
+  "rimemage_walk": {
+   "file": "rimemage_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 88,
+   "frameH": 133,
+   "footY": 126,
+   "originX": 44
+  },
+  "rimemage_attack": {
+   "file": "rimemage_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 136,
+   "footY": 127,
+   "originX": 47
+  },
+  "igolem_idle": {
+   "file": "igolem_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 114,
+   "frameH": 145,
+   "footY": 140,
+   "originX": 57
+  },
+  "igolem_walk": {
+   "file": "igolem_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 124,
+   "frameH": 148,
+   "footY": 140,
+   "originX": 62
+  },
+  "igolem_attack": {
+   "file": "igolem_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 142,
+   "frameH": 157,
+   "footY": 146,
+   "originX": 71
+  },
+  "thrall_idle": {
+   "file": "thrall_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 76,
+   "frameH": 119,
+   "footY": 114,
+   "originX": 38
+  },
+  "thrall_walk": {
+   "file": "thrall_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 88,
+   "frameH": 122,
+   "footY": 116,
+   "originX": 44
+  },
+  "thrall_attack": {
+   "file": "thrall_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 94,
+   "frameH": 127,
+   "footY": 117,
+   "originX": 47
+  },
+  "assassin_idle": {
+   "file": "assassin_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 103,
+   "footY": 98,
+   "originX": 33
+  },
+  "assassin_walk": {
+   "file": "assassin_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 72,
+   "frameH": 105,
+   "footY": 99,
+   "originX": 36
+  },
+  "assassin_attack": {
+   "file": "assassin_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 84,
+   "frameH": 111,
+   "footY": 101,
+   "originX": 42
+  },
+  "bulwark_idle": {
+   "file": "bulwark_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 94,
+   "frameH": 143,
+   "footY": 138,
+   "originX": 47
+  },
+  "bulwark_walk": {
+   "file": "bulwark_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 112,
+   "frameH": 144,
+   "footY": 138,
+   "originX": 56
+  },
+  "bulwark_attack": {
+   "file": "bulwark_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 136,
+   "frameH": 153,
+   "footY": 143,
+   "originX": 68
+  },
+  "chanter_idle": {
+   "file": "chanter_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 68,
+   "frameH": 129,
+   "footY": 125,
+   "originX": 34
+  },
+  "chanter_walk": {
+   "file": "chanter_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 82,
+   "frameH": 131,
+   "footY": 125,
+   "originX": 41
+  },
+  "chanter_attack": {
+   "file": "chanter_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 92,
+   "frameH": 139,
+   "footY": 130,
+   "originX": 46
+  },
+  "abyssal_idle": {
+   "file": "abyssal_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 98,
+   "frameH": 146,
+   "footY": 140,
+   "originX": 49
+  },
+  "abyssal_walk": {
+   "file": "abyssal_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 104,
+   "frameH": 149,
+   "footY": 141,
+   "originX": 52
+  },
+  "abyssal_attack": {
+   "file": "abyssal_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 124,
+   "frameH": 156,
+   "footY": 146,
+   "originX": 62
+  },
+  "alpha_idle": {
+   "file": "alpha_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 100,
+   "frameH": 121,
+   "footY": 116,
+   "originX": 50
+  },
+  "alpha_walk": {
+   "file": "alpha_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 110,
+   "frameH": 125,
+   "footY": 118,
+   "originX": 55
+  },
+  "alpha_attack": {
+   "file": "alpha_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 120,
+   "frameH": 131,
+   "footY": 119,
+   "originX": 60
+  },
+  "hag_idle": {
+   "file": "hag_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 92,
+   "frameH": 150,
+   "footY": 144,
+   "originX": 46
+  },
+  "hag_walk": {
+   "file": "hag_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 108,
+   "frameH": 152,
+   "footY": 146,
+   "originX": 54
+  },
+  "hag_attack": {
+   "file": "hag_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 118,
+   "frameH": 156,
+   "footY": 147,
+   "originX": 59
+  },
+  "pharaohq_idle": {
+   "file": "pharaohq_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 94,
+   "frameH": 161,
+   "footY": 156,
+   "originX": 47
+  },
+  "pharaohq_walk": {
+   "file": "pharaohq_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 114,
+   "frameH": 163,
+   "footY": 156,
+   "originX": 57
+  },
+  "pharaohq_attack": {
+   "file": "pharaohq_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 132,
+   "frameH": 175,
+   "footY": 163,
+   "originX": 66
+  },
+  "boneknight_idle": {
+   "file": "boneknight_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 98,
+   "frameH": 169,
+   "footY": 164,
+   "originX": 49
+  },
+  "boneknight_walk": {
+   "file": "boneknight_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 116,
+   "frameH": 170,
+   "footY": 164,
+   "originX": 58
+  },
+  "boneknight_attack": {
+   "file": "boneknight_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 144,
+   "frameH": 180,
+   "footY": 170,
+   "originX": 72
+  },
+  "succubus_idle": {
+   "file": "succubus_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 108,
+   "frameH": 165,
+   "footY": 160,
+   "originX": 54
+  },
+  "succubus_walk": {
+   "file": "succubus_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 124,
+   "frameH": 168,
+   "footY": 161,
+   "originX": 62
+  },
+  "succubus_attack": {
+   "file": "succubus_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 144,
+   "frameH": 177,
+   "footY": 167,
+   "originX": 72
+  },
+  "ancient_idle": {
+   "file": "ancient_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 142,
+   "frameH": 255,
+   "footY": 249,
+   "originX": 71
+  },
+  "ancient_walk": {
+   "file": "ancient_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 162,
+   "frameH": 260,
+   "footY": 252,
+   "originX": 81
+  },
+  "ancient_attack": {
+   "file": "ancient_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 210,
+   "frameH": 274,
+   "footY": 263,
+   "originX": 105
+  },
+  "colossus_idle": {
+   "file": "colossus_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 140,
+   "frameH": 234,
+   "footY": 229,
+   "originX": 70
+  },
+  "colossus_walk": {
+   "file": "colossus_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 160,
+   "frameH": 238,
+   "footY": 230,
+   "originX": 80
+  },
+  "colossus_attack": {
+   "file": "colossus_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 194,
+   "frameH": 251,
+   "footY": 239,
+   "originX": 97
+  },
+  "sunpharaoh_idle": {
+   "file": "sunpharaoh_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 150,
+   "frameH": 250,
+   "footY": 244,
+   "originX": 75
+  },
+  "sunpharaoh_walk": {
+   "file": "sunpharaoh_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 178,
+   "frameH": 251,
+   "footY": 244,
+   "originX": 89
+  },
+  "sunpharaoh_attack": {
+   "file": "sunpharaoh_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 224,
+   "frameH": 266,
+   "footY": 254,
+   "originX": 112
+  },
+  "frosttitan_idle": {
+   "file": "frosttitan_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 136,
+   "frameH": 255,
+   "footY": 249,
+   "originX": 68
+  },
+  "frosttitan_walk": {
+   "file": "frosttitan_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 158,
+   "frameH": 258,
+   "footY": 250,
+   "originX": 79
+  },
+  "frosttitan_attack": {
+   "file": "frosttitan_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 186,
+   "frameH": 272,
+   "footY": 259,
+   "originX": 93
+  },
+  "deathknight_idle": {
+   "file": "deathknight_idle_{dir}.png",
+   "frames": 2,
+   "fps": 3,
+   "loop": true,
+   "frameW": 146,
+   "frameH": 250,
+   "footY": 244,
+   "originX": 73
+  },
+  "deathknight_walk": {
+   "file": "deathknight_walk_{dir}.png",
+   "frames": 4,
+   "fps": 7,
+   "loop": true,
+   "frameW": 166,
+   "frameH": 253,
+   "footY": 245,
+   "originX": 83
+  },
+  "deathknight_attack": {
+   "file": "deathknight_attack_{dir}.png",
+   "frames": 2,
+   "fps": 6,
+   "loop": false,
+   "frameW": 186,
+   "frameH": 266,
+   "footY": 254,
+   "originX": 93
+  }
+ },
+ "frameW": 64,
+ "frameH": 64,
+ "footY": 60,
+ "originX": 32
+}

@@ -1,0 +1,2 @@
+{ "name": "hollowcrown-tests", "private": true, "description": "Headless tests for Hollowcrown. npm install, then npm test.",
+  "scripts": { "test": "node run-all.js" }, "dependencies": { "puppeteer-core": "^22.0.0" } }

@@ -1,0 +1,76 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "portrait": "portrait.jpg",
+ "dirs": [
+  "down",
+  "up",
+  "left",
+  "right"
+ ],
+ "anims": {
+  "idle": {
+   "file": "idle_{dir}.png",
+   "frames": 4,
+   "fps": 4,
+   "loop": true,
+   "frameW": 70,
+   "frameH": 121,
+   "footY": 115,
+   "originX": 35
+  },
+  "run": {
+   "file": "glide_{dir}.png",
+   "frames": 4,
+   "fps": 6,
+   "loop": true,
+   "frameW": 80,
+   "frameH": 123,
+   "footY": 116,
+   "originX": 40
+  },
+  "attack": {
+   "file": "attack_{dir}.png",
+   "frames": 3,
+   "fps": 14,
+   "loop": false,
+   "frameW": 76,
+   "frameH": 124,
+   "footY": 115,
+   "originX": 38
+  },
+  "hurt": {
+   "file": "hurt_{dir}.png",
+   "frames": 2,
+   "fps": 10,
+   "loop": false,
+   "frameW": 70,
+   "frameH": 129,
+   "footY": 120,
+   "originX": 35
+  },
+  "death": {
+   "file": "death_{dir}.png",
+   "frames": 3,
+   "fps": 5,
+   "loop": false,
+   "frameW": 96,
+   "frameH": 80,
+   "footY": 75,
+   "originX": 48
+  }
+ },
+ "frameW": 70,
+ "frameH": 121,
+ "footY": 115,
+ "originX": 35,
+ "bodyScale": 1.0,
+ "hitbox": 13,
+ "movement": {
+  "style": "glide",
+  "hover": 3,
+  "hoverBob": 2,
+  "hoverHz": 0.35,
+  "glow": "#b89cff"
+ }
+}

@@ -1,0 +1,115 @@
+{
+ "scale": 0.6,
+ "smooth": true,
+ "portrait": "portrait.jpg",
+ "dirs": [
+  "down",
+  "up",
+  "left",
+  "right"
+ ],
+ "anims": {
+  "idle": {
+   "file": "idle_{dir}.png",
+   "frames": 4,
+   "fps": 4,
+   "loop": true,
+   "frameW": 66,
+   "frameH": 122,
+   "footY": 117,
+   "originX": 33
+  },
+  "run": {
+   "file": "run_{dir}.png",
+   "frames": 6,
+   "fps": 10,
+   "loop": true,
+   "frameW": 74,
+   "frameH": 127,
+   "footY": 122,
+   "originX": 37
+  },
+  "attack": {
+   "file": "attack_{dir}.png",
+   "frames": 3,
+   "fps": 14,
+   "loop": false,
+   "frameW": 88,
+   "frameH": 121,
+   "footY": 112,
+   "originX": 44
+  },
+  "hurt": {
+   "file": "hurt_{dir}.png",
+   "frames": 2,
+   "fps": 10,
+   "loop": false,
+   "frameW": 84,
+   "frameH": 109,
+   "footY": 100,
+   "originX": 42
+  },
+  "block": {
+   "file": "block_{dir}.png",
+   "frames": 1,
+   "fps": 4,
+   "loop": true,
+   "frameW": 78,
+   "frameH": 114,
+   "footY": 109,
+   "originX": 39
+  },
+  "throw": {
+   "file": "throw_{dir}.png",
+   "frames": 2,
+   "fps": 8,
+   "loop": false,
+   "frameW": 122,
+   "frameH": 116,
+   "footY": 108,
+   "originX": 61
+  },
+  "slam": {
+   "file": "slam_{dir}.png",
+   "frames": 3,
+   "fps": 10,
+   "loop": false,
+   "frameW": 72,
+   "frameH": 124,
+   "footY": 118,
+   "originX": 36
+  },
+  "ult": {
+   "file": "ult_{dir}.png",
+   "frames": 2,
+   "fps": 4,
+   "loop": true,
+   "frameW": 124,
+   "frameH": 132,
+   "footY": 127,
+   "originX": 62
+  },
+  "death": {
+   "file": "death_{dir}.png",
+   "frames": 2,
+   "fps": 5,
+   "loop": false,
+   "frameW": 92,
+   "frameH": 92,
+   "footY": 87,
+   "originX": 46
+  }
+ },
+ "frameW": 66,
+ "frameH": 122,
+ "footY": 117,
+ "originX": 33,
+ "bodyScale": 1.05,
+ "hitbox": 13,
+ "movement": {
+  "style": "walk",
+  "speedMul": 1.0,
+  "animRate": 1.0,
+  "bob": 0.4
+ }
+}
