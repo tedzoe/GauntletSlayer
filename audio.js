@@ -70,7 +70,7 @@ const Snd = (() => {
     spit: () => noise(0.12, 0.15, 1500, 0, 'bandpass', 500), hex: () => tone(330, 0.2, 'square', 0.06, 660), fireshot: () => noise(0.15, 0.15, 1100), bones: () => { for (let i = 0; i < 4; i++) tone(800 + Math.random() * 800, 0.04, 'square', 0.05, null, i * 0.03); },
     allyshot: () => noise(0.05, 0.08, 3000, 0, 'highpass'), shade: () => tone(800, 0.15, 'sine', 0.06, 400), spikes: () => { noise(0.1, 0.15, 5000, 0, 'highpass'); tone(1200, 0.05, 'square', 0.04); },
     bossroar: () => { noise(1.1, 0.35, 400, 0, 'bandpass', 120); tone(60, 1.1, 'sawtooth', 0.2, 40); }, bossdeath: () => { noise(1.6, 0.4, 1500, 0, 'lowpass', 40); tone(110, 1.6, 'sawtooth', 0.2, 30); },
-    bonevolley: () => { for (let i = 0; i < 5; i++) tone(500 + i * 90, 0.05, 'square', 0.05, null, i * 0.03); }, burrow: () => noise(0.8, 0.3, 300, 0, 'lowpass', 60), rumble: () => tone(40, 0.6, 'sine', 0.3, 30),
+    bonevolley: () => { for (let i = 0; i < 5; i++) tone(500 + i * 90, 0.05, 'square', 0.05, null, i * 0.03); }, burrow: () => noise(0.8, 0.3, 300, 0, 'lowpass', 60), splash: () => { noise(0.35, 0.28, 900, 0, 'bandpass', 2600); noise(0.5, 0.12, 400, 0.05, 'lowpass', 120); tone(180, 0.18, 'sine', 0.12, 70, 0.02); }, rumble: () => tone(40, 0.6, 'sine', 0.3, 30),
     erupt: () => { noise(0.6, 0.4, 900, 0, 'lowpass', 80); tone(70, 0.4, 'sine', 0.4, 35); }, meteorcall: () => tone(900, 0.6, 'sine', 0.08, 200), shatter: () => { noise(0.5, 0.3, 6000, 0, 'highpass', 1500); arp([1600, 1200, 900], 0.1, 'triangle', 0.08, 0.05); },
     pylon: () => arp([330, 494, 659], 0.4, 'sine', 0.08, 0.1),
     // flow & UI
