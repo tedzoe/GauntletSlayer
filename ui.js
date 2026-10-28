@@ -174,7 +174,13 @@ function drawHUD() {
   if (G.banner) { const b = G.banner, a = Math.min(1, b.t * 2, (b.max || 3) - b.t + 0.3), r = bannerRect(); ctx.globalAlpha = clamp(a, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(r.x, r.y, r.w, r.h);
     if (r.compact) { txt(b.sub || '', W / 2, r.y + 15, 11, '#d8b070', 'center'); txt(b.s, W / 2, r.y + 38, 20, '#fff4dc', 'center'); } else { txt(b.sub || '', W / 2, r.y + 24, 13, '#d8b070', 'center'); txt(b.s, W / 2, r.y + 58, 30, '#fff4dc', 'center'); } ctx.globalAlpha = 1; }
   // solo revive offer
-  if (reviveBoxUp()) { const r = reviveRect(); panel(r.x, r.y, r.w, r.h, 0.9, '#9fffe0'); txt('You have fallen', W / 2, H / 2 - 18, 22, '#ffb0a0', 'center'); txt(`Press confirm to spend a rez coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, H / 2 + 10, 14, '#9fffe0', 'center'); txt('(or wait to accept defeat)', W / 2, H / 2 + 30, 11, '#aaa', 'center', 'normal'); }
+  if (reviveBoxUp()) { const r = reviveRect(), h0 = G.heroes[0], dv = h0 && h0.dev, kc = Input.keyLabel(dv, 'primary') || 'J', kd = Input.keyLabel(dv, 'dash') || 'F';   // styled 'You have fallen' panel, matching the title look
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fillRect(0, 0, W, H); fancyPanel(r.x, r.y, r.w, r.h);
+    logoText('YOU HAVE FALLEN', W / 2, r.y + 42, 30, ['#ffe6a8', '#c8902a', '#6a4012'], 'rgba(255,90,40,0.55)');
+    const st = G.stats || {}, secs = Math.max(0, (G.time - (st.start ?? G.time)) | 0), line = `${G.floorName || ''}  \u00b7  ${st.kills || 0} kills  \u00b7  ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+    txt(line, W / 2, r.y + 66, 12, '#bba88a', 'center', 'normal');
+    txt(`[${kc}]  Revive with a Skull Coin${isFinite(G.rez) ? ` (${G.rez} left)` : ''}`, W / 2, r.y + 98, 15, '#9fffe0', 'center');
+    txt(`[${kd}]  Give up and return to camp`, W / 2, r.y + 124, 14, '#e8d8b8', 'center'); }
   // hub station prompts
   if (G.mode === 'hub') for (const h of G.heroes) if (h.station) { const s = h.station, sp0 = toScreen(s.x, s.y), sx = clamp(sp0.x, 128, W - 128), sy = Math.max(70, sp0.y - 44); panel(sx - 120, sy - 20, 240, 30, 0.85, PCOL[h.pi]); txt(`${s.label}`, sx, sy - 1, 12, '#fff', 'center'); txt(h.dev.startsWith('pad') ? '[A]' : '[Enter/Click]', sx, sy + 24, 10, '#ffd27a', 'center'); }
 }
@@ -367,11 +373,25 @@ function drawSplash() {
   if (!brandReady(BRAND.logo)) return;
   ctx.globalAlpha = a; const s = S.logo; ctx.drawImage(BRAND.logo, W / 2 - s / 2, H / 2 - s / 2 - 10, s, s); ctx.globalAlpha = 1;
 }
+// title-screen logo treatment: serif/blackletter stack, gold-to-bronze gradient, dark outline and a warm glow (no font downloads)
+const LOGO_FONT = s => `bold ${s}px "Blackletter", "UnifrakturCook", "Old English Text MT", "Cinzel", "Trajan Pro", "Palatino Linotype", "Book Antiqua", Georgia, serif`;
+function logoText(s, x, y, size, cols = ['#fff1c2', '#e0a63a', '#7a4a14'], glow = 'rgba(255,170,60,0.6)') {
+  ctx.save(); ctx.font = LOGO_FONT(size); ctx.textAlign = 'center'; ctx.lineJoin = 'round';
+  const g = ctx.createLinearGradient(0, y - size * 0.85, 0, y + size * 0.1); g.addColorStop(0, cols[0]); g.addColorStop(0.55, cols[1]); g.addColorStop(1, cols[2]);
+  ctx.shadowColor = glow; ctx.shadowBlur = size * 0.45; ctx.strokeStyle = '#140c06'; ctx.lineWidth = Math.max(3, size * 0.09); ctx.strokeText(s, x, y);
+  ctx.shadowBlur = 0; ctx.fillStyle = g; ctx.fillText(s, x, y); ctx.strokeStyle = 'rgba(255,240,200,0.35)'; ctx.lineWidth = 1; ctx.strokeText(s, x, y - 1); ctx.restore();
+}
+function fancyPanel(x, y, w, h) {   // dark stone panel with a double gold frame and corner studs
+  const g = ctx.createLinearGradient(0, y, 0, y + h); g.addColorStop(0, 'rgba(28,20,14,0.95)'); g.addColorStop(1, 'rgba(10,7,5,0.95)'); ctx.fillStyle = g; ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = '#c8a24a'; ctx.lineWidth = 2; ctx.strokeRect(x + 1, y + 1, w - 2, h - 2); ctx.strokeStyle = 'rgba(200,162,74,0.45)'; ctx.lineWidth = 1; ctx.strokeRect(x + 6, y + 6, w - 12, h - 12);
+  for (const [cx, cy] of [[x + 6, y + 6], [x + w - 6, y + 6], [x + 6, y + h - 6], [x + w - 6, y + h - 6]]) circ(cx, cy, 3, '#e8c870', '#5a4010', 1);
+}
 function drawTitle() {
   drawBackdrop(sceneT);
   const k = Math.min(1, sceneT * 1.5);
   ctx.globalAlpha = k;
-  txt(GAME_TITLE, W / 2, 170, 78, '#ffcf7a', 'center'); txt(GAME_SUB.split('').join(' '), W / 2, 214, 30, '#d8b0ff', 'center');
+  { const fl = 0.85 + 0.15 * Math.sin(sceneT * 7) * Math.sin(sceneT * 2.3), tg = ctx.createRadialGradient(W / 2, 150, 20, W / 2, 150, 360); tg.addColorStop(0, `rgba(255,140,50,${0.16 * fl})`); tg.addColorStop(1, 'rgba(255,140,50,0)'); ctx.fillStyle = tg; ctx.fillRect(0, 0, W, H); }   // torchlight flicker behind the logo
+  logoText(GAME_TITLE, W / 2, 170, 80); logoText(GAME_SUB.split('').join(' '), W / 2, 218, 36, ['#f4f0ea', '#a8a4a0', '#4a4642'], 'rgba(255,120,40,0.45)');   // gold GAUNTLET over stone SLAYER
   // hero line-up: one slot per hero, centred over its name, all feet on one baseline at one shared scale.
   // (in-game bodyScale / hover / glow are gameplay traits and are deliberately not applied here)
   const slotX = i => W / 2 + (i - (HEROES.length - 1) / 2) * 168, footY = 362;
@@ -536,7 +556,7 @@ function drawControls() {
 // banner and solo revive box geometry: while the revive box is up, the banner (boss phase, waves) moves to a compact strip under
 // the boss bar so the two never pile up in the middle of the screen
 function reviveBoxUp() { return !!(G.reviveOffer && G.heroes.length && G.heroes.every(h => h.dead)); }
-function reviveRect() { return { x: W / 2 - 220, y: H / 2 - 50, w: 440, h: 92 }; }
+function reviveRect() { return { x: W / 2 - 230, y: H / 2 - 66, w: 460, h: 150 }; }
 function bannerRect() { return reviveBoxUp() ? { x: 0, y: 88, w: W, h: 50, compact: true } : { x: 0, y: H * 0.3 - 40, w: W, h: 74, compact: false }; }
 
 // ---------------------------------------------------------------- move icons (Oct 2026 polish: a drawn icon per move instead of 'SPIN' / 'DSH' text)

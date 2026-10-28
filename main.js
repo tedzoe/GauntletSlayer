@@ -110,6 +110,7 @@ function draw() {
   try {
     if (scene === 'splash') drawSplash(); else if (scene === 'title') drawTitle(); else if (scene === 'select') drawSelect(); else if (scene === 'controls') drawControls();
     else if (scene === 'results') drawResults();
+    if (scene !== 'splash' && scene !== 'game' && sceneT < 0.35) { ctx.fillStyle = `rgba(0,0,0,${1 - sceneT / 0.35})`; ctx.fillRect(0, 0, W, H); }   // fade in after every screen change
     else if (scene === 'game') { drawWorld(); drawStations(); drawHUD(); drawMenu(); DEBUG.draw(); }
   } catch (e) { ERRORS.push(e.stack || String(e)); console.error(e); }
 }

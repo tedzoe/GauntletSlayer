@@ -259,10 +259,10 @@ function updateMode(dt) {
   }
   // defeat
   if (G.heroes.every(h => h.dead)) {
-    if (G.heroes.length === 1 && canRevive() && !G.reviveOffer) { G.reviveOffer = true; }
+    if (G.heroes.length === 1 && canRevive() && !G.reviveOffer && !G.declined) { G.reviveOffer = true; }
     if (G.reviveOffer && !canRevive()) G.reviveOffer = false;
     if (!G.reviveOffer || G.heroes.length > 1 && !canRevive()) { G.defeatT = (G.defeatT || 0) + dt; if (G.defeatT > 2.2) defeat(); }
-  } else { G.defeatT = 0; G.reviveOffer = false; }
+  } else { G.defeatT = 0; G.reviveOffer = false; G.declined = false; }
 }
 // ---------------------------------------------------------------- battle rooms (Slayer match, Oct 25 2026; numbers in SPEC.battle)
 // A large room locks once it is awake and a hero is well inside: iron gates slam on every doorway, any partner outside is pulled

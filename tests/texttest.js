@@ -31,7 +31,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     // banner vs revive box
     G.boss.hp = G.boss.maxhp; G.banner = { s: 'The King is enraged!', sub: 'PHASE II', t: 2, max: 3 }; out.bannerNormal = bannerRect();
     h.dead = true; G.reviveOffer = true; const br = bannerRect(), rr = reviveRect(); const c2 = calls();
-    out.revive = { br, rr, up: reviveBoxUp(), bannerTxt: c2.filter(c => /enraged|PHASE II/.test(c.s)).map(c => c.y), boxTxt: c2.filter(c => /You have fallen/.test(c.s)).map(c => c.y) };
+    out.revive = { br, rr, up: reviveBoxUp(), bannerTxt: c2.filter(c => /enraged|PHASE II/.test(c.s)).map(c => c.y), boxTxt: c2.filter(c => /you have fallen/i.test(c.s)).map(c => c.y) };
     return out;
   });
   console.log(JSON.stringify(R));

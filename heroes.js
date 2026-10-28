@@ -41,6 +41,7 @@ function updateHero(h, inp, dt) {
   h.scale = lerp(h.scale, h.buff.titan > 0 ? 1.6 : 1, dt * 6);
   if (h.dead) {
     if (inp.pressed.confirm || inp.pressed.primary) { if (G.heroes.length > 1 || G.reviveOffer) reviveHero(h); }
+    else if (inp.pressed.dash && G.reviveOffer) { G.reviveOffer = false; G.declined = true; }   // 'return to camp' on the fallen panel
     return;
   }
   if (h.frz > 0) { h.frz -= dt; h.vx = h.vy = 0; h.channel = null; h.blocking = false; return; }   // frozen solid by a lich's spell
