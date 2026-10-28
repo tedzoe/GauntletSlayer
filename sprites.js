@@ -77,6 +77,7 @@ function heroPose(h) {
   if (h.atkT > (h._lastAtkT ?? -9) + 0.01) h._atkStart = G.time; h._lastAtkT = h.atkT;
   if (h.hurtT > 0 && !h.dash && !h.blocking && !(h.spin > 0)) return { anim: 'hurt', dir: sprDir(a), t: 0.22 - h.hurtT };
   const rate = (h.body && h.body.animRate) || 1, dir = sprDir(a);
+  if (h.cleavePend && A.hurt) return { anim: 'hurt', dir, t: 0 };   // Demonic Cleave wind-up: the no-shield hurt frame has the axe raised overhead
   if (h.spin > 0 && A.spin) return { anim: 'spin', dir: 'down', t: G.time * 0.75 };
   if (h.buff && (h.buff.wings > 3.4 || h.buff.ravens > 0.6 || h.buff.nova > 0.45) && A.ult) return { anim: 'ult', dir, t: G.time };
   if (h.channel === 'drain' && A.channel) return { anim: 'channel', dir, t: G.time };
