@@ -38,7 +38,7 @@ function dmgTier(dmg, src) { const base = dmg / ((src && src.mods && src.mods.dm
 const SPEED_BASE = 140;
 const SPEC = {
   hero: {
-    brannoc: { hp: 200, uiHp: 100, speed: 1.0, iframes: 3.5, iframeNote: 'during Whirlwind spin' },
+    brannoc: { hp: 200, uiHp: 100, speed: 1.1, iframes: 3.5, iframeNote: 'during Whirlwind spin' },
     sela: { hp: 150, uiHp: 75, speed: 1.25, iframes: Infinity, iframeNote: 'front shield, continuous while held' },
     mirelle: { hp: 100, uiHp: 50, speed: 0.95, iframes: 0.8, iframeNote: 'teleport dash' },
     kestrel: { hp: 100, uiHp: 50, speed: 1.5, iframes: 0.3, iframeNote: 'combat roll' },

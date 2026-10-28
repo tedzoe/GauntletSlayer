@@ -40,7 +40,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const heroes = await ev(() => HEROES.map(d => { TT.setup([d.id]); const h = G.heroes[0]; return [d.id, h.maxHp, SPEC.hero[d.id].uiHp, Math.round(h.baseSpeed)]; }));
   chk('internal HP (Theo 200, Gela 150, rest 100; David 200)', heroes.map(x => [x[0], x[1]]), [['brannoc', 200], ['sela', 150], ['kestrel', 100], ['mirelle', 100], ['vesper', 100], ['paladin', 200]]);
   chk('UI HP proportions 100/75/50', heroes.map(x => x[2]), [100, 75, 50, 50, 50, 100]);
-  chk('speed ratings x140 (Theo 1.0, Gela 1.25, Isaac 1.5, Zoey 0.95, Vesper 1.35, David 0.95)', heroes.map(x => x[3]), [140, 175, 210, 133, 189, 133]);
+  chk('speed ratings x140 (Theo 1.1, Gela 1.25, Isaac 1.5, Zoey 0.95, Vesper 1.35, David 0.95)', heroes.map(x => x[3]), [154, 175, 210, 133, 189, 133]);
   const cds = await ev(() => {
     const out = {}; TT.setup(['brannoc']); TT.testRoom(); const h = G.heroes[0];
     const I = (k) => ({ pressed: { [k]: true }, down: { [k]: true }, mx: 0, my: 0, dev: 'kb1' });

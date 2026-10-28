@@ -73,8 +73,14 @@ function moveEnt(e, dx, dy, fly, onBlock) {
   const steps = Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 8) || 1;
   for (let s = 0; s < steps; s++) {
     const sx = dx / steps, sy = dy / steps;
-    if (sx) { const h = collide(e.x + sx, e.y, e.r, fly); if (!h) e.x += sx; else { blocked = true; onBlock && onBlock(h); if (e.isHero && !sy) slideAssist(e, sx, 0, fly); } }
-    if (sy) { const h = collide(e.x, e.y + sy, e.r, fly); if (!h) e.y += sy; else { blocked = true; onBlock && onBlock(h); if (e.isHero && !sx) slideAssist(e, 0, sy, fly); } }
+    let bx = false, by = false;
+    if (sx) { const h = collide(e.x + sx, e.y, e.r, fly); if (!h) e.x += sx; else { blocked = bx = true; onBlock && onBlock(h); if (e.isHero && !sy) slideAssist(e, sx, 0, fly); } }
+    if (sy) { const h = collide(e.x, e.y + sy, e.r, fly); if (!h) e.y += sy; else { blocked = by = true; onBlock && onBlock(h); if (e.isHero && !sx) slideAssist(e, 0, sy, fly); } }
+    if (e.isHero && sx && sy) {   // wall slide: a diagonal into a wall keeps most of its speed along the wall; both axes blocked = corner nudge
+      if (bx && !by) { const ey = Math.sign(sy) * Math.abs(sx) * 0.4; if (!collide(e.x, e.y + ey, e.r, fly)) e.y += ey; }
+      else if (by && !bx) { const ex = Math.sign(sx) * Math.abs(sy) * 0.4; if (!collide(e.x + ex, e.y, e.r, fly)) e.x += ex; }
+      else if (bx && by) { if (Math.abs(sx) >= Math.abs(sy)) slideAssist(e, sx, 0, fly); else slideAssist(e, 0, sy, fly); }
+    }
   }
   return blocked;
 }
