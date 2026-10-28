@@ -134,7 +134,8 @@ function hitFoe(f, dmg, o = {}) {
   { const ch = creditHero(o.src); if (ch) { f.lastHitBy = ch; f.lastHitT = G.time; if (o.burn) f.burnBy = ch; } }
   const kr = f.boss ? 0 : f.heavy ? 0.35 : 1;
   if (o.kx || o.ky) { f.kx += o.kx * kr; f.ky += o.ky * kr; }
-  else if (o.knock && o.x !== undefined) { const a = Math.atan2(f.y - o.y, f.x - o.x); f.kx += Math.cos(a) * o.knock * kr; f.ky += Math.sin(a) * o.knock * kr; }
+  else if (o.x !== undefined) { const a = Math.atan2(f.y - o.y, f.x - o.x), kn = Math.max(o.knock || 0, 70); f.kx += Math.cos(a) * kn * kr; f.ky += Math.sin(a) * kn * kr; }   // every hit nudges a little (moveEnt keeps it out of walls)
+  if (tier >= 3 && o.src && (o.src.isHero || (o.src.owner && o.src.owner.isHero)) && G.shakeT !== G.time) { G.shakeT = G.time; addTrauma(0.05); }   // heavy hits: a subtle shake, once per frame
   if (o.stagger && !f.boss) { f.stag = Math.max(f.stag, o.stagger * (f.heavy ? 0.5 : 1)); if (f.state === 'windup' && (!f.heavy || o.stagger > 0.7)) f.state = 'move'; }
   if (o.freeze && !f.boss) f.frz = Math.max(f.frz, o.freeze * (f.heavy ? 0.6 : 1));
   if (o.slow) { f.slowT = Math.max(f.slowT, o.slow); f.slowM = Math.min(f.slowT > 0 ? f.slowM : 1, o.slowM || 0.5); }
@@ -156,7 +157,8 @@ function killFoe(f, src, o = {}) {
   if (hero) { const hk = G.stats.hk || (G.stats.hk = {}); hk[hero.pi] = (hk[hero.pi] || 0) + 1; }   // per-player kills for the floor tally (bosses too)
   if (f.boss) return bossDefeated(f);
   G.stats.kills++;
-  burst(f.x, f.y, bloodOf(f), f.heavy ? 26 : 14, 200, 4, 0.7, 200);
+  burst(f.x, f.y, bloodOf(f), f.heavy ? 26 : 14, 200, 4, 0.7, 200); burst(f.x, f.y - f.r * 0.5, f.d.col || '#ccc', f.heavy ? 10 : 6, 120, 5, 0.45);   // gore + a puff in the foe's own colour
+  ring(f.x, f.y, f.r * 1.5, 'rgba(255,255,255,0.55)', 0.2, 3); if (G.corpses) { G.corpses.push({ f, t: 0.35, max: 0.35 }); if (G.corpses.length > 40) G.corpses.shift(); }   // body squashes and fades
   if (f.heavy) { addTrauma(0.25); hitstop(0.05); }
   Snd.play(f.heavy ? 'bigdeath' : 'death');
   decal(f.x, f.y, f.r * 0.9, 'rgba(0,0,0,0.25)', 25);

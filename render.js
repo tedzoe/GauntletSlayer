@@ -118,6 +118,12 @@ const WEAP = {
 function hexA(hex, a) { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`; }
 
 // ---------------------------------------------------------------- foes
+function drawCorpse(c) {   // death: a quick squash-and-fade of the body (the burst particles fly out around it)
+  const f = c.f, k = 1 - c.t / c.max, sk = FOE_SPRITE[f.type];
+  ctx.save(); ctx.translate(f.x, f.y + 8); ctx.scale(1 + k * 0.3, 1 - k * 0.65); ctx.translate(0, -8); ctx.globalAlpha = (1 - k) * 0.9;
+  if (sk && foeSprReady(sk)) drawFoeSprite(f, sk, k < 0.2); else (FOE_ART[f.d.style] || FOE_ART.skeleton)(f, f.r, k < 0.2);
+  ctx.restore(); ctx.globalAlpha = 1;
+}
 function drawFoe(f) {
   const x = f.x, y = f.y, r = f.r;
   if (f.type === 'reaper' && f.gone > 0) return;
@@ -149,10 +155,9 @@ function drawFoeSprite(f, sk, fl) {   // hero-style pixel sprite; single front v
   const left = Math.cos(f.fa) < -0.15, fly = f.d.beh === 'wraith' || f.d.fly || (f.boss && f.kind === 'sovereign'), bob = fly ? -8 + Math.sin(G.time * 3 + f.seed) * 3 : 0;
   if (f.d.style === 'robed' || f.type === 'lich' || f.type === 'hexcaller') { ctx.globalCompositeOperation = 'lighter'; circ(0, -f.r, f.r * 1.4, f.type === 'lich' ? 'rgba(120,180,255,0.12)' : 'rgba(140,255,120,0.10)'); ctx.globalCompositeOperation = 'source-over'; }
   if (f.barrier > 0) { ctx.strokeStyle = 'rgba(160,210,255,0.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, -f.r * 0.6, f.r + 14, f.fa - 0.9, f.fa + 0.9); ctx.stroke(); }
-  if (fly) ctx.globalAlpha = CRYPT.ghostAlpha;
-  drawSpriteFrame('foes', sk + an, 'down', an === '_attack' ? Math.max(0, 0.34 - (f.st || 0)) : G.time + (f.seed || 0), 0, 4 + bob + (f.boss ? f.r * 0.5 : 0), SPR.foes.man.scale * (f.d.sprScale || 1), { sx: left ? -1 : 1 });
-  ctx.globalAlpha = 1;
-  if (fl) { ctx.globalCompositeOperation = 'lighter'; circ(0, -f.r, f.r * 1.1, 'rgba(255,255,255,0.45)'); ctx.globalCompositeOperation = 'source-over'; }
+  const ga = ctx.globalAlpha; if (fly) ctx.globalAlpha = ga * CRYPT.ghostAlpha;
+  drawSpriteFrame('foes', sk + an, 'down', an === '_attack' ? Math.max(0, 0.34 - (f.st || 0)) : G.time + (f.seed || 0), 0, 4 + bob + (f.boss ? f.r * 0.5 : 0), SPR.foes.man.scale * (f.d.sprScale || 1), { sx: left ? -1 : 1, tint: fl ? 'rgba(255,255,255,0.82)' : null });   // hit: the whole sprite flashes white
+  ctx.globalAlpha = ga;
   if (f.d.rally && f.rallyFx > 0) { ctx.strokeStyle = `rgba(255,120,90,${f.rallyFx})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 2, f.d.rally.aura, f.d.rally.aura * 0.5, 0, 0, 6.283); ctx.stroke(); }
 }
 const fcol = (f, fl) => fl ? '#fff' : f.d.col;
@@ -413,6 +418,7 @@ function drawWorld() {
   for (const a of G.allies) if (a.hp > 0 && onScreen(a.x, a.y)) actors.push([a.y, 2, a]);
   for (const h of G.heroes) actors.push([h.y, 3, h]);
   actors.sort((a, b) => a[0] - b[0]);
+  for (const c of G.corpses || []) if (onScreen(c.f.x, c.f.y, 80)) drawCorpse(c);
   for (const [, k, e] of actors) { if (k === 0) drawProp(e); else if (k === 1) drawFoe(e); else if (k === 2) drawAlly(e); else drawHero(e); }
   for (const c of G.claws) { const k = c.life / c.max; ctx.globalAlpha = k; for (let i = -1; i <= 1; i++) { const a = c.a + i * 0.35; line(c.x - Math.cos(a) * 16, c.y - Math.sin(a) * 16 + 10 * (1 - k), c.x + Math.cos(a) * 16, c.y + Math.sin(a) * 16 - 14 * (1 - k), '#7ff5d0', 3); } ctx.globalAlpha = 1; }
   for (const hd of G.hands) { const k = hd.life / hd.max; ctx.globalAlpha = Math.min(1, k * 2); ctx.fillStyle = '#3a2a5a'; const y = hd.y - 40 * k; ctx.beginPath(); ctx.ellipse(hd.x, y, 30, 22, 0, 0, 6.28); ctx.fill(); for (let i = 0; i < 4; i++) { ctx.fillRect(hd.x - 26 + i * 15, y - 36, 9, 22); } ctx.strokeStyle = '#7ff5d0'; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1; }

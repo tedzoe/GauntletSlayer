@@ -56,7 +56,7 @@ function mastery(h, stat, v) {
 // ---------------------------------------------------------------- party / run
 const PARTY = []; // [{dev, hero}] chosen in the select screen
 function resetLists() {
-  Object.assign(G, { foes: [], allies: [], shots: [], hazards: [], spawners: [], pickups: [], props: [], parts: [], texts: [], rings: [], beams: [], decals: [], swings: [], claws: [], hands: [], waves: [], decor: [] });
+  Object.assign(G, { foes: [], allies: [], shots: [], hazards: [], spawners: [], pickups: [], props: [], parts: [], corpses: [], texts: [], rings: [], beams: [], decals: [], swings: [], claws: [], hands: [], waves: [], decor: [] });
   G.boss = null; G.deathsFloor = 0; G.pendingComplete = 0; G.exitT = -1; G.exitOpen = true; G.exitFx = null; G.exitArm = 0; G.arena = null; G.gimmick = null; G.banner = null; G.newMasteries = G.newMasteries || [];
 }
 function newRun() {

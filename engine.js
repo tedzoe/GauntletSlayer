@@ -15,7 +15,7 @@ function seeded(seed) { let s = seed >>> 0 || 1; return () => { s = (s * 1664525
 // ---------------------------------------------------------------- global game state
 const G = {
   mode: 'hub', map: null, heroes: [], foes: [], allies: [], shots: [], hazards: [], spawners: [], pickups: [], props: [],
-  parts: [], texts: [], rings: [], beams: [], decals: [],
+  parts: [], corpses: [], texts: [], rings: [], beams: [], decals: [],
   gold: 0, floorGold: 0, time: 0, hitstop: 0, trauma: 0, flash: 0, flashCol: '#fff',
   cam: { x: 0, y: 0 }, boss: null, exitT: -1, exitOpen: true, arena: null, worldIdx: 0, floorIdx: 0, endless: 0,
   stats: null, banner: null, msgs: [], deathsRun: 0, darkness: false, gimmick: null, gimmickT: 0, reaperT: 0,
@@ -309,7 +309,7 @@ function flowDir(e) {   // legacy helper (the Reaper and allies): one step down 
 function addTrauma(v) { G.trauma = Math.min(1, G.trauma + v * (SAVE.settings.shake ? 1 : 0)); }
 function hitstop(t) { G.hitstop = Math.max(G.hitstop, t); }
 function burst(x, y, col, n = 10, spd = 140, size = 3, life = 0.5, grav = 0) {
-  if (G.parts.length > 900) n = Math.min(n, 3);
+  if (G.parts.length > 1100) return; if (G.parts.length > 600) n = Math.min(n, 3);   // big crowds: cap the particles
   for (let i = 0; i < n; i++) { const a = R(0, 6.283), s = R(spd * 0.25, spd); G.parts.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: R(life * 0.5, life), max: life, col, size: R(size * 0.6, size), grav }); }
 }
 function sparkDir(x, y, a, col, n = 8, spd = 260) { for (let i = 0; i < n; i++) { const b = a + R(-0.6, 0.6), s = R(spd * 0.4, spd); G.parts.push({ x, y, vx: Math.cos(b) * s, vy: Math.sin(b) * s, life: R(0.15, 0.35), max: 0.35, col, size: R(1.5, 3), grav: 0 }); } }
@@ -330,6 +330,7 @@ function decal(x, y, r, col, life = 20) { if (G.decals.length > 120) G.decals.sh
 function updateFx(dt) {
   for (const p of G.parts) { p.life -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.9; p.vy = p.vy * 0.9 + p.grav * dt; }
   G.parts = G.parts.filter(p => p.life > 0);
+  if (G.corpses && G.corpses.length) { for (const c of G.corpses) c.t -= dt; G.corpses = G.corpses.filter(c => c.t > 0); }
   for (const r of G.rings) r.life -= dt; G.rings = G.rings.filter(r => r.life > 0);
   for (const t of G.texts) { t.life -= dt; t.y -= (t.big ? 20 : 34) * dt; } G.texts = G.texts.filter(t => t.life > 0);
   for (const b of G.beams) b.life -= dt; G.beams = G.beams.filter(b => b.life > 0);
