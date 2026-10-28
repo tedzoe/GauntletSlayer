@@ -191,8 +191,11 @@ function paintTile(x2, x, y) {
     return;
   }
   // floor-like
-  const [fr, fg, fb] = th.floor, s = (hv - 0.5) * 16;
+  const [fr0, fg0, fb0] = th.floor, fr = fr0 * 0.74 + 7, fg = fg0 * 0.74 + 3, fb = fb0 * 0.74 - 1, s = (hv - 0.5) * 12;   // darker, slightly warmer floor so foes, heroes and loot pop
   x2.fillStyle = `rgb(${fr + s | 0},${fg + s | 0},${fb + s | 0})`; x2.fillRect(px, py, T, T);
+  for (let k = 0; k < 10; k++) { const h1 = hash(x * 7 + k, y * 13 - k), h2 = hash(x * 11 - k, y * 5 + k); x2.fillStyle = h1 > 0.5 ? 'rgba(255,235,200,0.05)' : 'rgba(0,0,0,0.12)'; x2.fillRect(px + (h2 * 30 | 0) + 1, py + (h1 * 30 | 0) + 1, 1 + (k & 1), 1); }   // grit
+  x2.fillStyle = 'rgba(255,230,190,0.04)'; x2.fillRect(px + 1, py + 1, T - 2, 1);   // soft bevel
+  if (hv > 0.3 && hv < 0.37) { const sx = px + 6 + (hash(y, x) * 18 | 0), sy = py + 8 + (hash(x + 3, y) * 14 | 0); x2.fillStyle = 'rgba(0,0,0,0.3)'; x2.beginPath(); x2.ellipse(sx + 1, sy + 1.5, 3.5, 2.2, 0, 0, 6.283); x2.fill(); x2.fillStyle = `rgba(${fr + 14 | 0},${fg + 12 | 0},${fb + 10 | 0},0.85)`; x2.beginPath(); x2.ellipse(sx, sy, 3.2, 2, 0, 0, 6.283); x2.fill(); }   // loose stone
   x2.fillStyle = 'rgba(0,0,0,0.22)'; x2.fillRect(px, py, T, 1); x2.fillRect(px, py, 1, T);
   if ((x + y) % 2) x2.fillRect(px + 16, py, 1, 16); else x2.fillRect(px, py + 16, 16, 1);
   if (hv < 0.12) { x2.strokeStyle = 'rgba(0,0,0,0.3)'; x2.beginPath(); x2.moveTo(px + 4 + hv * 100, py + 6); x2.lineTo(px + 16, py + 18); x2.lineTo(px + 26, py + 22); x2.stroke(); }

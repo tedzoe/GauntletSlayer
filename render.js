@@ -36,6 +36,7 @@ function drawHeroArt(def, x, y, fa, s, o) {
   const sq = o.roll ? { sx: 1.18, sy: 0.78 } : {};
   if (sway) sq.rot = sway;
   if (o.tint) sq.tint = o.tint;
+  if (!o.noShadow && !o.tint) drawSpriteFrame(def.sprite, pose.anim, pose.dir, pose.t, x, footY - lift + 1, k * 1.05, Object.assign({}, sq, { tint: 'rgba(255,236,190,0.32)' }));   // soft bright rim so the hero pops
   drawSpriteFrame(def.sprite, pose.anim, pose.dir, pose.t, x, footY - lift, k, sq);
   s = s * B.scale; const z = lift;
   if (pose.anim === 'death') return;
@@ -129,7 +130,7 @@ function drawFoe(f) {
   if (f.type === 'reaper' && f.gone > 0) return;
   ctx.save(); ctx.translate(x, y);
   const fl = f.flash > 0, wb = Math.sin(f.walk || 0) * 1.5;
-  if (f.d.style !== 'wraith' && f.d.style !== 'imp' && !f.sub) shadow(0, 0, r);
+  if (f.d.style !== 'wraith' && f.d.style !== 'imp' && !f.sub) { shadow(0, 0, r); shadow(0, 0, r * 0.8); }
   if (f.charm > 0) circ(0, 0, r + 6, 'rgba(255,140,220,0.25)');
   if (f.state === 'windup') { const k = 1 - f.st / ((f.aim && f.windT) || f.d.windup || 0.5); circ(0, 0, r + 4 + k * 6, `rgba(255,60,40,${0.25 + 0.3 * k})`); }
   if (f.state === 'charge') { for (let i = 1; i < 4; i++) circ(-Math.cos(f.fa) * i * 10, -Math.sin(f.fa) * i * 10, r * (1 - i * 0.2), 'rgba(255,200,150,0.15)'); }
@@ -156,6 +157,7 @@ function drawFoeSprite(f, sk, fl) {   // hero-style pixel sprite; single front v
   if (f.d.style === 'robed' || f.type === 'lich' || f.type === 'hexcaller') { ctx.globalCompositeOperation = 'lighter'; circ(0, -f.r, f.r * 1.4, f.type === 'lich' ? 'rgba(120,180,255,0.12)' : 'rgba(140,255,120,0.10)'); ctx.globalCompositeOperation = 'source-over'; }
   if (f.barrier > 0) { ctx.strokeStyle = 'rgba(160,210,255,0.85)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, -f.r * 0.6, f.r + 14, f.fa - 0.9, f.fa + 0.9); ctx.stroke(); }
   const ga = ctx.globalAlpha; if (fly) ctx.globalAlpha = ga * CRYPT.ghostAlpha;
+  if (!fly) drawSpriteFrame('foes', sk + an, 'down', an === '_attack' ? Math.max(0, 0.34 - (f.st || 0)) : G.time + (f.seed || 0), 0, 4 + bob + (f.boss ? f.r * 0.5 : 0) + 1, SPR.foes.man.scale * (f.d.sprScale || 1) * 1.06, { sx: left ? -1 : 1, tint: 'rgba(10,6,4,0.6)' });   // dark edge so silhouettes read in crowds
   drawSpriteFrame('foes', sk + an, 'down', an === '_attack' ? Math.max(0, 0.34 - (f.st || 0)) : G.time + (f.seed || 0), 0, 4 + bob + (f.boss ? f.r * 0.5 : 0), SPR.foes.man.scale * (f.d.sprScale || 1), { sx: left ? -1 : 1, tint: fl ? 'rgba(255,255,255,0.82)' : null });   // hit: the whole sprite flashes white
   ctx.globalAlpha = ga;
   if (f.d.rally && f.rallyFx > 0) { ctx.strokeStyle = `rgba(255,120,90,${f.rallyFx})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 2, f.d.rally.aura, f.d.rally.aura * 0.5, 0, 0, 6.283); ctx.stroke(); }
@@ -208,8 +210,10 @@ function drawProp(p) {
   else if (p.kind === 'legend') { const g = 0.5 + 0.3 * Math.sin(G.time * 3); circ(0, 0, 26, `rgba(255,216,74,${g * 0.3})`); ctx.fillStyle = '#3a2a5a'; ctx.fillRect(-15, -11, 30, 22); ctx.fillStyle = '#ffd84a'; ctx.fillRect(-15, -14, 30, 6); ctx.fillRect(-15, -1, 30, 2); circ(0, 2, 4, '#ffd84a'); ctx.fillStyle = '#222'; ctx.fillRect(-1, 2, 2, 5); }
   ctx.restore();
 }
+const PICKUP_GLOW = { ration: '#ffd890', feast: '#ffd890', potion: '#6aa8ff', key: '#ffd84a', gold: '#ffd84a', shard: '#9fe8ff', cache: '#5ac8ff', coin: '#fff2c0', crown: '#ffd84a' };
 function drawPickup(it) {
-  const bob = Math.sin(G.time * 3 + it.x) * 1.5;
+  const bob = Math.sin(G.time * 3 + it.x) * 2.5, gc = PICKUP_GLOW[it.kind];
+  if (gc) { const a = 0.32 + 0.12 * Math.sin(G.time * 4 + it.y), g = ctx.createRadialGradient(it.x, it.y, 0, it.x, it.y, 20); g.addColorStop(0, hexA(gc, a)); g.addColorStop(1, hexA(gc, 0)); ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.fillRect(it.x - 20, it.y - 20, 40, 40); ctx.restore(); }   // soft glow: visual only, the pickup radius is unchanged
   ctx.save(); ctx.translate(it.x, it.y + bob); shadow(0, -bob, 8);
   switch (it.kind) {
     case 'ration': ell(-2, 0, 9, 6, '#d0a060'); for (let k = -1; k <= 1; k++) line(-2 + k * 4, -5, k * 4, 0, '#8a6030', 1); poly([4, 7, 12, 7, 12, 1], '#f5d040'); break;
@@ -447,7 +451,7 @@ function drawWorld() {
     ctx.drawImage(darkCv, 0, 0);
   }
   // vignette & fog tint
-  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 0.95); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(0.6, 'rgba(0,0,0,0.2)'); vg.addColorStop(1, 'rgba(0,0,0,0.62)');
   ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H); if (th.fog) { ctx.fillStyle = th.fog; ctx.fillRect(0, 0, W, H); }
   // low-health red edge
   const solo = G.heroes.filter(h => !h.dead); if (solo.some(h => h.hp < h.maxHp * 0.25)) { ctx.fillStyle = `rgba(200,0,0,${0.12 + 0.08 * Math.sin(G.time * 8)})`; ctx.fillRect(0, 0, W, 8); ctx.fillRect(0, H - 8, W, 8); ctx.fillRect(0, 0, 8, H); ctx.fillRect(W - 8, 0, 8, H); }
