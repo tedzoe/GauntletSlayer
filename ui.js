@@ -77,8 +77,9 @@ function sqPip(h, m, x, y, s) {
   if (cooling) h._rdy[key] = 0; else if (h._rdy[key] === 0) h._rdy[key] = G.time; else if (h._rdy[key] === undefined) h._rdy[key] = -9;
   const fl = lit && G.time - (h._rdy[key] || -9) < DEV.hud.readyFlash ? 1 - (G.time - h._rdy[key]) / DEV.hud.readyFlash : 0;
   ctx.fillStyle = '#000'; ctx.fillRect(x - 1, y - 1, s + 2, s + 2);
-  ctx.fillStyle = lit || (cooling && !h.dead) ? m.col : '#1a1612'; ctx.fillRect(x, y, s, s);
-  if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(x, y, s, s / 3); }
+  ctx.fillStyle = '#17120d'; ctx.fillRect(x, y, s, s);
+  if (lit || (cooling && !h.dead)) { const g = ctx.createLinearGradient(x, y, x, y + s); g.addColorStop(0, hexA(m.col, 0.75)); g.addColorStop(1, hexA(h.def.color, 0.55)); ctx.fillStyle = g; ctx.fillRect(x, y, s, s); }   // move colour fading into the hero's colour
+  if (lit) { ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x, y, s, s / 3); }
   const cx = x + s / 2, cy = y + s / 2;
   if (m.soul) { const v = (h.souls || 0) / SPEC.vesper.essenceMax, t1 = Math.min(1, v * 2), t2 = Math.max(0, v * 2 - 1), full = v >= 1;   /* Soul Power meter, never a sweep */
     ctx.fillStyle = full ? '#fff' : '#2a2038'; ctx.fillRect(x, y, s, s);
@@ -86,14 +87,14 @@ function sqPip(h, m, x, y, s) {
     const sw = (s - 6) / 5; for (let k = 0; k < 5; k++) { ctx.fillStyle = full ? '#b07aff' : t1 * 5 > k + 0.999 ? '#e0c8ff' : '#4a3d5e'; ctx.fillRect(x + 1 + k * (sw + 1), y + s - 5, sw, 4); }
     tiny(full ? 'MAX' : String(soulBars(h)), cx, cy + 2, full ? 9 : 11, full ? '#2a1a3a' : '#fff'); }
   else {
-    if (cooling) { const k = c / (h._cdm[key] || 1); ctx.save(); ctx.beginPath(); ctx.rect(x, y, s, s); ctx.clip();   /* dark wedge shrinks clockwise from 12 o'clock */
-      ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, s, -1.5708 + 6.2832 * (1 - k), -1.5708 + 6.2832); ctx.closePath(); ctx.fill(); ctx.restore(); }
     if (!ok && !cooling) { ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x, y, s, s); }
-    const ink = lit ? '#111' : cooling ? '#fff' : '#7a7060';
-    if (cooling) tiny(c < 1 ? c.toFixed(1) : String(Math.ceil(c)), cx, cy + 2, 11, '#fff', true);
-    else if (m.count) tiny(String(m.count()), cx, cy + 2, 12, ink);
-    tiny(m.lab, cx, y + s - 2, 6, cooling ? '#bba88a' : ink);
+    if (!m.empty) drawMoveIcon(moveIconKey(h, m), cx, cy, s, '#fff6e2', h.def.accent, lit ? 1 : 0.5);
+    if (cooling) { const k = c / (h._cdm[key] || 1); ctx.save(); ctx.beginPath(); ctx.rect(x, y, s, s); ctx.clip();   /* dark wedge shrinks clockwise from 12 o'clock, on top of the icon */
+      ctx.fillStyle = 'rgba(0,0,0,0.72)'; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, s, -1.5708 + 6.2832 * (1 - k), -1.5708 + 6.2832); ctx.closePath(); ctx.fill(); ctx.restore();
+      tiny(c < 1 ? c.toFixed(1) : String(Math.ceil(c)), cx, cy + 4, 11, '#fff', true); }
+    else if (m.count) tiny(String(m.count()), cx, cy + 2, 12, '#fff', true);
   }
+  { const kl = Input.keyLabel(h.dev, MOVE_BTN[m.lab]); if (kl && !m.empty) { ctx.font = FONT(6, 'bold'); const tw = ctx.measureText(kl).width + 3; ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(x + s - tw, y + s - 7, tw, 7); ctx.fillStyle = '#ffe8b0'; ctx.textAlign = 'center'; ctx.fillText(kl, x + s - tw / 2, y + s - 1.5); } }   // hotkey badge
   ctx.lineWidth = m.slayer ? 2 : 1; ctx.strokeStyle = m.slayer ? '#c8a24a' : '#5a4a32'; ctx.strokeRect(x - 0.5, y - 0.5, s + 1, s + 1);
   if (act) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(x - 2.5, y - 2.5, s + 5, s + 5); }
   if (fl > 0) { const g = (1 - fl) * 5; ctx.strokeStyle = `rgba(255,255,220,${fl})`; ctx.lineWidth = 2; ctx.strokeRect(x - 2 - g, y - 2 - g, s + 4 + 2 * g, s + 4 + 2 * g); }
@@ -537,3 +538,67 @@ function drawControls() {
 function reviveBoxUp() { return !!(G.reviveOffer && G.heroes.length && G.heroes.every(h => h.dead)); }
 function reviveRect() { return { x: W / 2 - 220, y: H / 2 - 50, w: 440, h: 92 }; }
 function bannerRect() { return reviveBoxUp() ? { x: 0, y: 88, w: W, h: 50, compact: true } : { x: 0, y: H * 0.3 - 40, w: W, h: 74, compact: false }; }
+
+// ---------------------------------------------------------------- move icons (Oct 2026 polish: a drawn icon per move instead of 'SPIN' / 'DSH' text)
+// drawn in a 24 x 24 unit box around (cx, cy); every stroke gets a dark outline first so it reads on any fill
+function moveIconKey(h, m) {
+  const w = h.weapon, id = h.id, L = m.lab;
+  if (L === 'REL') return 'gem';
+  if (L === 'DSH') return { brannoc: 'rush', sela: 'charge', kestrel: 'roll', mirelle: 'blink', vesper: 'ghost', paladin: 'advance' }[id] || 'boot';
+  if (L === 'BLK') return 'shield';
+  if (id === 'brannoc') return L === 'LEAP' ? 'smash' : { axe: 'throwaxe', turbo: 'quake', demonic: 'cleave' }[w] || 'spin';
+  if (id === 'sela') return L === 'THR' ? 'spear' : L === 'BASH' ? 'bash' : { splitter: 'split', vanguard: 'deflect', ricochet: 'ricochet' }[w] || 'shieldspin';
+  if (id === 'kestrel') return L === 'PWR' ? 'powershot' : { thorn: 'root', sparks: 'spark', dusk: 'smoke' }[w] || 'mortar';
+  if (id === 'mirelle') return L === 'SPL' ? 'rune' : 'meteor';
+  if (id === 'vesper') return L === 'SMSH' ? 'spikes' : 'skull';
+  if (id === 'paladin') return L === 'JDG' ? 'judgment' : L === 'CONS' ? 'sun' : { hammer: 'hammer', lance: 'lance', sanctuary: 'dome' }[w] || 'holyslam';
+  return 'star';
+}
+const MOVE_BTN = { LEAP: 'secondary', THR: 'secondary', PWR: 'secondary', JDG: 'secondary', SMSH: 'secondary', SPL: 'primary', SPIN: 'ability', SPC: 'ability', SLAM: 'ability', SOUL: 'ability', CONS: 'ability', BLK: 'defend', BASH: 'primary', DSH: 'dash', REL: 'relic' };
+function iconPath(k, col, acc) {   // unit coordinates; ctx already translated + scaled; returns nothing
+  const S = (fn, w = 2.2, c = col) => { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath(); fn(); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = w + 2; ctx.stroke(); ctx.strokeStyle = c; ctx.lineWidth = w; ctx.stroke(); };
+  const F = (pts, c = col) => { ctx.beginPath(); ctx.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) ctx.lineTo(pts[i], pts[i + 1]); ctx.closePath(); ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 2; ctx.stroke(); ctx.fillStyle = c; ctx.fill(); };
+  const C = (x, y, r, c = col) => { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fillStyle = c; ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 1.2; ctx.stroke(); };
+  const star = (x, y, r1, r2, n, c, rot = -1.5708) => { const p = []; for (let i = 0; i < n * 2; i++) { const a = rot + i * Math.PI / n, r = i % 2 ? r2 : r1; p.push(x + Math.cos(a) * r, y + Math.sin(a) * r); } F(p, c); };
+  const axe = (bx, by, c) => { S(() => { ctx.moveTo(-7, 8); ctx.lineTo(bx, by); }, 2.2, '#c89a6a'); F([bx - 1, by - 1, bx + 6, by - 6, bx + 8, by + 1, bx + 2, by + 4], c); };
+  const shield = (x, y, s, c) => F([x - 6 * s, y - 7 * s, x + 6 * s, y - 7 * s, x + 6 * s, y, x, y + 8 * s, x - 6 * s, y], c);
+  const arrow = (x0, y0, x1, y1, c, w = 2) => { S(() => { ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); }, w, c); const a = Math.atan2(y1 - y0, x1 - x0); F([x1 + Math.cos(a) * 3, y1 + Math.sin(a) * 3, x1 + Math.cos(a + 2.4) * 4.5, y1 + Math.sin(a + 2.4) * 4.5, x1 + Math.cos(a - 2.4) * 4.5, y1 + Math.sin(a - 2.4) * 4.5], c); };
+  switch (k) {
+    case 'spin': S(() => ctx.arc(0, 0, 8, -2.6, 2.2)); F([-6.5, -7.6, -2.5, -9.6, -3.3, -4.5]); axe(-1, -1, acc); break;
+    case 'throwaxe': for (const y of [-5, 0, 5]) S(() => { ctx.moveTo(-10, y + 2); ctx.lineTo(-5, y + 2); }, 1.4, 'rgba(255,255,255,0.8)'); axe(3, -4, col); break;
+    case 'quake': star(0, 5, 10, 4, 6, acc); S(() => { ctx.moveTo(0, -10); ctx.lineTo(0, 2); }, 2.4, '#c89a6a'); F([-6, -10, 6, -10, 6, -4, -6, -4], col); break;
+    case 'cleave': S(() => ctx.arc(0, 1, 9.5, -0.6, 4.4), 1.6, '#ffffff'); S(() => ctx.arc(0, 1, 6.5, 0.2, 3.6), 1.2, 'rgba(255,255,255,0.8)'); axe(1, -6, '#e0302a'); break;
+    case 'smash': star(0, 2, 10, 4, 8, acc); C(0, 2, 3, '#fff'); S(() => { ctx.moveTo(-8, -10); ctx.lineTo(-2, -3); }, 2.4, col); break;
+    case 'rush': for (const [y, l] of [[-6, 9], [0, 13], [6, 9]]) S(() => { ctx.moveTo(-10, y); ctx.lineTo(-10 + l, y); }, 2, '#ff6a7a'); S(() => { ctx.moveTo(4, -7); ctx.lineTo(10, 0); ctx.lineTo(4, 7); }, 2.6, col); break;
+    case 'charge': for (const y of [-5, 0, 5]) S(() => { ctx.moveTo(-10, y); ctx.lineTo(-5, y); }, 1.6, 'rgba(255,255,255,0.85)'); shield(3, 0, 1, col); break;
+    case 'roll': S(() => ctx.arc(0, 0, 8, 3.6, 0.9 + 6.283)); F([7.6, 5.6, 3, 9.8, 9.6, 10]); C(0, 0, 2.6, acc); break;
+    case 'blink': star(4, -3, 8, 2.5, 4, col); for (const [x, y, r] of [[-4, 4, 1.8], [-8, 7, 1.3], [-11, 9, 0.9]]) C(x, y, r, acc); break;
+    case 'ghost': F([-7, 9, -7, -2, -5, -8, 0, -10, 5, -8, 7, -2, 7, 9, 4, 6, 1, 9, -2, 6, -4, 9], col); C(-2.5, -3, 1.6, '#222'); C(2.5, -3, 1.6, '#222'); break;
+    case 'advance': for (const y of [-2, 5]) S(() => { ctx.moveTo(-7, y + 3); ctx.lineTo(0, y - 4); ctx.lineTo(7, y + 3); }, 2.6, y < 0 ? col : acc); break;
+    case 'shield': shield(0, 0, 1.4, col); S(() => { ctx.moveTo(0, -8); ctx.lineTo(0, 9); }, 1.4, acc); break;
+    case 'spear': S(() => { ctx.moveTo(-9, 9); ctx.lineTo(5, -5); }, 2, '#c89a6a'); F([3, -3, 10, -10, 5, -1], col); break;
+    case 'bash': shield(-2, 1, 1.1, col); star(6, -5, 6, 2.5, 5, acc); break;
+    case 'shieldspin': S(() => ctx.arc(0, 0, 10, -2.2, 1.8), 1.6, 'rgba(255,255,255,0.85)'); C(0, 0, 6.5, col); C(0, 0, 2.5, acc); break;
+    case 'split': C(-5, 2, 5, col); for (const a of [-0.6, 0, 0.6]) arrow(-1, 2, -1 + Math.cos(a) * 10, 2 + Math.sin(a) * 10 - 2, acc, 1.6); break;
+    case 'deflect': S(() => { ctx.moveTo(-9, 8); ctx.lineTo(6, -7); }, 2, '#c89a6a'); F([4, -5, 10, -10, 6, -2], col); S(() => ctx.arc(2, -1, 9, 3.4, 5.2), 1.6, acc); break;
+    case 'ricochet': C(-6, 5, 4.5, col); S(() => { ctx.moveTo(-6, 5); ctx.lineTo(0, -6); ctx.lineTo(5, 3); ctx.lineTo(10, -8); }, 1.6, acc); break;
+    case 'powershot': S(() => ctx.arc(0, 0, 10, 0, 6.283), 1.2, acc); arrow(-9, 9, 6, -6, col, 3); break;
+    case 'mortar': S(() => { ctx.moveTo(-10, 9); ctx.quadraticCurveTo(0, -18, 9, 7); }, 1.6, 'rgba(255,255,255,0.85)'); star(8, 7, 5, 2, 6, acc); arrow(-3, -3, 2, -4, col, 1.6); break;
+    case 'root': arrow(-10, 2, 7, 2, col, 2); for (const x of [-6, -1, 4]) S(() => { ctx.moveTo(x, 9); ctx.quadraticCurveTo(x - 3, 5, x, 3); }, 1.4, '#7fd06a'); break;
+    case 'spark': F([2, -11, -6, 1, -1, 1, -3, 11, 6, -2, 1, -2], col); C(-8, -7, 1.5, acc); C(8, 7, 1.5, acc); break;
+    case 'smoke': C(-4, 3, 5.5, '#8a8a9a'); C(3, 1, 6.5, '#a8a8b8'); C(0, -5, 5, '#c8c8d4'); break;
+    case 'rune': S(() => ctx.arc(0, 0, 9.5, 0, 6.283), 1.6, acc); star(0, 0, 8, 3.2, 5, col); break;
+    case 'meteor': for (const [o, l] of [[-4, 8], [0, 11], [4, 8]]) S(() => { ctx.moveTo(-1 + o, -1 - o); ctx.lineTo(-1 + o - l * 0.7, -1 - o - l * 0.7); }, 2, '#ffb040'); C(3, 3, 6.5, '#ff5a1a'); C(4.5, 1.5, 2.8, '#ffe08a'); break;
+    case 'spikes': F([-10, 9, -6, -6, -3, 9], col); F([-4, 9, 0, -11, 4, 9], col); F([3, 9, 6, -5, 10, 9], col); break;
+    case 'skull': C(0, -2, 8, col); F([-4, 4, 4, 4, 3, 9, -3, 9], col); C(-3, -2, 2.2, '#2a1a3a'); C(3, -2, 2.2, '#2a1a3a'); break;
+    case 'judgment': for (const a of [-2.4, -1.57, -0.74]) S(() => { ctx.moveTo(Math.cos(a) * 6, -2 + Math.sin(a) * 6); ctx.lineTo(Math.cos(a) * 11, -2 + Math.sin(a) * 11); }, 1.4, acc); S(() => { ctx.moveTo(0, -6); ctx.lineTo(0, 10); }, 2.6, col); S(() => { ctx.moveTo(-5, -2); ctx.lineTo(5, -2); }, 2.2, col); break;
+    case 'sun': C(0, 0, 5, col); for (let i = 0; i < 8; i++) { const a = i * 0.785; S(() => { ctx.moveTo(Math.cos(a) * 7.5, Math.sin(a) * 7.5); ctx.lineTo(Math.cos(a) * 10.5, Math.sin(a) * 10.5); }, 1.6, acc); } break;
+    case 'hammer': S(() => { ctx.moveTo(-7, 9); ctx.lineTo(3, -2); }, 2.4, '#c89a6a'); F([-1, -7, 5, -11, 10, -5, 4, -1], col); star(-7, 9, 4, 1.5, 4, acc); break;
+    case 'lance': for (let i = -1; i <= 1; i++) S(() => { ctx.moveTo(-10, 6 + i * 3); ctx.lineTo(-4, 6 + i * 3 - 4); }, 1.2, acc); F([-6, 6, 10, -8, 8, -2, -4, 9], col); break;
+    case 'dome': S(() => { ctx.arc(0, 6, 10, Math.PI, 0); }, 2, col); S(() => { ctx.moveTo(-11, 6); ctx.lineTo(11, 6); }, 1.6, acc); S(() => { ctx.moveTo(0, -1); ctx.lineTo(0, 4); ctx.moveTo(-2.5, 1); ctx.lineTo(2.5, 1); }, 1.4, acc); break;
+    case 'holyslam': star(0, 4, 10, 4, 8, acc); S(() => { ctx.moveTo(0, -10); ctx.lineTo(0, 3); }, 2.6, col); S(() => { ctx.moveTo(-4, -6); ctx.lineTo(4, -6); }, 2, col); break;
+    case 'gem': F([0, -10, 8, -3, 0, 10, -8, -3], col); S(() => { ctx.moveTo(-8, -3); ctx.lineTo(8, -3); ctx.moveTo(0, -10); ctx.lineTo(0, 10); }, 0.8, 'rgba(255,255,255,0.7)'); break;
+    default: star(0, 0, 9, 4, 5, col);
+  }
+}
+function drawMoveIcon(k, cx, cy, s, col, acc, alpha = 1) { ctx.save(); ctx.globalAlpha *= alpha; ctx.translate(cx, cy); ctx.scale(s / 26, s / 26); iconPath(k, col, acc); ctx.restore(); }

@@ -152,7 +152,7 @@ const DEV = {
     paladin: { move: 'Righteous Advance', cdKey: 'advance', cd: 5 },     // SPEC.paladin.advanceCd (no longer needs the shield raised)
   },
   // 2. COOLDOWN HUD: ready flash length (s) and pip size (px)
-  hud: { readyFlash: 0.45, pipR: 12, pipGap: 29, panelH: 62, sq: 22, sqGap: 4, minW: 200, gap: 8 },
+  hud: { readyFlash: 0.45, pipR: 12, pipGap: 29, panelH: 62, sq: 24, sqGap: 4, minW: 200, gap: 8 },
   // 4. ENEMY PROJECTILES: every foe missile (bosses too) is slowed, then capped. Range is kept (life is stretched to match).
   //    Dodge budget at the cap: reaction 0.35s + sidestep (hero r 13 + missile r 7 + 4 px margin) / 133 px/s = 0.53s,
   //    and a missile at the cap needs 0.80s to cross even the closest firing distance (160 px). Shockwave rings use the same cap.
@@ -180,7 +180,7 @@ const DEV = {
   //    numbers 1:1 because our enemy HP already sits on the reference scale (small ~30, strong ~48, casters 60-96).
   //    Rates are tuned so every melee hero out-damages Isaac's Quick Shot (David's rule) while swinging slower than he shoots.
   dmg: {
-    theo: { combo: [18, 18, 18, 54, 18, 18, 54], weakT: 0.36, strongT: 0.5, finRec: 0.7,   // guide pace (iXNHat3): ~0.36-0.40s between normal hits, ~0.5s after Super Slash, 0.7s after the circle; FAQ 14/42 ratio scaled to 18/54 so melee stays ~15%+ over Quick Shot (60 vs 51 DPS measured)
+    theo: { combo: [18, 18, 18, 49, 18, 18, 49], weakT: 0.36, strongT: 0.5, finRec: 0.7,   // guide pace (iXNHat3): ~0.36-0.40s between normal hits, ~0.5s after Super Slash, 0.7s after the circle; FAQ light/heavy ratio scaled to 18/49 (heavy hits stay under Smash's 50) so melee stays 10%+ over Quick Shot
       rush: 8, superSlash: [42, 14, 14, 42], leap: 50,   // Rush; Super Slash = hit 4 during Rush, chain continues 5-7; Smash and Leap 50 Lethal
       spinTick: 20, spinTicks: 8, spinTime: 2.5,                                 // Destructo Spin 8 x 20 = 160, 2.5s invulnerable
       axe: 28, turbo: 140, turboAoe: 14, demonic: 140, titanMul: 1.65 },

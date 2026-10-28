@@ -83,5 +83,11 @@ const Input = (() => {
     return null;
   }
   addEventListener('mousedown', e => { mouse.pb[e.button] = true; });
-  return { attach, read, commit, joinPress, mouse, keys, pressedK, pads, keyPressed: c => pressedK.has(c) };
+  const PADLAB = { primary: 'X', secondary: 'Y', ability: 'B', defend: 'RT', dash: 'LT', potion: 'LB', relic: 'RB' };
+  function keyLabel(dev, btn) {   // the bound key, short enough for a HUD badge
+    if (dev && dev.startsWith('pad')) return PADLAB[btn] || '';
+    const c = ((dev === 'kb2' ? KB2 : KB1)[btn] || []).find(k => !k.startsWith('M')); if (!c) return '';
+    return c.replace(/^Key|^Digit/, '').replace(/^Numpad/, 'N').replace('Space', 'SPC').replace(/^Shift(Left|Right)$/, 'SHF').replace(/^Control(Left|Right)$/, 'CTL').replace('Period', '.').replace('Slash', '/').replace('Comma', ',').replace('Semicolon', ';').replace('Quote', "'");
+  }
+  return { attach, read, commit, joinPress, mouse, keys, pressedK, pads, keyLabel, keyPressed: c => pressedK.has(c) };
 })();
